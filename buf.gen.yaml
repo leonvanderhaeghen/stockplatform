@@ -1,0 +1,25 @@
+version: v1
+managed:
+  enabled: true
+  go_package_prefix:
+    default: stockplatform/pkg/gen
+
+plugins:
+  - name: go
+    out: pkg/gen
+    opt: paths=source_relative
+  - name: go-grpc
+    out: pkg/gen
+    opt: 
+      - paths=source_relative
+      - require_unimplemented_servers=false
+  - name: grpc-gateway
+    out: pkg/gen
+    opt: 
+      - paths=source_relative
+      - generate_unbound_methods=true
+  - name: openapiv2
+    out: gen/openapiv2
+    opt: 
+      - allow_merge=true
+      - merge_file_name=api

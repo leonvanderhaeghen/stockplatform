@@ -1,0 +1,447 @@
+package services
+
+import (
+	"context"
+	"fmt"
+
+	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+
+	userv1 "stockplatform/pkg/gen/user/v1"
+)
+
+// UserServiceImpl implements the UserService interface
+type UserServiceImpl struct {
+	client userv1.UserServiceClient
+	logger *zap.Logger
+}
+
+// NewUserService creates a new instance of UserServiceImpl
+func NewUserService(userServiceAddr string, logger *zap.Logger) (UserService, error) {
+	// Create a gRPC connection to the user service
+	conn, err := grpc.Dial(
+		userServiceAddr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to user service: %w", err)
+	}
+
+	// Create a client
+	client := userv1.NewUserServiceClient(conn)
+
+	return &UserServiceImpl{
+		client: client,
+		logger: logger.Named("user_service"),
+	}, nil
+}
+
+// RegisterUser registers a new user
+func (s *UserServiceImpl) RegisterUser(
+	ctx context.Context,
+	email, password, firstName, lastName string,
+) (interface{}, error) {
+	s.logger.Debug("RegisterUser",
+		zap.String("email", email),
+		zap.String("firstName", firstName),
+		zap.String("lastName", lastName),
+	)
+
+	req := &userv1.RegisterRequest{
+		Email:     email,
+		Password:  password,
+		FirstName: firstName,
+		LastName:  lastName,
+	}
+
+	resp, err := s.client.Register(ctx, req)
+	if err != nil {
+		s.logger.Error("Failed to register user",
+			zap.String("email", email),
+			zap.Error(err),
+		)
+		return nil, fmt.Errorf("failed to register user: %w", err)
+	}
+
+	return resp.User, nil
+}
+
+// AuthenticateUser authenticates a user
+func (s *UserServiceImpl) AuthenticateUser(
+	ctx context.Context,
+	email, password string,
+) (interface{}, error) {
+	s.logger.Debug("AuthenticateUser",
+		zap.String("email", email),
+	)
+
+	req := &userv1.LoginRequest{
+		Email:    email,
+		Password: password,
+	}
+
+	resp, err := s.client.Login(ctx, req)
+	if err != nil {
+		s.logger.Error("Failed to authenticate user",
+			zap.String("email", email),
+			zap.Error(err),
+		)
+		return nil, fmt.Errorf("failed to authenticate user: %w", err)
+	}
+
+	return map[string]interface{}{
+		"user":  resp.User,
+		"token": resp.Token,
+	}, nil
+}
+
+// GetUserByID gets a user by ID
+func (s *UserServiceImpl) GetUserByID(
+	ctx context.Context,
+	userID string,
+) (interface{}, error) {
+	s.logger.Debug("GetUserByID",
+		zap.String("userID", userID),
+	)
+
+	req := &userv1.GetUserRequest{
+		Id: userID,
+	}
+
+	resp, err := s.client.GetUser(ctx, req)
+	if err != nil {
+		s.logger.Error("Failed to get user",
+			zap.String("userID", userID),
+			zap.Error(err),
+		)
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	return resp.User, nil
+}
+
+// UpdateUserProfile updates a user's profile
+func (s *UserServiceImpl) UpdateUserProfile(
+	ctx context.Context,
+	userID, firstName, lastName, phone string,
+) error {
+	s.logger.Debug("UpdateUserProfile",
+		zap.String("userID", userID),
+		zap.String("firstName", firstName),
+		zap.String("lastName", lastName),
+	)
+
+	req := &userv1.UpdateProfileRequest{
+		Id:        userID,
+		FirstName: firstName,
+		LastName:  lastName,
+		Phone:     phone,
+	}
+
+	_, err := s.client.UpdateProfile(ctx, req)
+	if err != nil {
+		s.logger.Error("Failed to update user profile",
+			zap.String("userID", userID),
+			zap.Error(err),
+		)
+		return fmt.Errorf("failed to update user profile: %w", err)
+	}
+
+	return nil
+}
+
+// ChangeUserPassword changes a user's password
+func (s *UserServiceImpl) ChangeUserPassword(
+	ctx context.Context,
+	userID, currentPassword, newPassword string,
+) error {
+	s.logger.Debug("ChangeUserPassword",
+		zap.String("userID", userID),
+	)
+
+	req := &userv1.ChangePasswordRequest{
+		Id:              userID,
+		CurrentPassword: currentPassword,
+		NewPassword:     newPassword,
+	}
+
+	_, err := s.client.ChangePassword(ctx, req)
+	if err != nil {
+		s.logger.Error("Failed to change user password",
+			zap.String("userID", userID),
+			zap.Error(err),
+		)
+		return fmt.Errorf("failed to change user password: %w", err)
+	}
+
+	return nil
+}
+
+// GetUserAddresses gets addresses for a user
+func (s *UserServiceImpl) GetUserAddresses(
+	ctx context.Context,
+	userID string,
+) (interface{}, error) {
+	s.logger.Debug("GetUserAddresses",
+		zap.String("userID", userID),
+	)
+
+	req := &userv1.GetAddressesRequest{
+		UserId: userID,
+	}
+
+	resp, err := s.client.GetAddresses(ctx, req)
+	if err != nil {
+		s.logger.Error("Failed to get user addresses",
+			zap.String("userID", userID),
+			zap.Error(err),
+		)
+		return nil, fmt.Errorf("failed to get user addresses: %w", err)
+	}
+
+	return resp.Addresses, nil
+}
+
+// CreateUserAddress creates a new address for a user
+func (s *UserServiceImpl) CreateUserAddress(
+	ctx context.Context,
+	userID, name, street, city, state, postalCode, country, phone string,
+	isDefault bool,
+) (interface{}, error) {
+	s.logger.Debug("CreateUserAddress",
+		zap.String("userID", userID),
+		zap.String("name", name),
+		zap.String("city", city),
+		zap.Bool("isDefault", isDefault),
+	)
+
+	req := &userv1.CreateAddressRequest{
+		UserId:     userID,
+		Name:       name,
+		Street:     street,
+		City:       city,
+		State:      state,
+		PostalCode: postalCode,
+		Country:    country,
+		Phone:      phone,
+		IsDefault:  isDefault,
+	}
+
+	resp, err := s.client.CreateAddress(ctx, req)
+	if err != nil {
+		s.logger.Error("Failed to create user address",
+			zap.String("userID", userID),
+			zap.Error(err),
+		)
+		return nil, fmt.Errorf("failed to create user address: %w", err)
+	}
+
+	return resp.Address, nil
+}
+
+// GetUserDefaultAddress gets the default address for a user
+func (s *UserServiceImpl) GetUserDefaultAddress(
+	ctx context.Context,
+	userID string,
+) (interface{}, error) {
+	s.logger.Debug("GetUserDefaultAddress",
+		zap.String("userID", userID),
+	)
+
+	req := &userv1.GetDefaultAddressRequest{
+		UserId: userID,
+	}
+
+	resp, err := s.client.GetDefaultAddress(ctx, req)
+	if err != nil {
+		s.logger.Error("Failed to get user default address",
+			zap.String("userID", userID),
+			zap.Error(err),
+		)
+		return nil, fmt.Errorf("failed to get user default address: %w", err)
+	}
+
+	return resp.Address, nil
+}
+
+// UpdateUserAddress updates an address for a user
+func (s *UserServiceImpl) UpdateUserAddress(
+	ctx context.Context,
+	addressID, userID, name, street, city, state, postalCode, country, phone string,
+	isDefault bool,
+) error {
+	s.logger.Debug("UpdateUserAddress",
+		zap.String("addressID", addressID),
+		zap.String("userID", userID),
+		zap.String("name", name),
+		zap.Bool("isDefault", isDefault),
+	)
+
+	req := &userv1.UpdateAddressRequest{
+		Id:         addressID,
+		UserId:     userID,
+		Name:       name,
+		Street:     street,
+		City:       city,
+		State:      state,
+		PostalCode: postalCode,
+		Country:    country,
+		Phone:      phone,
+		IsDefault:  isDefault,
+	}
+
+	_, err := s.client.UpdateAddress(ctx, req)
+	if err != nil {
+		s.logger.Error("Failed to update user address",
+			zap.String("addressID", addressID),
+			zap.String("userID", userID),
+			zap.Error(err),
+		)
+		return fmt.Errorf("failed to update user address: %w", err)
+	}
+
+	return nil
+}
+
+// DeleteUserAddress deletes an address for a user
+func (s *UserServiceImpl) DeleteUserAddress(
+	ctx context.Context,
+	addressID, userID string,
+) error {
+	s.logger.Debug("DeleteUserAddress",
+		zap.String("addressID", addressID),
+		zap.String("userID", userID),
+	)
+
+	req := &userv1.DeleteAddressRequest{
+		Id:     addressID,
+		UserId: userID,
+	}
+
+	_, err := s.client.DeleteAddress(ctx, req)
+	if err != nil {
+		s.logger.Error("Failed to delete user address",
+			zap.String("addressID", addressID),
+			zap.String("userID", userID),
+			zap.Error(err),
+		)
+		return fmt.Errorf("failed to delete user address: %w", err)
+	}
+
+	return nil
+}
+
+// SetDefaultUserAddress sets an address as default for a user
+func (s *UserServiceImpl) SetDefaultUserAddress(
+	ctx context.Context,
+	addressID, userID string,
+) error {
+	s.logger.Debug("SetDefaultUserAddress",
+		zap.String("addressID", addressID),
+		zap.String("userID", userID),
+	)
+
+	req := &userv1.SetDefaultAddressRequest{
+		Id:     addressID,
+		UserId: userID,
+	}
+
+	_, err := s.client.SetDefaultAddress(ctx, req)
+	if err != nil {
+		s.logger.Error("Failed to set default user address",
+			zap.String("addressID", addressID),
+			zap.String("userID", userID),
+			zap.Error(err),
+		)
+		return fmt.Errorf("failed to set default user address: %w", err)
+	}
+
+	return nil
+}
+
+// ListUsers lists all users (admin only)
+func (s *UserServiceImpl) ListUsers(
+	ctx context.Context,
+	role string,
+	active *bool,
+	limit, offset int,
+) (interface{}, error) {
+	s.logger.Debug("ListUsers",
+		zap.String("role", role),
+		zap.Int("limit", limit),
+		zap.Int("offset", offset),
+	)
+
+	req := &userv1.ListUsersRequest{
+		Role:   role,
+		Limit:  int32(limit),
+		Offset: int32(offset),
+	}
+
+	if active != nil {
+		req.Active = &userv1.ListUsersRequest_ActiveValue{
+			Value: *active,
+		}
+	}
+
+	resp, err := s.client.ListUsers(ctx, req)
+	if err != nil {
+		s.logger.Error("Failed to list users",
+			zap.Error(err),
+		)
+		return nil, fmt.Errorf("failed to list users: %w", err)
+	}
+
+	return resp.Users, nil
+}
+
+// ActivateUser activates a user (admin only)
+func (s *UserServiceImpl) ActivateUser(
+	ctx context.Context,
+	userID string,
+) error {
+	s.logger.Debug("ActivateUser",
+		zap.String("userID", userID),
+	)
+
+	req := &userv1.ActivateUserRequest{
+		Id: userID,
+	}
+
+	_, err := s.client.ActivateUser(ctx, req)
+	if err != nil {
+		s.logger.Error("Failed to activate user",
+			zap.String("userID", userID),
+			zap.Error(err),
+		)
+		return fmt.Errorf("failed to activate user: %w", err)
+	}
+
+	return nil
+}
+
+// DeactivateUser deactivates a user (admin only)
+func (s *UserServiceImpl) DeactivateUser(
+	ctx context.Context,
+	userID string,
+) error {
+	s.logger.Debug("DeactivateUser",
+		zap.String("userID", userID),
+	)
+
+	req := &userv1.DeactivateUserRequest{
+		Id: userID,
+	}
+
+	_, err := s.client.DeactivateUser(ctx, req)
+	if err != nil {
+		s.logger.Error("Failed to deactivate user",
+			zap.String("userID", userID),
+			zap.Error(err),
+		)
+		return fmt.Errorf("failed to deactivate user: %w", err)
+	}
+
+	return nil
+}

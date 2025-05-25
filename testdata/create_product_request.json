@@ -1,0 +1,7 @@
+{
+  "name": "Test Product",
+  "description": "This is a test product",
+  "price": 9.99,
+  "sku": "TEST-001",
+  "category_id": "test-category"
+}

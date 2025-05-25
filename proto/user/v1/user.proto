@@ -1,0 +1,268 @@
+syntax = "proto3";
+
+package user.v1;
+
+option go_package = "stockplatform/pkg/gen/user/v1;userv1";
+
+// UserService provides operations for user management
+service UserService {
+  // RegisterUser registers a new user
+  rpc RegisterUser(RegisterUserRequest) returns (RegisterUserResponse);
+  
+  // AuthenticateUser authenticates a user and returns a JWT token
+  rpc AuthenticateUser(AuthenticateUserRequest) returns (AuthenticateUserResponse);
+  
+  // GetUser retrieves a user by ID
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+  
+  // GetUserByEmail retrieves a user by email
+  rpc GetUserByEmail(GetUserByEmailRequest) returns (GetUserResponse);
+  
+  // UpdateUserProfile updates a user's profile information
+  rpc UpdateUserProfile(UpdateUserProfileRequest) returns (UpdateUserProfileResponse);
+  
+  // ChangeUserPassword changes a user's password
+  rpc ChangeUserPassword(ChangeUserPasswordRequest) returns (ChangeUserPasswordResponse);
+  
+  // DeactivateUser deactivates a user account
+  rpc DeactivateUser(DeactivateUserRequest) returns (DeactivateUserResponse);
+  
+  // ActivateUser activates a user account
+  rpc ActivateUser(ActivateUserRequest) returns (ActivateUserResponse);
+  
+  // ListUsers lists all users with optional filtering and pagination
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+  
+  // CreateUserAddress creates a new address for a user
+  rpc CreateUserAddress(CreateUserAddressRequest) returns (CreateUserAddressResponse);
+  
+  // GetUserAddresses retrieves all addresses for a user
+  rpc GetUserAddresses(GetUserAddressesRequest) returns (GetUserAddressesResponse);
+  
+  // GetUserDefaultAddress retrieves the default address for a user
+  rpc GetUserDefaultAddress(GetUserDefaultAddressRequest) returns (GetUserDefaultAddressResponse);
+  
+  // UpdateUserAddress updates a user address
+  rpc UpdateUserAddress(UpdateUserAddressRequest) returns (UpdateUserAddressResponse);
+  
+  // DeleteUserAddress deletes a user address
+  rpc DeleteUserAddress(DeleteUserAddressRequest) returns (DeleteUserAddressResponse);
+  
+  // SetDefaultUserAddress sets an address as the default for a user
+  rpc SetDefaultUserAddress(SetDefaultUserAddressRequest) returns (SetDefaultUserAddressResponse);
+}
+
+// Role represents user roles
+enum Role {
+  ROLE_UNSPECIFIED = 0;
+  ROLE_CUSTOMER = 1;
+  ROLE_ADMIN = 2;
+  ROLE_STAFF = 3;
+}
+
+// User represents a user account
+message User {
+  string id = 1;
+  string email = 2;
+  string first_name = 3;
+  string last_name = 4;
+  Role role = 5;
+  string phone = 6;
+  bool active = 7;
+  string last_login = 8;
+  string created_at = 9;
+  string updated_at = 10;
+}
+
+// Address represents a user address
+message Address {
+  string id = 1;
+  string user_id = 2;
+  string name = 3;
+  string street = 4;
+  string city = 5;
+  string state = 6;
+  string postal_code = 7;
+  string country = 8;
+  bool is_default = 9;
+  string phone = 10;
+  string created_at = 11;
+  string updated_at = 12;
+}
+
+// RegisterUserRequest is the request for registering a new user
+message RegisterUserRequest {
+  string email = 1;
+  string password = 2;
+  string first_name = 3;
+  string last_name = 4;
+}
+
+// RegisterUserResponse is the response for registering a new user
+message RegisterUserResponse {
+  User user = 1;
+}
+
+// AuthenticateUserRequest is the request for authenticating a user
+message AuthenticateUserRequest {
+  string email = 1;
+  string password = 2;
+}
+
+// AuthenticateUserResponse is the response for authenticating a user
+message AuthenticateUserResponse {
+  string token = 1;
+  User user = 2;
+}
+
+// GetUserRequest is the request for retrieving a user by ID
+message GetUserRequest {
+  string id = 1;
+}
+
+// GetUserByEmailRequest is the request for retrieving a user by email
+message GetUserByEmailRequest {
+  string email = 1;
+}
+
+// GetUserResponse is the response for retrieving a user
+message GetUserResponse {
+  User user = 1;
+}
+
+// UpdateUserProfileRequest is the request for updating a user's profile
+message UpdateUserProfileRequest {
+  string id = 1;
+  string first_name = 2;
+  string last_name = 3;
+  string phone = 4;
+}
+
+// UpdateUserProfileResponse is the response for updating a user's profile
+message UpdateUserProfileResponse {
+  bool success = 1;
+}
+
+// ChangeUserPasswordRequest is the request for changing a user's password
+message ChangeUserPasswordRequest {
+  string id = 1;
+  string current_password = 2;
+  string new_password = 3;
+}
+
+// ChangeUserPasswordResponse is the response for changing a user's password
+message ChangeUserPasswordResponse {
+  bool success = 1;
+}
+
+// DeactivateUserRequest is the request for deactivating a user
+message DeactivateUserRequest {
+  string id = 1;
+}
+
+// DeactivateUserResponse is the response for deactivating a user
+message DeactivateUserResponse {
+  bool success = 1;
+}
+
+// ActivateUserRequest is the request for activating a user
+message ActivateUserRequest {
+  string id = 1;
+}
+
+// ActivateUserResponse is the response for activating a user
+message ActivateUserResponse {
+  bool success = 1;
+}
+
+// ListUsersRequest is the request for listing users
+message ListUsersRequest {
+  string role = 1;
+  bool active = 2;
+  int32 limit = 3;
+  int32 offset = 4;
+}
+
+// ListUsersResponse is the response for listing users
+message ListUsersResponse {
+  repeated User users = 1;
+}
+
+// CreateUserAddressRequest is the request for creating a user address
+message CreateUserAddressRequest {
+  string user_id = 1;
+  string name = 2;
+  string street = 3;
+  string city = 4;
+  string state = 5;
+  string postal_code = 6;
+  string country = 7;
+  string phone = 8;
+  bool is_default = 9;
+}
+
+// CreateUserAddressResponse is the response for creating a user address
+message CreateUserAddressResponse {
+  Address address = 1;
+}
+
+// GetUserAddressesRequest is the request for retrieving user addresses
+message GetUserAddressesRequest {
+  string user_id = 1;
+}
+
+// GetUserAddressesResponse is the response for retrieving user addresses
+message GetUserAddressesResponse {
+  repeated Address addresses = 1;
+}
+
+// GetUserDefaultAddressRequest is the request for retrieving the default address
+message GetUserDefaultAddressRequest {
+  string user_id = 1;
+}
+
+// GetUserDefaultAddressResponse is the response for retrieving the default address
+message GetUserDefaultAddressResponse {
+  Address address = 1;
+}
+
+// UpdateUserAddressRequest is the request for updating a user address
+message UpdateUserAddressRequest {
+  string id = 1;
+  string user_id = 2;
+  string name = 3;
+  string street = 4;
+  string city = 5;
+  string state = 6;
+  string postal_code = 7;
+  string country = 8;
+  string phone = 9;
+  bool is_default = 10;
+}
+
+// UpdateUserAddressResponse is the response for updating a user address
+message UpdateUserAddressResponse {
+  bool success = 1;
+}
+
+// DeleteUserAddressRequest is the request for deleting a user address
+message DeleteUserAddressRequest {
+  string id = 1;
+  string user_id = 2;
+}
+
+// DeleteUserAddressResponse is the response for deleting a user address
+message DeleteUserAddressResponse {
+  bool success = 1;
+}
+
+// SetDefaultUserAddressRequest is the request for setting a default address
+message SetDefaultUserAddressRequest {
+  string id = 1;
+  string user_id = 2;
+}
+
+// SetDefaultUserAddressResponse is the response for setting a default address
+message SetDefaultUserAddressResponse {
+  bool success = 1;
+}

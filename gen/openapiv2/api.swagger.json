@@ -1,0 +1,217 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "product/v1/product.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "ProductService"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {},
+  "definitions": {
+    "ProductSortSortField": {
+      "type": "string",
+      "enum": [
+        "SORT_FIELD_UNSPECIFIED",
+        "SORT_FIELD_NAME",
+        "SORT_FIELD_PRICE",
+        "SORT_FIELD_CREATED_AT",
+        "SORT_FIELD_UPDATED_AT"
+      ],
+      "default": "SORT_FIELD_UNSPECIFIED"
+    },
+    "ProductSortSortOrder": {
+      "type": "string",
+      "enum": [
+        "SORT_ORDER_UNSPECIFIED",
+        "SORT_ORDER_ASC",
+        "SORT_ORDER_DESC"
+      ],
+      "default": "SORT_ORDER_UNSPECIFIED"
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "v1CreateProductResponse": {
+      "type": "object",
+      "properties": {
+        "product": {
+          "$ref": "#/definitions/v1Product"
+        }
+      },
+      "title": "Response containing the created product"
+    },
+    "v1GetProductResponse": {
+      "type": "object",
+      "properties": {
+        "product": {
+          "$ref": "#/definitions/v1Product"
+        }
+      },
+      "title": "Response containing the requested product"
+    },
+    "v1ListProductsResponse": {
+      "type": "object",
+      "properties": {
+        "products": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Product"
+          },
+          "title": "List of products"
+        },
+        "totalCount": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Total number of products matching the filter"
+        },
+        "page": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Current page number"
+        },
+        "pageSize": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Number of items per page"
+        }
+      },
+      "title": "Response containing a list of products with pagination info"
+    },
+    "v1Pagination": {
+      "type": "object",
+      "properties": {
+        "page": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Page number (1-based)"
+        },
+        "pageSize": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Number of items per page"
+        }
+      },
+      "title": "Pagination parameters"
+    },
+    "v1Product": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "price": {
+          "type": "number",
+          "format": "double"
+        },
+        "sku": {
+          "type": "string"
+        },
+        "categoryId": {
+          "type": "string"
+        },
+        "imageUrls": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "title": "Product represents an item in the inventory"
+    },
+    "v1ProductFilter": {
+      "type": "object",
+      "properties": {
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Filter by product IDs"
+        },
+        "categoryIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Filter by category IDs"
+        },
+        "minPrice": {
+          "type": "number",
+          "format": "double",
+          "title": "Minimum price (inclusive)"
+        },
+        "maxPrice": {
+          "type": "number",
+          "format": "double",
+          "title": "Maximum price (inclusive)"
+        },
+        "searchTerm": {
+          "type": "string",
+          "title": "Search term for name or description"
+        }
+      },
+      "title": "Filter conditions for listing products"
+    },
+    "v1ProductSort": {
+      "type": "object",
+      "properties": {
+        "field": {
+          "$ref": "#/definitions/ProductSortSortField"
+        },
+        "order": {
+          "$ref": "#/definitions/ProductSortSortOrder"
+        }
+      },
+      "title": "Sorting options for listing products"
+    }
+  }
+}

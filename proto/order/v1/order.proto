@@ -1,0 +1,206 @@
+syntax = "proto3";
+
+package order.v1;
+
+option go_package = "stockplatform/pkg/gen/order/v1;orderv1";
+
+// OrderService provides operations for managing orders
+service OrderService {
+  // CreateOrder creates a new order
+  rpc CreateOrder(CreateOrderRequest) returns (CreateOrderResponse);
+  
+  // GetOrder retrieves an order by ID
+  rpc GetOrder(GetOrderRequest) returns (GetOrderResponse);
+  
+  // GetUserOrders retrieves orders for a specific user
+  rpc GetUserOrders(GetUserOrdersRequest) returns (GetUserOrdersResponse);
+  
+  // UpdateOrder updates an existing order
+  rpc UpdateOrder(UpdateOrderRequest) returns (UpdateOrderResponse);
+  
+  // DeleteOrder removes an order
+  rpc DeleteOrder(DeleteOrderRequest) returns (DeleteOrderResponse);
+  
+  // ListOrders lists all orders with optional filtering and pagination
+  rpc ListOrders(ListOrdersRequest) returns (ListOrdersResponse);
+  
+  // UpdateOrderStatus updates the status of an order
+  rpc UpdateOrderStatus(UpdateOrderStatusRequest) returns (UpdateOrderStatusResponse);
+  
+  // AddPayment adds payment information to an order
+  rpc AddPayment(AddPaymentRequest) returns (AddPaymentResponse);
+  
+  // AddTrackingCode adds a tracking code to an order
+  rpc AddTrackingCode(AddTrackingCodeRequest) returns (AddTrackingCodeResponse);
+  
+  // CancelOrder cancels an order
+  rpc CancelOrder(CancelOrderRequest) returns (CancelOrderResponse);
+}
+
+// OrderStatus represents the status of an order
+enum OrderStatus {
+  ORDER_STATUS_UNSPECIFIED = 0;
+  ORDER_STATUS_CREATED = 1;
+  ORDER_STATUS_PENDING = 2;
+  ORDER_STATUS_PAID = 3;
+  ORDER_STATUS_SHIPPED = 4;
+  ORDER_STATUS_DELIVERED = 5;
+  ORDER_STATUS_CANCELLED = 6;
+}
+
+// OrderItem represents an item in an order
+message OrderItem {
+  string product_id = 1;
+  string product_sku = 2;
+  string name = 3;
+  int32 quantity = 4;
+  double price = 5;
+  double subtotal = 6;
+}
+
+// Address represents a shipping or billing address
+message Address {
+  string street = 1;
+  string city = 2;
+  string state = 3;
+  string postal_code = 4;
+  string country = 5;
+}
+
+// Payment represents payment information
+message Payment {
+  string method = 1;
+  string transaction_id = 2;
+  double amount = 3;
+  string status = 4;
+  string timestamp = 5;
+}
+
+// Order represents a customer order
+message Order {
+  string id = 1;
+  string user_id = 2;
+  repeated OrderItem items = 3;
+  double total_amount = 4;
+  OrderStatus status = 5;
+  Address shipping_address = 6;
+  Address billing_address = 7;
+  Payment payment = 8;
+  string tracking_code = 9;
+  string notes = 10;
+  string created_at = 11;
+  string updated_at = 12;
+  string completed_at = 13;
+}
+
+// CreateOrderRequest is the request for creating an order
+message CreateOrderRequest {
+  string user_id = 1;
+  repeated OrderItem items = 2;
+  Address shipping_address = 3;
+  Address billing_address = 4;
+}
+
+// CreateOrderResponse is the response for creating an order
+message CreateOrderResponse {
+  Order order = 1;
+}
+
+// GetOrderRequest is the request for retrieving an order
+message GetOrderRequest {
+  string id = 1;
+}
+
+// GetOrderResponse is the response for retrieving an order
+message GetOrderResponse {
+  Order order = 1;
+}
+
+// GetUserOrdersRequest is the request for retrieving a user's orders
+message GetUserOrdersRequest {
+  string user_id = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+}
+
+// GetUserOrdersResponse is the response for retrieving a user's orders
+message GetUserOrdersResponse {
+  repeated Order orders = 1;
+}
+
+// UpdateOrderRequest is the request for updating an order
+message UpdateOrderRequest {
+  Order order = 1;
+}
+
+// UpdateOrderResponse is the response for updating an order
+message UpdateOrderResponse {
+  bool success = 1;
+}
+
+// DeleteOrderRequest is the request for deleting an order
+message DeleteOrderRequest {
+  string id = 1;
+}
+
+// DeleteOrderResponse is the response for deleting an order
+message DeleteOrderResponse {
+  bool success = 1;
+}
+
+// ListOrdersRequest is the request for listing orders
+message ListOrdersRequest {
+  string status = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+}
+
+// ListOrdersResponse is the response for listing orders
+message ListOrdersResponse {
+  repeated Order orders = 1;
+}
+
+// UpdateOrderStatusRequest is the request for updating an order's status
+message UpdateOrderStatusRequest {
+  string id = 1;
+  OrderStatus status = 2;
+}
+
+// UpdateOrderStatusResponse is the response for updating an order's status
+message UpdateOrderStatusResponse {
+  bool success = 1;
+}
+
+// AddPaymentRequest is the request for adding payment to an order
+message AddPaymentRequest {
+  string order_id = 1;
+  string method = 2;
+  string transaction_id = 3;
+  double amount = 4;
+}
+
+// AddPaymentResponse is the response for adding payment to an order
+message AddPaymentResponse {
+  bool success = 1;
+}
+
+// AddTrackingCodeRequest is the request for adding a tracking code
+message AddTrackingCodeRequest {
+  string order_id = 1;
+  string tracking_code = 2;
+}
+
+// AddTrackingCodeResponse is the response for adding a tracking code
+message AddTrackingCodeResponse {
+  bool success = 1;
+}
+
+// CancelOrderRequest is the request for cancelling an order
+message CancelOrderRequest {
+  string id = 1;
+}
+
+// CancelOrderResponse is the response for cancelling an order
+message CancelOrderResponse {
+  bool success = 1;
+}

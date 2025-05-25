@@ -1,0 +1,14 @@
+version: v1
+name: buf.build/yourusername/stockplatform
+
+deps:
+  - buf.build/googleapis/googleapis
+  - buf.build/grpc-ecosystem/grpc-gateway
+
+lint:
+  use:
+    - DEFAULT
+
+breaking:
+  use:
+    - FILE

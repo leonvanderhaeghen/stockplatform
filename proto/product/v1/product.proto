@@ -1,0 +1,110 @@
+syntax = "proto3";
+
+package product.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/yourusername/stockplatform/gen/go/product/v1;productv1";
+
+// Product represents an item in the inventory
+message Product {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  double price = 4;
+  string sku = 5;
+  string category_id = 6;
+  repeated string image_urls = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+}
+
+// Request to create a new product
+message CreateProductRequest {
+  string name = 1;
+  string description = 2;
+  double price = 3;
+  string sku = 4;
+  string category_id = 5;
+  repeated string image_urls = 6;
+}
+
+// Response containing the created product
+message CreateProductResponse {
+  Product product = 1;
+}
+
+// Request to get a product by ID
+message GetProductRequest {
+  string id = 1;
+}
+
+// Response containing the requested product
+message GetProductResponse {
+  Product product = 1;
+}
+
+// Filter conditions for listing products
+message ProductFilter {
+  repeated string ids = 1;              // Filter by product IDs
+  repeated string category_ids = 2;     // Filter by category IDs
+  double min_price = 3;                 // Minimum price (inclusive)
+  double max_price = 4;                 // Maximum price (inclusive)
+  string search_term = 5;               // Search term for name or description
+}
+
+// Sorting options for listing products
+message ProductSort {
+  enum SortField {
+    SORT_FIELD_UNSPECIFIED = 0;
+    SORT_FIELD_NAME = 1;
+    SORT_FIELD_PRICE = 2;
+    SORT_FIELD_CREATED_AT = 3;
+    SORT_FIELD_UPDATED_AT = 4;
+  }
+
+
+  enum SortOrder {
+    SORT_ORDER_UNSPECIFIED = 0;
+    SORT_ORDER_ASC = 1;
+    SORT_ORDER_DESC = 2;
+  }
+
+
+  SortField field = 1;
+  SortOrder order = 2;
+}
+
+// Pagination parameters
+message Pagination {
+  int32 page = 1;         // Page number (1-based)
+  int32 page_size = 2;    // Number of items per page
+}
+
+// Request to list products with filtering and sorting
+message ListProductsRequest {
+  ProductFilter filter = 1;      // Optional filter criteria
+  ProductSort sort = 2;          // Optional sorting criteria
+  Pagination pagination = 3;     // Optional pagination
+}
+
+// Response containing a list of products with pagination info
+message ListProductsResponse {
+  repeated Product products = 1;  // List of products
+  int32 total_count = 2;         // Total number of products matching the filter
+  int32 page = 3;                // Current page number
+  int32 page_size = 4;           // Number of items per page
+}
+
+// Product service definition
+service ProductService {
+  // Create a new product
+  rpc CreateProduct(CreateProductRequest) returns (CreateProductResponse);
+
+  // Get a product by ID
+  rpc GetProduct(GetProductRequest) returns (GetProductResponse);
+  
+  // List products with filtering and sorting
+  rpc ListProducts(ListProductsRequest) returns (ListProductsResponse);
+}

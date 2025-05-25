@@ -1,0 +1,123 @@
+.PHONY: deps generate build test lint clean build-clients run-grpc-client run-grpc-client-enhanced run-tcp-client run-test-grpc-client run-test-grpc-minimal
+
+# Go parameters
+GOCMD = go
+GOBUILD = $(GOCMD) build
+GOCLEAN = $(GOCMD) clean
+GOTEST = $(GOCMD) test
+GOGET = $(GOCMD) get
+GOMOD = $(GOCMD) mod
+BUF = buf
+
+# Directories
+PROTO_DIR = .\proto
+SERVICES_DIR = .\services
+BIN_DIR = .\bin
+
+# Create bin directory if it doesn't exist
+$(shell if not exist $(BIN_DIR) mkdir $(BIN_DIR))
+
+# Install dependencies
+deps:
+	$(GOGET) -u google.golang.org/protobuf/cmd/protoc-gen-go \
+		google.golang.org/grpc/cmd/protoc-gen-go-grpc \
+		github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway \
+		github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2 \
+		github.com/bufbuild/buf/cmd/buf \
+		github.com/fullstorydev/grpcurl/cmd/grpcurl
+
+# Generate protobuf and gRPC code
+generate:
+	$(BUF) generate
+
+# Build all services
+build:
+	@echo "Building all services..."
+	@for /d %%i in ($(SERVICES_DIR)\*) do (
+		echo Building %%~nxi
+		cd "%%i" && $(GOBUILD) -o "bin\%%~nxi.exe" . || exit /b 1
+		echo Build complete for %%~nxi
+	)
+
+# Run tests
+test:
+	$(GOTEST) -v ./...
+
+# Run linters
+lint:
+	golangci-lint run ./...
+
+# Build all clients
+build-clients:
+	@echo "Building all client applications..."
+	@for /d %%i in (cmd\*) do (
+		echo Building %%~nxi
+		$(GOBUILD) -o "$(BIN_DIR)\%%~nxi.exe" "./cmd/%%~nxi" || exit /b 1
+		echo Build complete for %%~nxi
+	)
+
+# Run gRPC client
+run-grpc-client:
+	$(GOBUILD) -o "$(BIN_DIR)\grpc_client.exe" .\cmd\grpc_client
+	"$(BIN_DIR)\grpc_client.exe"
+
+# Run enhanced gRPC client
+run-grpc-client-enhanced:
+	$(GOBUILD) -o "$(BIN_DIR)\grpc_client_enhanced.exe" .\cmd\grpc_client_enhanced
+	"$(BIN_DIR)\grpc_client_enhanced.exe"
+
+# Run TCP client
+run-tcp-client:
+	$(GOBUILD) -o "$(BIN_DIR)\tcp_client.exe" .\cmd\tcp_client
+	"$(BIN_DIR)\tcp_client.exe"
+
+# Run test gRPC client
+run-test-grpc-client:
+	$(GOBUILD) -o "$(BIN_DIR)\test_grpc_client.exe" .\cmd\test_grpc_client
+	"$(BIN_DIR)\test_grpc_client.exe"
+
+# Run test gRPC minimal client
+run-test-grpc-minimal:
+	$(GOBUILD) -o "$(BIN_DIR)\test_grpc_minimal.exe" .\cmd\test_grpc_minimal
+	"$(BIN_DIR)\test_grpc_minimal.exe"
+
+# Clean build artifacts
+clean:
+	$(GOCLEAN)
+	if exist "$(BIN_DIR)" rmdir /s /q "$(BIN_DIR)"
+	@for /d %%i in ($(SERVICES_DIR)\*) do (
+		echo Cleaning %%~nxi
+		if exist "%%i\bin" rmdir /s /q "%%i\bin"
+	)
+
+# Install tools
+tools:
+	$(GOGET) -u github.com/golangci/golangci-lint/cmd/golangci-lint
+
+# Run the application in development mode
+dev: generate build
+	@echo "Starting development environment..."
+	@docker-compose up --build -d
+
+# Stop the development environment
+dev-stop:
+	@echo "Stopping development environment..."
+	@docker-compose down
+
+# View logs
+dev-logs:
+	@docker-compose logs -f
+
+# Help
+dev-help:
+	@echo "Available commands:"
+	@echo "  make dev       - Start the development environment"
+	@echo "  make dev-stop  - Stop the development environment"
+	@echo "  make dev-logs  - View logs from the development environment"
+	@echo "  make generate  - Generate code from proto files"
+	@echo "  make build     - Build all services"
+	@echo "  make test      - Run tests"
+	@echo "  make lint      - Run linters"
+	@echo "  make clean     - Clean build artifacts"
+	@echo "  make deps      - Install dependencies"
+	@echo "  make tools     - Install development tools"

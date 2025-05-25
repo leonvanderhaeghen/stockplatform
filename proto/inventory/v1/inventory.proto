@@ -1,0 +1,175 @@
+syntax = "proto3";
+
+package inventory.v1;
+
+option go_package = "stockplatform/pkg/gen/inventory/v1;inventoryv1";
+
+// InventoryService provides operations for managing inventory
+service InventoryService {
+  // CreateInventory creates a new inventory item
+  rpc CreateInventory(CreateInventoryRequest) returns (CreateInventoryResponse);
+  
+  // GetInventory retrieves an inventory item by ID
+  rpc GetInventory(GetInventoryRequest) returns (GetInventoryResponse);
+  
+  // GetInventoryByProductID retrieves an inventory item by product ID
+  rpc GetInventoryByProductID(GetInventoryByProductIDRequest) returns (GetInventoryResponse);
+  
+  // GetInventoryBySKU retrieves an inventory item by SKU
+  rpc GetInventoryBySKU(GetInventoryBySKURequest) returns (GetInventoryResponse);
+  
+  // UpdateInventory updates an existing inventory item
+  rpc UpdateInventory(UpdateInventoryRequest) returns (UpdateInventoryResponse);
+  
+  // DeleteInventory removes an inventory item
+  rpc DeleteInventory(DeleteInventoryRequest) returns (DeleteInventoryResponse);
+  
+  // ListInventory lists all inventory items with pagination
+  rpc ListInventory(ListInventoryRequest) returns (ListInventoryResponse);
+  
+  // AddStock adds stock to an inventory item
+  rpc AddStock(AddStockRequest) returns (AddStockResponse);
+  
+  // RemoveStock removes stock from an inventory item
+  rpc RemoveStock(RemoveStockRequest) returns (RemoveStockResponse);
+  
+  // ReserveStock reserves stock for an order
+  rpc ReserveStock(ReserveStockRequest) returns (ReserveStockResponse);
+  
+  // ReleaseReservation releases a reservation without fulfilling it
+  rpc ReleaseReservation(ReleaseReservationRequest) returns (ReleaseReservationResponse);
+  
+  // FulfillReservation completes a reservation and deducts from stock
+  rpc FulfillReservation(FulfillReservationRequest) returns (FulfillReservationResponse);
+}
+
+// InventoryItem represents a product's inventory information
+message InventoryItem {
+  string id = 1;
+  string product_id = 2;
+  int32 quantity = 3;
+  int32 reserved = 4;
+  string sku = 5;
+  string location = 6;
+  string last_updated = 7;
+  string created_at = 8;
+}
+
+// CreateInventoryRequest is the request for creating an inventory item
+message CreateInventoryRequest {
+  string product_id = 1;
+  int32 quantity = 2;
+  string sku = 3;
+  string location = 4;
+}
+
+// CreateInventoryResponse is the response for creating an inventory item
+message CreateInventoryResponse {
+  InventoryItem inventory = 1;
+}
+
+// GetInventoryRequest is the request for retrieving an inventory item by ID
+message GetInventoryRequest {
+  string id = 1;
+}
+
+// GetInventoryByProductIDRequest is the request for retrieving an inventory item by product ID
+message GetInventoryByProductIDRequest {
+  string product_id = 1;
+}
+
+// GetInventoryBySKURequest is the request for retrieving an inventory item by SKU
+message GetInventoryBySKURequest {
+  string sku = 1;
+}
+
+// GetInventoryResponse is the response for retrieving an inventory item
+message GetInventoryResponse {
+  InventoryItem inventory = 1;
+}
+
+// UpdateInventoryRequest is the request for updating an inventory item
+message UpdateInventoryRequest {
+  InventoryItem inventory = 1;
+}
+
+// UpdateInventoryResponse is the response for updating an inventory item
+message UpdateInventoryResponse {
+  bool success = 1;
+}
+
+// DeleteInventoryRequest is the request for deleting an inventory item
+message DeleteInventoryRequest {
+  string id = 1;
+}
+
+// DeleteInventoryResponse is the response for deleting an inventory item
+message DeleteInventoryResponse {
+  bool success = 1;
+}
+
+// ListInventoryRequest is the request for listing inventory items
+message ListInventoryRequest {
+  int32 limit = 1;
+  int32 offset = 2;
+}
+
+// ListInventoryResponse is the response for listing inventory items
+message ListInventoryResponse {
+  repeated InventoryItem inventories = 1;
+}
+
+// AddStockRequest is the request for adding stock
+message AddStockRequest {
+  string id = 1;
+  int32 quantity = 2;
+}
+
+// AddStockResponse is the response for adding stock
+message AddStockResponse {
+  bool success = 1;
+}
+
+// RemoveStockRequest is the request for removing stock
+message RemoveStockRequest {
+  string id = 1;
+  int32 quantity = 2;
+}
+
+// RemoveStockResponse is the response for removing stock
+message RemoveStockResponse {
+  bool success = 1;
+}
+
+// ReserveStockRequest is the request for reserving stock
+message ReserveStockRequest {
+  string id = 1;
+  int32 quantity = 2;
+}
+
+// ReserveStockResponse is the response for reserving stock
+message ReserveStockResponse {
+  bool success = 1;
+}
+
+// ReleaseReservationRequest is the request for releasing a reservation
+message ReleaseReservationRequest {
+  string id = 1;
+  int32 quantity = 2;
+}
+
+// ReleaseReservationResponse is the response for releasing a reservation
+message ReleaseReservationResponse {
+  bool success = 1;
+}
+
+// FulfillReservationRequest is the request for fulfilling a reservation
+message FulfillReservationRequest {
+  string id = 1;
+  int32 quantity = 2;
+}
+
+// FulfillReservationResponse is the response for fulfilling a reservation
+message FulfillReservationResponse {
+  bool success = 1;
+}
