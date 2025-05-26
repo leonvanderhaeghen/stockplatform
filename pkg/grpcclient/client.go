@@ -10,7 +10,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 
-	productv1 "github.com/yourusername/stockplatform/gen/go/product/v1"
+	productv1 "github.com/leonvanderhaeghen/stockplatform/gen/go/product/v1"
 )
 
 // NewProductClient creates a new gRPC client for the product service

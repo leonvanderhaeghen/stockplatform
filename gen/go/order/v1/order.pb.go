@@ -1577,7 +1577,7 @@ const file_order_v1_order_proto_rawDesc = "" +
 	"\x0fAddTrackingCode\x12 .order.v1.AddTrackingCodeRequest\x1a!.order.v1.AddTrackingCodeResponse\x12J\n" +
 	"\vCancelOrder\x12\x1c.order.v1.CancelOrderRequest\x1a\x1d.order.v1.CancelOrderResponseB\x9a\x01\n" +
 	"\fcom.order.v1B\n" +
-	"OrderProtoP\x01Z=github.com/yourusername/stockplatform/gen/go/order/v1;orderv1\xa2\x02\x03OXX\xaa\x02\bOrder.V1\xca\x02\bOrder\\V1\xe2\x02\x14Order\\V1\\GPBMetadata\xea\x02\tOrder::V1b\x06proto3"
+	"OrderProtoP\x01Z=github.com/leonvanderhaeghen/stockplatform/gen/go/order/v1;orderv1\xa2\x02\x03OXX\xaa\x02\bOrder.V1\xca\x02\bOrder\\V1\xe2\x02\x14Order\\V1\\GPBMetadata\xea\x02\tOrder::V1b\x06proto3"
 
 var (
 	file_order_v1_order_proto_rawDescOnce sync.Once

@@ -10,7 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.uber.org/zap"
 
-	"stockplatform/services/userSvc/internal/domain"
+	"github.com/leonvanderhaeghen/stockplatform/services/userSvc/internal/domain"
 )
 
 // AddressRepository implements the domain.AddressRepository interface

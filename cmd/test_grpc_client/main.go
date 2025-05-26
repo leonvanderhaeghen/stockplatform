@@ -9,7 +9,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	productv1 "github.com/yourusername/stockplatform/gen/go/product/v1"
+	productv1 "github.com/leonvanderhaeghen/stockplatform/gen/go/product/v1"
 )
 
 func main() {

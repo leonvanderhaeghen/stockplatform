@@ -2,7 +2,7 @@ version: v1
 managed:
   enabled: true
   go_package_prefix:
-    default: github.com/yourusername/stockplatform/gen/go
+    default: github.com/leonvanderhaeghen/stockplatform/gen/go
     except:
       - buf.build/googleapis/googleapis
       - buf.build/grpc-ecosystem/grpc-gateway

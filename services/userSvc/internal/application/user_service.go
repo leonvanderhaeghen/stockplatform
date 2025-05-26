@@ -9,7 +9,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"go.uber.org/zap"
 
-	"stockplatform/services/userSvc/internal/domain"
+	"github.com/leonvanderhaeghen/stockplatform/services/userSvc/internal/domain"
 )
 
 // UserService handles business logic for user operations

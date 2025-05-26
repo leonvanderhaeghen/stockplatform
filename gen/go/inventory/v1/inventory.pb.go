@@ -1268,7 +1268,7 @@ const file_inventory_v1_inventory_proto_rawDesc = "" +
 	"\fReserveStock\x12!.inventory.v1.ReserveStockRequest\x1a\".inventory.v1.ReserveStockResponse\x12g\n" +
 	"\x12ReleaseReservation\x12'.inventory.v1.ReleaseReservationRequest\x1a(.inventory.v1.ReleaseReservationResponse\x12g\n" +
 	"\x12FulfillReservation\x12'.inventory.v1.FulfillReservationRequest\x1a(.inventory.v1.FulfillReservationResponseB\xba\x01\n" +
-	"\x10com.inventory.v1B\x0eInventoryProtoP\x01ZEgithub.com/yourusername/stockplatform/gen/go/inventory/v1;inventoryv1\xa2\x02\x03IXX\xaa\x02\fInventory.V1\xca\x02\fInventory\\V1\xe2\x02\x18Inventory\\V1\\GPBMetadata\xea\x02\rInventory::V1b\x06proto3"
+	"\x10com.inventory.v1B\x0eInventoryProtoP\x01ZEgithub.com/leonvanderhaeghen/stockplatform/gen/go/inventory/v1;inventoryv1\xa2\x02\x03IXX\xaa\x02\fInventory.V1\xca\x02\fInventory\\V1\xe2\x02\x18Inventory\\V1\\GPBMetadata\xea\x02\rInventory::V1b\x06proto3"
 
 var (
 	file_inventory_v1_inventory_proto_rawDescOnce sync.Once

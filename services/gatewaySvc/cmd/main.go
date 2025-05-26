@@ -10,8 +10,8 @@ import (
 
 	"go.uber.org/zap"
 
-	"stockplatform/services/gatewaySvc/internal/rest"
-	"stockplatform/services/gatewaySvc/internal/services"
+	"github.com/leonvanderhaeghen/stockplatform/services/gatewaySvc/internal/rest"
+	"github.com/leonvanderhaeghen/stockplatform/services/gatewaySvc/internal/services"
 )
 
 // Config holds the application configuration

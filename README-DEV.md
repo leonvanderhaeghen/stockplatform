@@ -15,7 +15,7 @@ This document contains detailed instructions for setting up the development envi
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/stockplatform.git
+   git clone https://github.com/leonvanderhaeghen/stockplatform.git
    cd stockplatform
    ```
 

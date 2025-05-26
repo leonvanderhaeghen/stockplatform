@@ -8,9 +8,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	userv1 "stockplatform/pkg/gen/user/v1"
-	"stockplatform/services/userSvc/internal/application"
-	"stockplatform/services/userSvc/internal/domain"
+	userv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/user/v1"
+	"github.com/leonvanderhaeghen/stockplatform/services/userSvc/internal/application"
+	"github.com/leonvanderhaeghen/stockplatform/services/userSvc/internal/domain"
 )
 
 // UserServer implements the gRPC interface for user service

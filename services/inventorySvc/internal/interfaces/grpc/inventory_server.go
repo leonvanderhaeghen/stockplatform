@@ -8,9 +8,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	inventoryv1 "stockplatform/pkg/gen/inventory/v1"
-	"stockplatform/services/inventorySvc/internal/application"
-	"stockplatform/services/inventorySvc/internal/domain"
+	inventoryv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/inventory/v1"
+	"github.com/leonvanderhaeghen/stockplatform/services/inventorySvc/internal/application"
+	"github.com/leonvanderhaeghen/stockplatform/services/inventorySvc/internal/domain"
 )
 
 // InventoryServer implements the gRPC interface for inventory service

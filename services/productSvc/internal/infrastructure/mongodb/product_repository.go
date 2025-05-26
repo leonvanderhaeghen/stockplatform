@@ -11,7 +11,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.uber.org/zap"
 
-	"stockplatform/services/productSvc/internal/domain"
+	"github.com/leonvanderhaeghen/stockplatform/services/productSvc/internal/domain"
 )
 
 type productRepository struct {

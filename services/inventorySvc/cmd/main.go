@@ -16,10 +16,10 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
-	inventoryv1 "stockplatform/pkg/gen/inventory/v1"
-	"stockplatform/services/inventorySvc/internal/application"
-	grpchandler "stockplatform/services/inventorySvc/internal/interfaces/grpc"
-	"stockplatform/services/inventorySvc/internal/infrastructure/mongodb"
+	inventoryv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/inventory/v1"
+	"github.com/leonvanderhaeghen/stockplatform/services/inventorySvc/internal/application"
+	grpchandler "github.com/leonvanderhaeghen/stockplatform/services/inventorySvc/internal/interfaces/grpc"
+	"github.com/leonvanderhaeghen/stockplatform/services/inventorySvc/internal/infrastructure/mongodb"
 )
 
 // Config holds the application configuration

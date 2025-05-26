@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 
-	"../../logger"
-	"../../../../gen/go/product/v1"
-	"../../application"
-	"../../domain"
+	"github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/product/v1"
+	"github.com/leonvanderhaeghen/stockplatform/services/productSvc/internal/application"
+	"github.com/leonvanderhaeghen/stockplatform/services/productSvc/internal/domain"
+	"go.uber.org/zap"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -18,7 +18,6 @@ import (
 type ProductServiceServer struct {
 	productv1.UnimplementedProductServiceServer
 	service *application.ProductService
-	logger   *logger.Logger
 	logger   *zap.Logger
 }
 

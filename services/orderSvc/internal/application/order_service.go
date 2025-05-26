@@ -7,7 +7,7 @@ import (
 
 	"go.uber.org/zap"
 
-	"stockplatform/services/orderSvc/internal/domain"
+	"github.com/leonvanderhaeghen/stockplatform/services/orderSvc/internal/domain"
 )
 
 // OrderService handles business logic for order operations

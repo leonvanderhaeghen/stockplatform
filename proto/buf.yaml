@@ -1,5 +1,5 @@
 version: v1
-name: buf.build/yourusername/stockplatform
+name: buf.build/leonvanderhaeghen/stockplatform
 
 deps:
   - buf.build/googleapis/googleapis

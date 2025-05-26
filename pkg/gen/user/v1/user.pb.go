@@ -2044,8 +2044,8 @@ const file_user_v1_user_proto_rawDesc = "" +
 	"\x15GetUserDefaultAddress\x12%.user.v1.GetUserDefaultAddressRequest\x1a&.user.v1.GetUserDefaultAddressResponse\x12Z\n" +
 	"\x11UpdateUserAddress\x12!.user.v1.UpdateUserAddressRequest\x1a\".user.v1.UpdateUserAddressResponse\x12Z\n" +
 	"\x11DeleteUserAddress\x12!.user.v1.DeleteUserAddressRequest\x1a\".user.v1.DeleteUserAddressResponse\x12f\n" +
-	"\x15SetDefaultUserAddress\x12%.user.v1.SetDefaultUserAddressRequest\x1a&.user.v1.SetDefaultUserAddressResponseB{\n" +
-	"\vcom.user.v1B\tUserProtoP\x01Z$stockplatform/pkg/gen/user/v1;userv1\xa2\x02\x03UXX\xaa\x02\aUser.V1\xca\x02\aUser\\V1\xe2\x02\x13User\\V1\\GPBMetadata\xea\x02\bUser::V1b\x06proto3"
+	"\x15SetDefaultUserAddress\x12%.user.v1.SetDefaultUserAddressRequest\x1a&.user.v1.SetDefaultUserAddressResponseB\x98\x01\n" +
+	"\vcom.user.v1B\tUserProtoP\x01ZAgithub.com/leonvanderhaeghen/stockplatform/pkg/gen/user/v1;userv1\xa2\x02\x03UXX\xaa\x02\aUser.V1\xca\x02\aUser\\V1\xe2\x02\x13User\\V1\\GPBMetadata\xea\x02\bUser::V1b\x06proto3"
 
 var (
 	file_user_v1_user_proto_rawDescOnce sync.Once

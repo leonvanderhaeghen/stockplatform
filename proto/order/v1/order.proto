@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package order.v1;
 
-option go_package = "stockplatform/pkg/gen/order/v1;orderv1";
+option go_package = "github.com/leonvanderhaeghen/stockplatform/pkg/gen/order/v1;orderv1";
 
 // OrderService provides operations for managing orders
 service OrderService {

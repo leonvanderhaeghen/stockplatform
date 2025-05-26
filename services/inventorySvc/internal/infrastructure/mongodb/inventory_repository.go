@@ -10,7 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.uber.org/zap"
 
-	"stockplatform/services/inventorySvc/internal/domain"
+	"github.com/leonvanderhaeghen/stockplatform/services/inventorySvc/internal/domain"
 )
 
 // InventoryRepository implements the domain.InventoryRepository interface

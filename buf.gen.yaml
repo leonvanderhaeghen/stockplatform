@@ -2,7 +2,7 @@ version: v1
 managed:
   enabled: true
   go_package_prefix:
-    default: stockplatform/pkg/gen
+    default: github.com/leonvanderhaeghen/stockplatform/pkg/gen
 
 plugins:
   - name: go

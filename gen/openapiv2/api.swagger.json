@@ -1,12 +1,12 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "product/v1/product.proto",
+    "title": "inventory/v1/inventory.proto",
     "version": "version not set"
   },
   "tags": [
     {
-      "name": "ProductService"
+      "name": "InventoryService"
     }
   ],
   "consumes": [
@@ -17,26 +17,6 @@
   ],
   "paths": {},
   "definitions": {
-    "ProductSortSortField": {
-      "type": "string",
-      "enum": [
-        "SORT_FIELD_UNSPECIFIED",
-        "SORT_FIELD_NAME",
-        "SORT_FIELD_PRICE",
-        "SORT_FIELD_CREATED_AT",
-        "SORT_FIELD_UPDATED_AT"
-      ],
-      "default": "SORT_FIELD_UNSPECIFIED"
-    },
-    "ProductSortSortOrder": {
-      "type": "string",
-      "enum": [
-        "SORT_ORDER_UNSPECIFIED",
-        "SORT_ORDER_ASC",
-        "SORT_ORDER_DESC"
-      ],
-      "default": "SORT_ORDER_UNSPECIFIED"
-    },
     "protobufAny": {
       "type": "object",
       "properties": {
@@ -65,153 +45,131 @@
         }
       }
     },
-    "v1CreateProductResponse": {
+    "v1AddStockResponse": {
       "type": "object",
       "properties": {
-        "product": {
-          "$ref": "#/definitions/v1Product"
+        "success": {
+          "type": "boolean"
         }
       },
-      "title": "Response containing the created product"
+      "title": "AddStockResponse is the response for adding stock"
     },
-    "v1GetProductResponse": {
+    "v1CreateInventoryResponse": {
       "type": "object",
       "properties": {
-        "product": {
-          "$ref": "#/definitions/v1Product"
+        "inventory": {
+          "$ref": "#/definitions/v1InventoryItem"
         }
       },
-      "title": "Response containing the requested product"
+      "title": "CreateInventoryResponse is the response for creating an inventory item"
     },
-    "v1ListProductsResponse": {
+    "v1DeleteInventoryResponse": {
       "type": "object",
       "properties": {
-        "products": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/v1Product"
-          },
-          "title": "List of products"
-        },
-        "totalCount": {
-          "type": "integer",
-          "format": "int32",
-          "title": "Total number of products matching the filter"
-        },
-        "page": {
-          "type": "integer",
-          "format": "int32",
-          "title": "Current page number"
-        },
-        "pageSize": {
-          "type": "integer",
-          "format": "int32",
-          "title": "Number of items per page"
+        "success": {
+          "type": "boolean"
         }
       },
-      "title": "Response containing a list of products with pagination info"
+      "title": "DeleteInventoryResponse is the response for deleting an inventory item"
     },
-    "v1Pagination": {
+    "v1FulfillReservationResponse": {
       "type": "object",
       "properties": {
-        "page": {
-          "type": "integer",
-          "format": "int32",
-          "title": "Page number (1-based)"
-        },
-        "pageSize": {
-          "type": "integer",
-          "format": "int32",
-          "title": "Number of items per page"
+        "success": {
+          "type": "boolean"
         }
       },
-      "title": "Pagination parameters"
+      "title": "FulfillReservationResponse is the response for fulfilling a reservation"
     },
-    "v1Product": {
+    "v1GetInventoryResponse": {
+      "type": "object",
+      "properties": {
+        "inventory": {
+          "$ref": "#/definitions/v1InventoryItem"
+        }
+      },
+      "title": "GetInventoryResponse is the response for retrieving an inventory item"
+    },
+    "v1InventoryItem": {
       "type": "object",
       "properties": {
         "id": {
           "type": "string"
         },
-        "name": {
+        "productId": {
           "type": "string"
         },
-        "description": {
-          "type": "string"
+        "quantity": {
+          "type": "integer",
+          "format": "int32"
         },
-        "price": {
-          "type": "number",
-          "format": "double"
+        "reserved": {
+          "type": "integer",
+          "format": "int32"
         },
         "sku": {
           "type": "string"
         },
-        "categoryId": {
+        "location": {
           "type": "string"
         },
-        "imageUrls": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
+        "lastUpdated": {
+          "type": "string"
         },
         "createdAt": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "format": "date-time"
+          "type": "string"
         }
       },
-      "title": "Product represents an item in the inventory"
+      "title": "InventoryItem represents a product's inventory information"
     },
-    "v1ProductFilter": {
+    "v1ListInventoryResponse": {
       "type": "object",
       "properties": {
-        "ids": {
+        "inventories": {
           "type": "array",
           "items": {
-            "type": "string"
-          },
-          "title": "Filter by product IDs"
-        },
-        "categoryIds": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "title": "Filter by category IDs"
-        },
-        "minPrice": {
-          "type": "number",
-          "format": "double",
-          "title": "Minimum price (inclusive)"
-        },
-        "maxPrice": {
-          "type": "number",
-          "format": "double",
-          "title": "Maximum price (inclusive)"
-        },
-        "searchTerm": {
-          "type": "string",
-          "title": "Search term for name or description"
+            "type": "object",
+            "$ref": "#/definitions/v1InventoryItem"
+          }
         }
       },
-      "title": "Filter conditions for listing products"
+      "title": "ListInventoryResponse is the response for listing inventory items"
     },
-    "v1ProductSort": {
+    "v1ReleaseReservationResponse": {
       "type": "object",
       "properties": {
-        "field": {
-          "$ref": "#/definitions/ProductSortSortField"
-        },
-        "order": {
-          "$ref": "#/definitions/ProductSortSortOrder"
+        "success": {
+          "type": "boolean"
         }
       },
-      "title": "Sorting options for listing products"
+      "title": "ReleaseReservationResponse is the response for releasing a reservation"
+    },
+    "v1RemoveStockResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        }
+      },
+      "title": "RemoveStockResponse is the response for removing stock"
+    },
+    "v1ReserveStockResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        }
+      },
+      "title": "ReserveStockResponse is the response for reserving stock"
+    },
+    "v1UpdateInventoryResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        }
+      },
+      "title": "UpdateInventoryResponse is the response for updating an inventory item"
     }
   }
 }

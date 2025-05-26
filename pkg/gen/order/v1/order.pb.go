@@ -1575,9 +1575,9 @@ const file_order_v1_order_proto_rawDesc = "" +
 	"\n" +
 	"AddPayment\x12\x1b.order.v1.AddPaymentRequest\x1a\x1c.order.v1.AddPaymentResponse\x12V\n" +
 	"\x0fAddTrackingCode\x12 .order.v1.AddTrackingCodeRequest\x1a!.order.v1.AddTrackingCodeResponse\x12J\n" +
-	"\vCancelOrder\x12\x1c.order.v1.CancelOrderRequest\x1a\x1d.order.v1.CancelOrderResponseB\x83\x01\n" +
+	"\vCancelOrder\x12\x1c.order.v1.CancelOrderRequest\x1a\x1d.order.v1.CancelOrderResponseB\xa0\x01\n" +
 	"\fcom.order.v1B\n" +
-	"OrderProtoP\x01Z&stockplatform/pkg/gen/order/v1;orderv1\xa2\x02\x03OXX\xaa\x02\bOrder.V1\xca\x02\bOrder\\V1\xe2\x02\x14Order\\V1\\GPBMetadata\xea\x02\tOrder::V1b\x06proto3"
+	"OrderProtoP\x01ZCgithub.com/leonvanderhaeghen/stockplatform/pkg/gen/order/v1;orderv1\xa2\x02\x03OXX\xaa\x02\bOrder.V1\xca\x02\bOrder\\V1\xe2\x02\x14Order\\V1\\GPBMetadata\xea\x02\tOrder::V1b\x06proto3"
 
 var (
 	file_order_v1_order_proto_rawDescOnce sync.Once

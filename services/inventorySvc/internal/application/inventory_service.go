@@ -6,7 +6,7 @@ import (
 
 	"go.uber.org/zap"
 
-	"stockplatform/services/inventorySvc/internal/domain"
+	"github.com/leonvanderhaeghen/stockplatform/services/inventorySvc/internal/domain"
 )
 
 // InventoryService handles business logic for inventory operations

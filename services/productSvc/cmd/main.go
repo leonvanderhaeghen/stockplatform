@@ -17,10 +17,10 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
-	productv1 "stockplatform/pkg/gen/product/v1"
-	"stockplatform/services/productSvc/internal/application"
-	grpchandler "stockplatform/services/productSvc/internal/interfaces/grpc"
-	"stockplatform/services/productSvc/internal/infrastructure/mongodb"
+	productv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/product/v1"
+	"github.com/leonvanderhaeghen/stockplatform/services/productSvc/internal/application"
+	grpchandler "github.com/leonvanderhaeghen/stockplatform/services/productSvc/internal/interfaces/grpc"
+	"github.com/leonvanderhaeghen/stockplatform/services/productSvc/internal/infrastructure/mongodb"
 )
 
 // Config holds the application configuration

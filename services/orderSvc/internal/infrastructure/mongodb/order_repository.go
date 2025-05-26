@@ -10,7 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.uber.org/zap"
 
-	"stockplatform/services/orderSvc/internal/domain"
+	"github.com/leonvanderhaeghen/stockplatform/services/orderSvc/internal/domain"
 )
 
 // OrderRepository implements the domain.OrderRepository interface

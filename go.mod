@@ -1,4 +1,4 @@
-module stockplatform
+module github.com/leonvanderhaeghen/stockplatform
 
 go 1.23.0
 

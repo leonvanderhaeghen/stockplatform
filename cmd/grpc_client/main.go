@@ -4,7 +4,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/yourusername/stockplatform/pkg/grpcclient"
+	"github.com/leonvanderhaeghen/stockplatform/pkg/grpcclient"
 )
 
 func main() {

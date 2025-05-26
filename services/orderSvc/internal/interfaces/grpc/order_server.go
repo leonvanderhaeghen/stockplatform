@@ -8,9 +8,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	orderv1 "stockplatform/pkg/gen/order/v1"
-	"stockplatform/services/orderSvc/internal/application"
-	"stockplatform/services/orderSvc/internal/domain"
+	orderv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/order/v1"
+	"github.com/leonvanderhaeghen/stockplatform/services/orderSvc/internal/application"
+	"github.com/leonvanderhaeghen/stockplatform/services/orderSvc/internal/domain"
 )
 
 // OrderServer implements the gRPC interface for order service

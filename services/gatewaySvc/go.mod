@@ -1,6 +1,12 @@
-module stockplatform/services/gatewaySvc
+module github.com/leonvanderhaeghen/stockplatform/services/gatewaySvc
 
-go 1.22
+go 1.23.0
+
+toolchain go1.23.3
+
+require github.com/leonvanderhaeghen/stockplatform v0.0.0-20250525163654-40df384e80be
+
+replace github.com/leonvanderhaeghen/stockplatform => ../../
 
 require (
 	github.com/gin-gonic/gin v1.9.1

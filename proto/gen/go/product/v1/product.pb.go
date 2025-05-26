@@ -390,7 +390,7 @@ const file_product_v1_product_proto_rawDesc = "" +
 	"\x0eProductService\x12T\n" +
 	"\rCreateProduct\x12 .product.v1.CreateProductRequest\x1a!.product.v1.CreateProductResponse\x12K\n" +
 	"\n" +
-	"GetProduct\x12\x1d.product.v1.GetProductRequest\x1a\x1e.product.v1.GetProductResponseBCZAgithub.com/yourusername/stockplatform/gen/go/product/v1;productv1b\x06proto3"
+	"GetProduct\x12\x1d.product.v1.GetProductRequest\x1a\x1e.product.v1.GetProductResponseBCZAgithub.com/leonvanderhaeghen/stockplatform/gen/go/product/v1;productv1b\x06proto3"
 
 var (
 	file_product_v1_product_proto_rawDescOnce sync.Once

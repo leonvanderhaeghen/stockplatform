@@ -11,9 +11,9 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"../../../../gen/go/product/v1"
-	"../../application"
-	"../../domain"
+	"github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/product/v1"
+	"github.com/leonvanderhaeghen/stockplatform/services/productSvc/internal/application"
+	"github.com/leonvanderhaeghen/stockplatform/services/productSvc/internal/domain"
 )
 
 // ProductServer handles gRPC requests for the Product service
@@ -260,7 +260,7 @@ func (s *ProductServer) ListProducts(ctx context.Context, req *productv1.ListPro
 
 	return &productv1.ListProductsResponse{
 		Products:   pbProducts,
-		TotalCount: total,
+		TotalCount: int32(total),
 		Page:       int32(opts.Pagination.Page),
 		PageSize:   int32(opts.Pagination.PageSize),
 	}, nil

@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 
-	"stockplatform/services/productSvc/internal/domain"
+	"github.com/leonvanderhaeghen/stockplatform/services/productSvc/internal/domain"
 )
 
 // ProductService implements the business logic for product operations
@@ -43,7 +43,16 @@ func (s *ProductService) CreateProduct(ctx context.Context, input *domain.Produc
 	}
 
 	// Check if product with same SKU already exists
-	existing, _, err := s.repo.List(ctx, map[string]interface{}{"sku": input.SKU}, 1, 0)
+	opts := &domain.ListOptions{
+		Filter: &domain.ProductFilter{
+			SearchTerm: input.SKU,
+		},
+		Pagination: &domain.Pagination{
+			Page:     1,
+			PageSize: 1,
+		},
+	}
+	existing, _, err := s.repo.List(ctx, opts)
 	if err != nil {
 		s.logger.Error("Failed to check for existing product", zap.Error(err))
 		return nil, err
@@ -151,17 +160,21 @@ func (s *ProductService) ListProducts(
 	if opts.Pagination.Page < 1 {
 		opts.Pagination.Page = 1
 	}
-
-	if opts.Pagination.PageSize < 1 || opts.Pagination.PageSize > 100 {
+	if opts.Pagination.PageSize < 1 {
 		opts.Pagination.PageSize = 10
+	} else if opts.Pagination.PageSize > 100 {
+		opts.Pagination.PageSize = 100
 	}
 
-	// Execute the query
+	// Call repository to get the list of products
 	products, total, err := s.repo.List(ctx, opts)
 	if err != nil {
-		s.logger.Error("Failed to list products", 
-			zap.Any("options", opts), 
-			zap.Error(err))
+		s.logger.Error("Failed to list products",
+			zap.Error(err),
+			zap.Any("filter", opts.Filter),
+			zap.Any("sort", opts.Sort),
+			zap.Any("pagination", opts.Pagination),
+		)
 		return nil, 0, err
 	}
 

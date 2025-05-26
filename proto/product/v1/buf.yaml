@@ -1,5 +1,5 @@
 version: v1
-name: buf.build/yourusername/product
+name: buf.build/leonvanderhaeghen/product
 
 deps:
   - buf.build/googleapis/googleapis

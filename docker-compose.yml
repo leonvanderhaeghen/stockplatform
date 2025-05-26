@@ -1,4 +1,6 @@
-version: '3.8'
+# Docker Compose file for Stock Platform
+# Using BuildKit for improved build performance
+# Set DOCKER_BUILDKIT=1 in your environment to enable BuildKit
 
 services:
   # MongoDB
@@ -13,6 +15,11 @@ services:
       - "27018:27017"
     volumes:
       - mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - stockplatform-network
 
@@ -22,11 +29,17 @@ services:
     container_name: stockplatform-mongo-express
     restart: unless-stopped
     ports:
-      - "8082:8081"
+      - "8083:8081"
     environment:
+      - ME_CONFIG_MONGODB_SERVER=stockplatform-mongodb
+      - ME_CONFIG_MONGODB_PORT=27017
       - ME_CONFIG_MONGODB_ADMINUSERNAME=admin
       - ME_CONFIG_MONGODB_ADMINPASSWORD=admin123
-      - ME_CONFIG_MONGODB_SERVER=mongodb
+      - ME_CONFIG_BASICAUTH_USERNAME=admin
+      - ME_CONFIG_BASICAUTH_PASSWORD=admin123
+    volumes:
+      - ./docker/mongo-express/custom-entrypoint.sh:/custom-entrypoint.sh
+    entrypoint: ["/bin/sh", "-c", "chmod +x /custom-entrypoint.sh && /custom-entrypoint.sh"]
     depends_on:
       - mongodb
     networks:
@@ -35,8 +48,8 @@ services:
   # Product Service
   product-service:
     build:
-      context: ./services/productSvc
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./services/productSvc/Dockerfile
     container_name: stockplatform-product-service
     restart: unless-stopped
     ports:
@@ -44,16 +57,18 @@ services:
     environment:
       - GRPC_PORT=50053
       - MONGO_URI=mongodb://admin:admin123@mongodb:27017
+      - GO111MODULE=on
     depends_on:
-      - mongodb
+      mongodb:
+        condition: service_healthy
     networks:
       - stockplatform-network
 
   # Inventory Service
   inventory-service:
     build:
-      context: ./services/inventorySvc
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./services/inventorySvc/Dockerfile
     container_name: stockplatform-inventory-service
     restart: unless-stopped
     ports:
@@ -61,16 +76,20 @@ services:
     environment:
       - GRPC_PORT=50054
       - MONGO_URI=mongodb://admin:admin123@mongodb:27017
+      - GO111MODULE=on
     depends_on:
-      - mongodb
+      mongodb:
+        condition: service_healthy
+      product-service:
+        condition: service_started
     networks:
       - stockplatform-network
 
   # Order Service
   order-service:
     build:
-      context: ./services/orderSvc
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./services/orderSvc/Dockerfile
     container_name: stockplatform-order-service
     restart: unless-stopped
     ports:
@@ -80,18 +99,22 @@ services:
       - MONGO_URI=mongodb://admin:admin123@mongodb:27017
       - PRODUCT_SERVICE_ADDR=product-service:50053
       - INVENTORY_SERVICE_ADDR=inventory-service:50054
+      - GO111MODULE=on
     depends_on:
-      - mongodb
-      - product-service
-      - inventory-service
+      mongodb:
+        condition: service_healthy
+      product-service:
+        condition: service_started
+      inventory-service:
+        condition: service_started
     networks:
       - stockplatform-network
 
   # User Service
   user-service:
     build:
-      context: ./services/userSvc
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./services/userSvc/Dockerfile
     container_name: stockplatform-user-service
     restart: unless-stopped
     ports:
@@ -100,16 +123,21 @@ services:
       - GRPC_PORT=50056
       - MONGO_URI=mongodb://admin:admin123@mongodb:27017
       - JWT_SECRET=your-secret-key-here
+      - GO111MODULE=on
+      - GOPRIVATE=github.com/leonvanderhaeghen/stockplatform
+    volumes:
+      - ./pkg/gen:/app/pkg/gen
     depends_on:
-      - mongodb
+      mongodb:
+        condition: service_healthy
     networks:
       - stockplatform-network
 
   # API Gateway
   api-gateway:
     build:
-      context: ./services/gatewaySvc
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./services/gatewaySvc/Dockerfile
     container_name: stockplatform-api-gateway
     restart: unless-stopped
     ports:
@@ -121,6 +149,7 @@ services:
       - ORDER_SERVICE_ADDR=order-service:50055
       - USER_SERVICE_ADDR=user-service:50056
       - JWT_SECRET=your-secret-key-here
+      - GO111MODULE=on
     depends_on:
       - product-service
       - inventory-service

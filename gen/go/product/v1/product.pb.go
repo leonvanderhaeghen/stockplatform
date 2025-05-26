@@ -845,7 +845,7 @@ const file_product_v1_product_proto_rawDesc = "" +
 	"\n" +
 	"GetProduct\x12\x1d.product.v1.GetProductRequest\x1a\x1e.product.v1.GetProductResponse\x12Q\n" +
 	"\fListProducts\x12\x1f.product.v1.ListProductsRequest\x1a .product.v1.ListProductsResponseB\xaa\x01\n" +
-	"\x0ecom.product.v1B\fProductProtoP\x01ZAgithub.com/yourusername/stockplatform/gen/go/product/v1;productv1\xa2\x02\x03PXX\xaa\x02\n" +
+	"\x0ecom.product.v1B\fProductProtoP\x01ZAgithub.com/leonvanderhaeghen/stockplatform/gen/go/product/v1;productv1\xa2\x02\x03PXX\xaa\x02\n" +
 	"Product.V1\xca\x02\n" +
 	"Product\\V1\xe2\x02\x16Product\\V1\\GPBMetadata\xea\x02\vProduct::V1b\x06proto3"
 
