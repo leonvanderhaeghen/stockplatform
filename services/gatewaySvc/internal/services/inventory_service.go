@@ -8,7 +8,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	inventoryv1 "stockplatform/pkg/gen/inventory/v1"
+	inventoryv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/inventory/v1"
 )
 
 // InventoryServiceImpl implements the InventoryService interface
@@ -37,7 +37,7 @@ func NewInventoryService(inventoryServiceAddr string, logger *zap.Logger) (Inven
 	}, nil
 }
 
-// ListInventory lists inventory items with filtering options
+// ListInventory lists all inventory items with pagination
 func (s *InventoryServiceImpl) ListInventory(
 	ctx context.Context,
 	location string,
@@ -52,10 +52,8 @@ func (s *InventoryServiceImpl) ListInventory(
 	)
 
 	req := &inventoryv1.ListInventoryRequest{
-		Location: location,
-		LowStock: lowStock,
-		Limit:    int32(limit),
-		Offset:   int32(offset),
+		Limit:  int32(limit),
+		Offset: int32(offset),
 	}
 
 	resp, err := s.client.ListInventory(ctx, req)
@@ -75,11 +73,11 @@ func (s *InventoryServiceImpl) GetInventoryItemByID(ctx context.Context, id stri
 		zap.String("id", id),
 	)
 
-	req := &inventoryv1.GetInventoryItemRequest{
+	req := &inventoryv1.GetInventoryRequest{
 		Id: id,
 	}
 
-	resp, err := s.client.GetInventoryItem(ctx, req)
+	resp, err := s.client.GetInventory(ctx, req)
 	if err != nil {
 		s.logger.Error("Failed to get inventory item",
 			zap.String("id", id),
@@ -88,7 +86,7 @@ func (s *InventoryServiceImpl) GetInventoryItemByID(ctx context.Context, id stri
 		return nil, fmt.Errorf("failed to get inventory item: %w", err)
 	}
 
-	return resp.Item, nil
+	return resp.Inventory, nil
 }
 
 // GetInventoryItemsByProductID gets inventory items by product ID
@@ -97,20 +95,20 @@ func (s *InventoryServiceImpl) GetInventoryItemsByProductID(ctx context.Context,
 		zap.String("productID", productID),
 	)
 
-	req := &inventoryv1.GetInventoryByProductRequest{
+	req := &inventoryv1.GetInventoryByProductIDRequest{
 		ProductId: productID,
 	}
 
-	resp, err := s.client.GetInventoryByProduct(ctx, req)
+	resp, err := s.client.GetInventoryByProductID(ctx, req)
 	if err != nil {
-		s.logger.Error("Failed to get inventory items by product ID",
+		s.logger.Error("Failed to get inventory by product ID",
 			zap.String("productID", productID),
 			zap.Error(err),
 		)
-		return nil, fmt.Errorf("failed to get inventory items by product ID: %w", err)
+		return nil, fmt.Errorf("failed to get inventory by product ID: %w", err)
 	}
 
-	return resp.Items, nil
+	return resp.Inventory, nil
 }
 
 // GetInventoryItemBySKU gets an inventory item by SKU
@@ -119,20 +117,20 @@ func (s *InventoryServiceImpl) GetInventoryItemBySKU(ctx context.Context, sku st
 		zap.String("sku", sku),
 	)
 
-	req := &inventoryv1.GetInventoryBySkuRequest{
+	req := &inventoryv1.GetInventoryBySKURequest{
 		Sku: sku,
 	}
 
-	resp, err := s.client.GetInventoryBySku(ctx, req)
+	resp, err := s.client.GetInventoryBySKU(ctx, req)
 	if err != nil {
-		s.logger.Error("Failed to get inventory item by SKU",
+		s.logger.Error("Failed to get inventory by SKU",
 			zap.String("sku", sku),
 			zap.Error(err),
 		)
-		return nil, fmt.Errorf("failed to get inventory item by SKU: %w", err)
+		return nil, fmt.Errorf("failed to get inventory by SKU: %w", err)
 	}
 
-	return resp.Item, nil
+	return resp.Inventory, nil
 }
 
 // CreateInventoryItem creates a new inventory item
@@ -151,19 +149,14 @@ func (s *InventoryServiceImpl) CreateInventoryItem(
 		zap.String("location", location),
 	)
 
-	req := &inventoryv1.CreateInventoryItemRequest{
-		Item: &inventoryv1.InventoryItem{
-			ProductId:  productID,
-			Sku:        sku,
-			Quantity:   quantity,
-			Location:   location,
-			ReorderAt:  reorderAt,
-			ReorderQty: reorderQty,
-			Cost:       cost,
-		},
+	req := &inventoryv1.CreateInventoryRequest{
+		ProductId: productID,
+		Sku:       sku,
+		Quantity:  quantity,
+		Location:  location,
 	}
 
-	resp, err := s.client.CreateInventoryItem(ctx, req)
+	resp, err := s.client.CreateInventory(ctx, req)
 	if err != nil {
 		s.logger.Error("Failed to create inventory item",
 			zap.String("productID", productID),
@@ -173,7 +166,7 @@ func (s *InventoryServiceImpl) CreateInventoryItem(
 		return nil, fmt.Errorf("failed to create inventory item: %w", err)
 	}
 
-	return resp.Item, nil
+	return resp.Inventory, nil
 }
 
 // UpdateInventoryItem updates an existing inventory item
@@ -189,22 +182,36 @@ func (s *InventoryServiceImpl) UpdateInventoryItem(
 		zap.String("id", id),
 		zap.String("productID", productID),
 		zap.String("sku", sku),
+		zap.Int32("quantity", quantity),
+		zap.String("location", location),
 	)
 
-	req := &inventoryv1.UpdateInventoryItemRequest{
-		Item: &inventoryv1.InventoryItem{
-			Id:         id,
-			ProductId:  productID,
-			Sku:        sku,
-			Quantity:   quantity,
-			Location:   location,
-			ReorderAt:  reorderAt,
-			ReorderQty: reorderQty,
-			Cost:       cost,
-		},
+	// First, get the current inventory item
+	getReq := &inventoryv1.GetInventoryRequest{
+		Id: id,
 	}
 
-	_, err := s.client.UpdateInventoryItem(ctx, req)
+	getResp, err := s.client.GetInventory(ctx, getReq)
+	if err != nil {
+		s.logger.Error("Failed to get inventory item for update",
+			zap.String("id", id),
+			zap.Error(err),
+		)
+		return fmt.Errorf("failed to get inventory item for update: %w", err)
+	}
+
+	// Update the fields
+	inventory := getResp.Inventory
+	inventory.ProductId = productID
+	inventory.Quantity = quantity
+	inventory.Sku = sku
+	inventory.Location = location
+
+	req := &inventoryv1.UpdateInventoryRequest{
+		Inventory: inventory,
+	}
+
+	_, err = s.client.UpdateInventory(ctx, req)
 	if err != nil {
 		s.logger.Error("Failed to update inventory item",
 			zap.String("id", id),
@@ -222,11 +229,11 @@ func (s *InventoryServiceImpl) DeleteInventoryItem(ctx context.Context, id strin
 		zap.String("id", id),
 	)
 
-	req := &inventoryv1.DeleteInventoryItemRequest{
+	req := &inventoryv1.DeleteInventoryRequest{
 		Id: id,
 	}
 
-	_, err := s.client.DeleteInventoryItem(ctx, req)
+	_, err := s.client.DeleteInventory(ctx, req)
 	if err != nil {
 		s.logger.Error("Failed to delete inventory item",
 			zap.String("id", id),
@@ -248,18 +255,14 @@ func (s *InventoryServiceImpl) AddStock(
 	s.logger.Debug("AddStock",
 		zap.String("id", id),
 		zap.Int32("quantity", quantity),
-		zap.String("reason", reason),
-		zap.String("reference", reference),
 	)
 
 	req := &inventoryv1.AddStockRequest{
-		Id:        id,
-		Quantity:  quantity,
-		Reason:    reason,
-		Reference: reference,
+		Id:       id,
+		Quantity: quantity,
 	}
 
-	resp, err := s.client.AddStock(ctx, req)
+	_, err := s.client.AddStock(ctx, req)
 	if err != nil {
 		s.logger.Error("Failed to add stock",
 			zap.String("id", id),
@@ -269,7 +272,21 @@ func (s *InventoryServiceImpl) AddStock(
 		return nil, fmt.Errorf("failed to add stock: %w", err)
 	}
 
-	return resp.Item, nil
+	// Get the updated inventory item to return
+	getReq := &inventoryv1.GetInventoryRequest{
+		Id: id,
+	}
+
+	getResp, err := s.client.GetInventory(ctx, getReq)
+	if err != nil {
+		s.logger.Error("Failed to get updated inventory item",
+			zap.String("id", id),
+			zap.Error(err),
+		)
+		return nil, fmt.Errorf("failed to get updated inventory item: %w", err)
+	}
+
+	return getResp.Inventory, nil
 }
 
 // RemoveStock removes stock from an inventory item
@@ -282,18 +299,14 @@ func (s *InventoryServiceImpl) RemoveStock(
 	s.logger.Debug("RemoveStock",
 		zap.String("id", id),
 		zap.Int32("quantity", quantity),
-		zap.String("reason", reason),
-		zap.String("reference", reference),
 	)
 
 	req := &inventoryv1.RemoveStockRequest{
-		Id:        id,
-		Quantity:  quantity,
-		Reason:    reason,
-		Reference: reference,
+		Id:       id,
+		Quantity: quantity,
 	}
 
-	resp, err := s.client.RemoveStock(ctx, req)
+	_, err := s.client.RemoveStock(ctx, req)
 	if err != nil {
 		s.logger.Error("Failed to remove stock",
 			zap.String("id", id),
@@ -303,5 +316,19 @@ func (s *InventoryServiceImpl) RemoveStock(
 		return nil, fmt.Errorf("failed to remove stock: %w", err)
 	}
 
-	return resp.Item, nil
+	// Get the updated inventory item to return
+	getReq := &inventoryv1.GetInventoryRequest{
+		Id: id,
+	}
+
+	getResp, err := s.client.GetInventory(ctx, getReq)
+	if err != nil {
+		s.logger.Error("Failed to get updated inventory item",
+			zap.String("id", id),
+			zap.Error(err),
+		)
+		return nil, fmt.Errorf("failed to get updated inventory item: %w", err)
+	}
+
+	return getResp.Inventory, nil
 }

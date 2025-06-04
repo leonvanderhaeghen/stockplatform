@@ -20,6 +20,17 @@ type ProductRequest struct {
 	Attributes  map[string]string `json:"attributes"`
 }
 
+// listCategories returns a list of product categories
+func (s *Server) listCategories(c *gin.Context) {
+	categories, err := s.productSvc.ListCategories(c.Request.Context())
+	if err != nil {
+		genericErrorHandler(c, err, s.logger, "List categories")
+		return
+	}
+
+	respondWithSuccess(c, http.StatusOK, categories)
+}
+
 // listProducts returns a list of products
 func (s *Server) listProducts(c *gin.Context) {
 	categoryID := c.Query("category")

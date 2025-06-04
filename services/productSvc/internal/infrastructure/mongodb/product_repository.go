@@ -3,6 +3,8 @@ package mongodb
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -53,50 +55,104 @@ func (r *productRepository) GetByID(ctx context.Context, id string) (*domain.Pro
 	}
 
 	var product domain.Product
-	err = r.collection.FindOne(ctx, bson.M{"_id": objID}).Decode(&product)
+	err = r.collection.FindOne(ctx, bson.M{
+		"_id":        objID,
+		"deleted_at": nil,
+	}).Decode(&product)
+
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, domain.ErrNotFound
+			return nil, domain.ErrProductNotFound
 		}
 		r.logger.Error("Failed to get product by ID", zap.String("id", id), zap.Error(err))
-		return nil, err
+		return nil, fmt.Errorf("failed to get product: %w", err)
+	}
+
+	// Ensure empty slices are not nil for the API
+	if product.CategoryIDs == nil {
+		product.CategoryIDs = []string{}
+	}
+	if product.ImageURLs == nil {
+		product.ImageURLs = []string{}
+	}
+	if product.VideoURLs == nil {
+		product.VideoURLs = []string{}
+	}
+	if product.Variants == nil {
+		product.Variants = []domain.Variant{}
 	}
 
 	return &product, nil
 }
 
+func (r *productRepository) GetBySupplier(ctx context.Context, supplierID string, opts *domain.ListOptions) ([]*domain.Product, int64, error) {
+	if opts == nil {
+		opts = &domain.ListOptions{}
+	}
+
+	filter := bson.M{
+		"supplier_id": supplierID,
+		"deleted_at":  nil,
+	}
+
+	// Add search filter if query is provided
+	if opts.Search != "" {
+		filter["$or"] = []bson.M{
+			{"name": bson.M{"$regex": opts.Search, "$options": "i"}},
+			{"sku": bson.M{"$regex": opts.Search, "$options": "i"}},
+			{"barcode": bson.M{"$regex": opts.Search, "$options": "i"}},
+		}
+	}
+
+	return r.findProducts(ctx, filter, opts)
+}
+
 func (r *productRepository) Update(ctx context.Context, product *domain.Product) error {
-	if product.ID.IsZero() {
+	if product.ID == primitive.NilObjectID {
 		return domain.ErrInvalidID
 	}
 
-	product.UpdatedAt = time.Now()
+	// Ensure timestamps are set
+	now := time.Now()
+	product.UpdatedAt = now
 
-	update := bson.M{
-		"$set": bson.M{
-			"name":        product.Name,
-			"description": product.Description,
-			"price":       product.Price,
-			"sku":         product.SKU,
-			"category_id": product.CategoryID,
-			"image_urls":  product.ImageURLs,
-			"updated_at":  product.UpdatedAt,
-		},
+	// If this is a new variant, set created_at
+	for i := range product.Variants {
+		if product.Variants[i].CreatedAt.IsZero() {
+			product.Variants[i].CreatedAt = now
+		}
+		product.Variants[i].UpdatedAt = now
+
+		// Set timestamps for variant options
+		for j := range product.Variants[i].Options {
+			if product.Variants[i].Options[j].CreatedAt.IsZero() {
+				product.Variants[i].Options[j].CreatedAt = now
+			}
+			product.Variants[i].Options[j].UpdatedAt = now
+		}
 	}
 
-	result, err := r.collection.UpdateByID(
+	// Update stock status based on quantity
+	product.InStock = product.StockQty > 0
+
+	result, err := r.collection.ReplaceOne(
 		ctx,
-		product.ID,
-		update,
+		bson.M{
+			"_id":        product.ID,
+			"deleted_at": nil,
+		},
+		product,
 	)
 
 	if err != nil {
-		r.logger.Error("Failed to update product", zap.String("id", product.ID.Hex()), zap.Error(err))
-		return err
+		r.logger.Error("Failed to update product", 
+			zap.String("id", product.ID.Hex()), 
+			zap.Error(err))
+		return fmt.Errorf("failed to update product: %w", err)
 	}
 
 	if result.MatchedCount == 0 {
-		return domain.ErrNotFound
+		return domain.ErrProductNotFound
 	}
 
 	return nil
@@ -115,126 +171,130 @@ func (r *productRepository) Delete(ctx context.Context, id string) error {
 	}
 
 	if result.DeletedCount == 0 {
-		return domain.ErrNotFound
+		return domain.ErrProductNotFound
 	}
 
 	return nil
 }
 
-func (r *productRepository) List(
-	ctx context.Context,
-	opts *domain.ListOptions,
-) ([]*domain.Product, int64, error) {
-	// Build the filter
-	filter := bson.M{}
+func (r *productRepository) findProducts(ctx context.Context, filter bson.M, opts *domain.ListOptions) ([]*domain.Product, int64, error) {
+	// Build find options
+	findOptions := options.Find()
 
-	if opts != nil && opts.Filter != nil {
-		// Apply ID filter
-		if len(opts.Filter.IDs) > 0 {
-			var objectIDs []primitive.ObjectID
-			for _, id := range opts.Filter.IDs {
-				objID, err := primitive.ObjectIDFromHex(id)
-				if err != nil {
-					continue // Skip invalid IDs
-				}
-				objectIDs = append(objectIDs, objID)
-			}
-			if len(objectIDs) > 0 {
-				filter["_id"] = bson.M{"$in": objectIDs}
-			}
-		}
-
-		// Apply category filter
-		if len(opts.Filter.CategoryIDs) > 0 {
-			filter["category_id"] = bson.M{"$in": opts.Filter.CategoryIDs}
-		}
-
-		// Apply price range filter
-		priceFilter := bson.M{}
-		if opts.Filter.MinPrice > 0 {
-			priceFilter["$gte"] = opts.Filter.MinPrice
-		}
-		if opts.Filter.MaxPrice > 0 {
-			priceFilter["$lte"] = opts.Filter.MaxPrice
-		}
-		if len(priceFilter) > 0 {
-			filter["price"] = priceFilter
-		}
-
-		// Apply search term (case-insensitive search in name and description)
-		if opts.Filter.SearchTerm != "" {
-			filter["$or"] = []bson.M{
-				{"name": bson.M{"$regex": primitive.Regex{Pattern: opts.Filter.SearchTerm, Options: "i"}}},
-				{"description": bson.M{"$regex": primitive.Regex{Pattern: opts.Filter.SearchTerm, Options: "i"}}},
-			}
-		}
+	// Apply pagination
+	if opts.Page > 0 && opts.PageSize > 0 {
+		findOptions.SetSkip(int64((opts.Page - 1) * opts.PageSize))
+		findOptions.SetLimit(int64(opts.PageSize))
 	}
+
+	// Apply sorting
+	sortField := "created_at"
+	sortOrder := -1 // Default to descending
+
+	if opts.SortBy != "" {
+		sortField = strings.ToLower(opts.SortBy)
+	}
+
+	if opts.SortOrder == "asc" {
+		sortOrder = 1
+	}
+
+	findOptions.SetSort(bson.D{{Key: sortField, Value: sortOrder}})
 
 	// Get total count for pagination
 	total, err := r.collection.CountDocuments(ctx, filter)
 	if err != nil {
 		r.logger.Error("Failed to count products", zap.Error(err))
-		return nil, 0, err
-	}
-
-	// Set up find options
-	findOptions := options.Find()
-
-	// Apply pagination if provided
-	if opts != nil && opts.Pagination != nil {
-		if opts.Pagination.PageSize > 0 {
-			findOptions.SetLimit(int64(opts.Pagination.PageSize))
-			if opts.Pagination.Page > 1 {
-				findOptions.SetSkip(int64((opts.Pagination.Page - 1) * opts.Pagination.PageSize))
-			}
-		}
-	}
-
-	// Apply sorting if provided
-	if opts != nil && opts.Sort != nil {
-		sortField := ""
-		switch opts.Sort.Field {
-		case domain.SortFieldName:
-			sortField = "name"
-		case domain.SortFieldPrice:
-			sortField = "price"
-		case domain.SortFieldCreatedAt:
-			sortField = "created_at"
-		case domain.SortFieldUpdatedAt:
-			sortField = "updated_at"
-		default:
-			sortField = "created_at"
-		}
-
-		sortOrder := 1 // Default to ascending
-		if opts.Sort.Order == domain.SortOrderDesc {
-			sortOrder = -1
-		}
-
-		findOptions.SetSort(bson.D{{Key: sortField, Value: sortOrder}})
-	} else {
-		// Default sorting by created_at desc
-		findOptions.SetSort(bson.D{{Key: "created_at", Value: -1}})
+		return nil, 0, fmt.Errorf("failed to count products: %w", err)
 	}
 
 	// Execute query
 	cursor, err := r.collection.Find(ctx, filter, findOptions)
 	if err != nil {
 		r.logger.Error("Failed to list products", zap.Error(err))
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("failed to find products: %w", err)
 	}
 	defer cursor.Close(ctx)
 
-	// Decode results
 	var products []*domain.Product
 	if err := cursor.All(ctx, &products); err != nil {
 		r.logger.Error("Failed to decode products", zap.Error(err))
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("failed to decode products: %w", err)
 	}
 
-	if products == nil {
-		products = []*domain.Product{}
+	// Ensure we never return nil slices
+	for _, p := range products {
+		if p.CategoryIDs == nil {
+			p.CategoryIDs = []string{}
+		}
+		if p.ImageURLs == nil {
+			p.ImageURLs = []string{}
+		}
+		if p.VideoURLs == nil {
+			p.VideoURLs = []string{}
+		}
+		if p.Variants == nil {
+			p.Variants = []domain.Variant{}
+		}
 	}
 
 	return products, total, nil
+}
+
+// List retrieves a paginated list of products with optional filtering
+func (r *productRepository) List(
+	ctx context.Context,
+	opts *domain.ListOptions,
+) ([]*domain.Product, int64, error) {
+	if opts == nil {
+		opts = &domain.ListOptions{}
+	}
+
+	// Build base filter
+	filter := bson.M{"deleted_at": nil}
+
+	// Apply search if provided
+	if opts.Search != "" {
+		filter["$or"] = []bson.M{
+			{"name": bson.M{"$regex": opts.Search, "$options": "i"}},
+			{"sku": bson.M{"$regex": opts.Search, "$options": "i"}},
+			{"barcode": bson.M{"$regex": opts.Search, "$options": "i"}},
+			{"description": bson.M{"$regex": opts.Search, "$options": "i"}},
+		}
+	}
+
+	// Apply additional filters if provided
+	for k, v := range opts.Filters {
+		// Handle special filter types
+		switch k {
+		case "category_id":
+			filter["category_ids"] = v
+		case "supplier_id":
+			// If filtering by supplier, include both direct supplier and visible products
+			if supplierID, ok := v.(string); ok && supplierID != "" {
+				filter["$or"] = []bson.M{
+					{"supplier_id": supplierID},
+					{fmt.Sprintf("is_visible.%s", supplierID): true},
+				}
+			}
+		case "in_stock":
+			filter["in_stock"] = v
+		case "min_price":
+			if minPrice, ok := v.(float64); ok {
+				filter["selling_price"] = bson.M{"$gte": fmt.Sprintf("%.2f", minPrice)}
+			}
+		case "max_price":
+			if maxPrice, ok := v.(float64); ok {
+				if _, exists := filter["selling_price"]; exists {
+					filter["selling_price"].(bson.M)["$lte"] = fmt.Sprintf("%.2f", maxPrice)
+				} else {
+					filter["selling_price"] = bson.M{"$lte": fmt.Sprintf("%.2f", maxPrice)}
+				}
+			}
+		default:
+			filter[k] = v
+		}
+	}
+
+	return r.findProducts(ctx, filter, opts)
 }

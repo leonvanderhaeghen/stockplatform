@@ -16,7 +16,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
-	userv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/user/v1"
+	"github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/user/v1"
 	"github.com/leonvanderhaeghen/stockplatform/services/userSvc/internal/application"
 	grpchandler "github.com/leonvanderhaeghen/stockplatform/services/userSvc/internal/interfaces/grpc"
 	"github.com/leonvanderhaeghen/stockplatform/services/userSvc/internal/infrastructure/mongodb"
@@ -24,9 +24,10 @@ import (
 
 // Config holds the application configuration
 type Config struct {
-	GRPCPort  string `env:"GRPC_PORT,default=50056"`
-	MongoURI  string `env:"MONGO_URI,default=mongodb://localhost:27017"`
-	JWTSecret string `env:"JWT_SECRET,default=your-secret-key-here"`
+	GRPCPort     string `env:"GRPC_PORT,default=50056"`
+	MongoURI     string `env:"MONGO_URI,default=mongodb://localhost:27017"`
+	JWTSecret    string `env:"JWT_SECRET,default=your-secret-key-here"`
+	OrderSvcURL  string `env:"ORDER_SERVICE_URL,default=order-service:50055"`
 }
 
 func main() {
@@ -41,9 +42,10 @@ func main() {
 
 	// Load configuration
 	config := Config{
-		GRPCPort:  "50056",
-		MongoURI:  "mongodb://localhost:27017",
-		JWTSecret: "your-secret-key-here",
+		GRPCPort:    "50056",
+		MongoURI:    "mongodb://localhost:27017",
+		JWTSecret:   "your-secret-key-here",
+		OrderSvcURL: "order-service:50055",
 	}
 	
 	// Check for environment variables
@@ -57,6 +59,10 @@ func main() {
 	
 	if jwtSecret := os.Getenv("JWT_SECRET"); jwtSecret != "" {
 		config.JWTSecret = jwtSecret
+	}
+	
+	if orderSvcURL := os.Getenv("ORDER_SERVICE_URL"); orderSvcURL != "" {
+		config.OrderSvcURL = orderSvcURL
 	}
 	
 	logger.Info("Configuration loaded", 
@@ -135,16 +141,30 @@ func main() {
 	userRepo := mongodb.NewUserRepository(db, userCollectionName, logger)
 	addressRepo := mongodb.NewAddressRepository(db, addressCollectionName, logger)
 
-	// Initialize application services
-	userSvc := application.NewUserService(userRepo, addressRepo, config.JWTSecret, logger)
+	// Initialize user service
+	userService := application.NewUserService(userRepo, addressRepo, config.JWTSecret, logger)
+
+	// Initialize user auth service
+	userAuthService, err := application.NewUserAuthService(
+		userService,
+		config.OrderSvcURL,
+		logger,
+	)
+	if err != nil {
+		logger.Fatal("Failed to create user auth service", zap.Error(err))
+	}
+	defer userAuthService.Close()
 
 	// Create gRPC server
 	grpcServer := grpc.NewServer()
-
+	
+	// Initialize gRPC server with the user service
+	userServer := grpchandler.NewUserServer(userService, logger)
+	
 	// Register gRPC services
 	userv1.RegisterUserServiceServer(
 		grpcServer,
-		grpchandler.NewUserServer(userSvc, logger),
+		userServer,
 	)
 
 	// Enable reflection for gRPC CLI tools

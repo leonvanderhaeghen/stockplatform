@@ -8,7 +8,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	productv1 "stockplatform/pkg/gen/product/v1"
+	productv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/product/v1"
 )
 
 // ProductServiceImpl implements the ProductService interface
@@ -37,6 +37,36 @@ func NewProductService(productServiceAddr string, logger *zap.Logger) (ProductSe
 	}, nil
 }
 
+// ListCategories lists all product categories
+// parentID: Optional parent category ID to filter by
+// depth: Maximum depth of subcategories to return (0 for all)
+func (s *ProductServiceImpl) ListCategories(
+	ctx context.Context,
+) (interface{}, error) {
+	s.logger.Debug("ListCategories")
+
+	// Call the gRPC service with default parameters
+	// In a real implementation, you might want to get these from query parameters
+	req := &productv1.ListCategoriesRequest{
+		ParentId: "", // Empty string means get root categories
+		Depth:    3,  // Default to 3 levels deep
+	}
+
+	resp, err := s.client.ListCategories(ctx, req)
+	if err != nil {
+		s.logger.Error("Failed to list categories",
+			zap.Error(err),
+		)
+		return nil, fmt.Errorf("failed to list categories: %w", err)
+	}
+
+	// Return the categories in a structured response
+	return map[string]interface{}{
+		"categories": resp.GetCategories(),
+		"total":      len(resp.GetCategories()),
+	}, nil
+}
+
 // ListProducts lists products with filtering options
 func (s *ProductServiceImpl) ListProducts(
 	ctx context.Context,
@@ -58,13 +88,18 @@ func (s *ProductServiceImpl) ListProducts(
 
 	// Convert parameters to the appropriate types for gRPC
 	req := &productv1.ListProductsRequest{
-		CategoryId: categoryID,
-		Query:      query,
-		Active:     active,
-		Limit:      int32(limit),
-		Offset:     int32(offset),
-		SortBy:     sortBy,
-		Ascending:  ascending,
+		Filter: &productv1.ProductFilter{
+			CategoryIds: []string{categoryID},
+			SearchTerm:  query,
+		},
+		Sort: &productv1.ProductSort{
+			Field: productv1.ProductSort_SortField(productv1.ProductSort_SORT_FIELD_UNSPECIFIED), // TODO: Map sortBy to SortField
+			Order: productv1.ProductSort_SortOrder(productv1.ProductSort_SORT_ORDER_ASC),      // TODO: Use ascending parameter
+		},
+		Pagination: &productv1.Pagination{
+			Page:     int32(offset/limit + 1),
+			PageSize: int32(limit),
+		},
 	}
 
 	// Call the gRPC service
@@ -119,17 +154,12 @@ func (s *ProductServiceImpl) CreateProduct(
 	)
 
 	req := &productv1.CreateProductRequest{
-		Product: &productv1.Product{
-			Name:        name,
-			Description: description,
-			Sku:         sku,
-			Categories:  categories,
-			Price:       price,
-			Cost:        cost,
-			Active:      active,
-			Images:      images,
-			Attributes:  attributes,
-		},
+		Name:        name,
+		Description: description,
+		Price:       price,
+		Sku:         sku,
+		CategoryId:   categories[0], // Using first category as category_id
+		ImageUrls:    images,
 	}
 
 	resp, err := s.client.CreateProduct(ctx, req)
@@ -146,6 +176,7 @@ func (s *ProductServiceImpl) CreateProduct(
 }
 
 // UpdateProduct updates an existing product
+// Note: Not implemented in the product service
 func (s *ProductServiceImpl) UpdateProduct(
 	ctx context.Context,
 	id, name, description, sku string,
@@ -155,57 +186,11 @@ func (s *ProductServiceImpl) UpdateProduct(
 	images []string,
 	attributes map[string]string,
 ) error {
-	s.logger.Debug("UpdateProduct",
-		zap.String("id", id),
-		zap.String("name", name),
-		zap.String("sku", sku),
-	)
-
-	req := &productv1.UpdateProductRequest{
-		Product: &productv1.Product{
-			Id:          id,
-			Name:        name,
-			Description: description,
-			Sku:         sku,
-			Categories:  categories,
-			Price:       price,
-			Cost:        cost,
-			Active:      active,
-			Images:      images,
-			Attributes:  attributes,
-		},
-	}
-
-	_, err := s.client.UpdateProduct(ctx, req)
-	if err != nil {
-		s.logger.Error("Failed to update product",
-			zap.String("id", id),
-			zap.Error(err),
-		)
-		return fmt.Errorf("failed to update product: %w", err)
-	}
-
-	return nil
+	return fmt.Errorf("UpdateProduct is not implemented in the product service")
 }
 
 // DeleteProduct deletes a product
+// Note: Not implemented in the product service
 func (s *ProductServiceImpl) DeleteProduct(ctx context.Context, id string) error {
-	s.logger.Debug("DeleteProduct",
-		zap.String("id", id),
-	)
-
-	req := &productv1.DeleteProductRequest{
-		Id: id,
-	}
-
-	_, err := s.client.DeleteProduct(ctx, req)
-	if err != nil {
-		s.logger.Error("Failed to delete product",
-			zap.String("id", id),
-			zap.Error(err),
-		)
-		return fmt.Errorf("failed to delete product: %w", err)
-	}
-
-	return nil
+	return fmt.Errorf("DeleteProduct is not implemented in the product service")
 }

@@ -27,17 +27,22 @@ RUN \
         (echo "Attempt $i failed, retrying..." && sleep 5); \
     done
 
+# Create necessary directories for generated code
+RUN mkdir -p /app/pkg/gen/go/inventory/v1
+
 # Generate protobuf code
-RUN mkdir -p ../../pkg/gen/go/inventory/v1 && \
-    protoc -I=../../proto \
-      --go_out=../../pkg/gen/go/inventory/v1 \
-      --go_opt=paths=source_relative \
-      --go-grpc_out=../../pkg/gen/go/inventory/v1 \
-      --go-grpc_opt=paths=source_relative \
-      ../../proto/inventory/v1/inventory.proto
+RUN protoc -I=/app/proto \
+    --go_out=/app/pkg/gen/go/inventory/v1 \
+    --go_opt=paths=source_relative \
+    --go-grpc_out=/app/pkg/gen/go/inventory/v1 \
+    --go-grpc_opt=paths=source_relative \
+    /app/proto/inventory/v1/inventory.proto
+
+# Verify the generated files
+RUN ls -la /app/pkg/gen/go/inventory/v1/
 
 # Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /inventorySvc ./cmd/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -o /inventorySvc ./cmd/main.go
 
 # Final stage
 FROM alpine:latest

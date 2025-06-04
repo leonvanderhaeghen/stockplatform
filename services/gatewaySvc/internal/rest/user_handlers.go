@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+	userv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/user/v1"
 )
 
 // UserRegisterRequest represents the register request body
@@ -13,6 +14,7 @@ type UserRegisterRequest struct {
 	Password  string `json:"password" binding:"required,min=8"`
 	FirstName string `json:"firstName" binding:"required"`
 	LastName  string `json:"lastName" binding:"required"`
+	Role      string `json:"role" enums:"CUSTOMER,ADMIN,STAFF"`
 }
 
 // UserLoginRequest represents the login request body
@@ -54,7 +56,24 @@ func (s *Server) registerUser(c *gin.Context) {
 		return
 	}
 
-	user, err := s.userSvc.RegisterUser(c.Request.Context(), req.Email, req.Password, req.FirstName, req.LastName)
+	// Default to CUSTOMER role if not specified
+	if req.Role == "" {
+		req.Role = "CUSTOMER"
+	}
+
+	// Validate role
+	validRoles := map[string]bool{
+		"CUSTOMER": true,
+		"ADMIN":    true,
+		"STAFF":    true,
+	}
+
+	if !validRoles[req.Role] {
+		respondWithError(c, http.StatusBadRequest, "Invalid role. Must be one of: CUSTOMER, ADMIN, STAFF")
+		return
+	}
+
+	user, err := s.userSvc.RegisterUser(c.Request.Context(), req.Email, req.Password, req.FirstName, req.LastName, req.Role)
 	if err != nil {
 		genericErrorHandler(c, err, s.logger, "User registration")
 		return
@@ -81,7 +100,45 @@ func (s *Server) loginUser(c *gin.Context) {
 		return
 	}
 
-	respondWithSuccess(c, http.StatusOK, result)
+	// Transform the gRPC response to include string role
+	resp, ok := result.(*userv1.AuthenticateUserResponse)
+	if !ok {
+		s.logger.Error("Unexpected response type from user service")
+		respondWithError(c, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+
+	// Convert the role enum to string
+	var roleStr string
+	switch resp.User.Role {
+	case userv1.Role_ROLE_CUSTOMER:
+		roleStr = "CUSTOMER"
+	case userv1.Role_ROLE_ADMIN:
+		roleStr = "ADMIN"
+	case userv1.Role_ROLE_STAFF:
+		roleStr = "STAFF"
+	default:
+		roleStr = "UNKNOWN"
+	}
+
+	// Create a new response with the string role
+	transformedResp := map[string]interface{}{
+		"token": resp.Token,
+		"user": map[string]interface{}{
+			"id":          resp.User.Id,
+			"email":       resp.User.Email,
+			"first_name":  resp.User.FirstName,
+			"last_name":   resp.User.LastName,
+			"role":        roleStr,
+			"phone":       resp.User.Phone,
+			"active":      resp.User.Active,
+			"last_login":  resp.User.LastLogin,
+			"created_at":  resp.User.CreatedAt,
+			"updated_at":  resp.User.UpdatedAt,
+		},
+	}
+
+	respondWithSuccess(c, http.StatusOK, transformedResp)
 }
 
 // getCurrentUser returns the current authenticated user

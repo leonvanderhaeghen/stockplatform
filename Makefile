@@ -1,4 +1,4 @@
-.PHONY: deps generate build test lint clean build-clients run-grpc-client run-grpc-client-enhanced run-tcp-client run-test-grpc-client run-test-grpc-minimal
+.PHONY: deps generate build test lint clean build-clients run-grpc-client run-grpc-client-enhanced run-tcp-client run-test-grpc-client run-test-grpc-minimal clean-protos
 
 # Go parameters
 GOCMD=go
@@ -22,9 +22,29 @@ deps:
 		github.com/bufbuild/buf/cmd/buf \
 		github.com/fullstorydev/grpcurl/cmd/grpcurl
 
+# Clean up generated protobuf files
+clean-protos:
+	@echo "Cleaning up generated protobuf files..."
+	@if exist pkg\gen\ (
+		@rmdir /s /q pkg\gen
+	)
+
 # Generate protobuf and gRPC code
-generate:
-	$(BUF) generate
+generate: clean-protos
+	@echo "Generating protobuf and gRPC code..."
+	@if not exist pkg\gen\go mkdir pkg\gen\go
+	@powershell -NoProfile -ExecutionPolicy Bypass -Command "$$
+		Get-ChildItem -Path proto -Directory | ForEach-Object {
+			$$protoFile = Join-Path -Path $$_.FullName -ChildPath 'v1\$$($_.Name).proto'
+			if (Test-Path $$protoFile) {
+				Write-Host 'Generating code for' $$_.Name '...'
+				protoc -I=proto --go_out=pkg/gen/go --go_opt=module=github.com/leonvanderhaeghen/stockplatform \
+					--go-grpc_out=pkg/gen/go --go-grpc_opt=module=github.com/leonvanderhaeghen/stockplatform \
+					$$protoFile
+			}
+		}
+	"
+	@echo "Code generation complete"
 
 # Build all services
 build:

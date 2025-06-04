@@ -35,12 +35,18 @@ func NewUserService(
 	}
 }
 
-// RegisterUser registers a new user
+// RegisterUser registers a new user with the default CUSTOMER role
 func (s *UserService) RegisterUser(ctx context.Context, email, password, firstName, lastName string) (*domain.User, error) {
+	return s.RegisterUserWithRole(ctx, email, password, firstName, lastName, domain.RoleCustomer)
+}
+
+// RegisterUserWithRole registers a new user with the specified role
+func (s *UserService) RegisterUserWithRole(ctx context.Context, email, password, firstName, lastName string, role domain.Role) (*domain.User, error) {
 	s.logger.Info("Registering new user",
 		zap.String("email", email),
 		zap.String("first_name", firstName),
 		zap.String("last_name", lastName),
+		zap.String("role", string(role)),
 	)
 
 	// Validate input
@@ -58,8 +64,8 @@ func (s *UserService) RegisterUser(ctx context.Context, email, password, firstNa
 		return nil, errors.New("email is already in use")
 	}
 
-	// Create new user with customer role
-	user, err := domain.NewUser(email, password, firstName, lastName, domain.RoleCustomer)
+	// Create new user with the specified role
+	user, err := domain.NewUser(email, password, firstName, lastName, role)
 	if err != nil {
 		s.logger.Error("Failed to create user", zap.Error(err))
 		return nil, err
@@ -424,39 +430,14 @@ func (s *UserService) SetDefaultUserAddress(ctx context.Context, addressID, user
 
 // CreateAdminUser creates a new admin user
 func (s *UserService) CreateAdminUser(ctx context.Context, email, password, firstName, lastName string) (*domain.User, error) {
-	s.logger.Info("Creating admin user",
+	s.logger.Info("Creating new admin user",
 		zap.String("email", email),
 		zap.String("first_name", firstName),
 		zap.String("last_name", lastName),
 	)
 
-	// Validate input
-	if email == "" || password == "" || firstName == "" || lastName == "" {
-		return nil, errors.New("all fields are required")
-	}
-
-	// Check if email is already in use
-	existingUser, err := s.userRepo.GetByEmail(ctx, email)
-	if err != nil {
-		return nil, err
-	}
-
-	if existingUser != nil {
-		return nil, errors.New("email is already in use")
-	}
-
-	// Create new user with admin role
-	user, err := domain.NewUser(email, password, firstName, lastName, domain.RoleAdmin)
-	if err != nil {
-		s.logger.Error("Failed to create admin user", zap.Error(err))
-		return nil, err
-	}
-
-	if err := s.userRepo.Create(ctx, user); err != nil {
-		return nil, err
-	}
-
-	return user, nil
+	// Use RegisterUserWithRole with admin role
+	return s.RegisterUserWithRole(ctx, email, password, firstName, lastName, domain.RoleAdmin)
 }
 
 // ListUsers lists all users with optional filtering and pagination

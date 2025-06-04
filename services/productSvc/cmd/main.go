@@ -14,12 +14,12 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.uber.org/zap"
-	"google.golang.org/grpc"
+	grpcserver "google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
 	productv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/product/v1"
 	"github.com/leonvanderhaeghen/stockplatform/services/productSvc/internal/application"
-	grpchandler "github.com/leonvanderhaeghen/stockplatform/services/productSvc/internal/interfaces/grpc"
+	handlergrpc "github.com/leonvanderhaeghen/stockplatform/services/productSvc/internal/interfaces/grpc"
 	"github.com/leonvanderhaeghen/stockplatform/services/productSvc/internal/infrastructure/mongodb"
 )
 
@@ -39,10 +39,18 @@ func main() {
 
 	logger.Info("Starting product service...")
 
-	// Load configuration
+	// Load configuration from environment variables
 	config := Config{
-		GRPCPort: "50053",
-		MongoURI: "mongodb://localhost:27017",
+		GRPCPort: os.Getenv("GRPC_PORT"),
+		MongoURI: os.Getenv("MONGO_URI"),
+	}
+
+	// Set default values if environment variables are not set
+	if config.GRPCPort == "" {
+		config.GRPCPort = "50053"
+	}
+	if config.MongoURI == "" {
+		config.MongoURI = "mongodb://localhost:27017"
 	}
 	logger.Info("Configuration loaded", 
 		zap.String("grpc_port", config.GRPCPort),
@@ -144,25 +152,25 @@ func main() {
 
 	// Initialize repositories
 	dbName := "stockplatform"
-	collectionName := "products"
-	logger.Info("Initializing MongoDB repository", 
+	logger.Info("Initializing MongoDB repositories", 
 		zap.String("database", dbName),
-		zap.String("collection", collectionName),
 	)
 	db := mongoClient.Database(dbName)
-	productRepo := mongodb.NewProductRepository(db, collectionName, logger)
-
-	// Initialize application services
+	
+	// Initialize product repository and service
+	productRepo := mongodb.NewProductRepository(db, "products", logger)
 	productSvc := application.NewProductService(productRepo, logger)
+	
+	// Initialize category repository and service
+	categoryRepo := mongodb.NewCategoryRepository(db, logger)
+	categorySvc := application.NewCategoryService(categoryRepo, logger)
 
 	// Create gRPC server
-	grpcServer := grpc.NewServer()
+	grpcServer := grpcserver.NewServer()
 
 	// Register gRPC services
-	productv1.RegisterProductServiceServer(
-		grpcServer,
-		grpchandler.NewProductServer(productSvc, logger),
-	)
+	productServer := handlergrpc.NewProductServer(productSvc, categorySvc, logger)
+	productv1.RegisterProductServiceServer(grpcServer, productServer)
 
 	// Enable reflection for gRPC CLI tools
 	reflection.Register(grpcServer)
@@ -175,7 +183,7 @@ func main() {
 	)
 
 	// Enable gRPC logging
-	grpc.EnableTracing = true
+	grpcserver.EnableTracing = true
 	grpcLogger := logger.Named("grpc")
 	grpcLogLevel := zap.DebugLevel
 	grpcLogger = grpcLogger.WithOptions(zap.IncreaseLevel(grpcLogLevel))
@@ -323,8 +331,8 @@ func logNetworkInterfaces(logger *zap.Logger) {
 }
 
 // loggingInterceptor logs gRPC requests with method and duration
-func loggingInterceptor(logger *zap.Logger) grpc.UnaryServerInterceptor {
-	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+func loggingInterceptor(logger *zap.Logger) grpcserver.UnaryServerInterceptor {
+	return func(ctx context.Context, req interface{}, info *grpcserver.UnaryServerInfo, handler grpcserver.UnaryHandler) (interface{}, error) {
 		start := time.Now()
 		logger.Info("Processing gRPC request",
 			zap.String("method", info.FullMethod),

@@ -1,12 +1,12 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "inventory/v1/inventory.proto",
+    "title": "order/v1/order.proto",
     "version": "version not set"
   },
   "tags": [
     {
-      "name": "InventoryService"
+      "name": "OrderService"
     }
   ],
   "consumes": [
@@ -45,131 +45,237 @@
         }
       }
     },
-    "v1AddStockResponse": {
+    "v1AddPaymentResponse": {
       "type": "object",
       "properties": {
         "success": {
           "type": "boolean"
         }
       },
-      "title": "AddStockResponse is the response for adding stock"
+      "title": "AddPaymentResponse is the response for adding payment to an order"
     },
-    "v1CreateInventoryResponse": {
-      "type": "object",
-      "properties": {
-        "inventory": {
-          "$ref": "#/definitions/v1InventoryItem"
-        }
-      },
-      "title": "CreateInventoryResponse is the response for creating an inventory item"
-    },
-    "v1DeleteInventoryResponse": {
+    "v1AddTrackingCodeResponse": {
       "type": "object",
       "properties": {
         "success": {
           "type": "boolean"
         }
       },
-      "title": "DeleteInventoryResponse is the response for deleting an inventory item"
+      "title": "AddTrackingCodeResponse is the response for adding a tracking code"
     },
-    "v1FulfillReservationResponse": {
+    "v1Address": {
+      "type": "object",
+      "properties": {
+        "street": {
+          "type": "string"
+        },
+        "city": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "postalCode": {
+          "type": "string"
+        },
+        "country": {
+          "type": "string"
+        }
+      },
+      "title": "Address represents a shipping or billing address"
+    },
+    "v1CancelOrderResponse": {
       "type": "object",
       "properties": {
         "success": {
           "type": "boolean"
         }
       },
-      "title": "FulfillReservationResponse is the response for fulfilling a reservation"
+      "title": "CancelOrderResponse is the response for cancelling an order"
     },
-    "v1GetInventoryResponse": {
+    "v1CreateOrderResponse": {
       "type": "object",
       "properties": {
-        "inventory": {
-          "$ref": "#/definitions/v1InventoryItem"
+        "order": {
+          "$ref": "#/definitions/v1Order"
         }
       },
-      "title": "GetInventoryResponse is the response for retrieving an inventory item"
+      "title": "CreateOrderResponse is the response for creating an order"
     },
-    "v1InventoryItem": {
+    "v1DeleteOrderResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        }
+      },
+      "title": "DeleteOrderResponse is the response for deleting an order"
+    },
+    "v1GetOrderResponse": {
+      "type": "object",
+      "properties": {
+        "order": {
+          "$ref": "#/definitions/v1Order"
+        }
+      },
+      "title": "GetOrderResponse is the response for retrieving an order"
+    },
+    "v1GetUserOrdersResponse": {
+      "type": "object",
+      "properties": {
+        "orders": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Order"
+          }
+        }
+      },
+      "title": "GetUserOrdersResponse is the response for retrieving a user's orders"
+    },
+    "v1ListOrdersResponse": {
+      "type": "object",
+      "properties": {
+        "orders": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Order"
+          }
+        }
+      },
+      "title": "ListOrdersResponse is the response for listing orders"
+    },
+    "v1Order": {
       "type": "object",
       "properties": {
         "id": {
           "type": "string"
         },
+        "userId": {
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1OrderItem"
+          }
+        },
+        "totalAmount": {
+          "type": "number",
+          "format": "double"
+        },
+        "status": {
+          "$ref": "#/definitions/v1OrderStatus"
+        },
+        "shippingAddress": {
+          "$ref": "#/definitions/v1Address"
+        },
+        "billingAddress": {
+          "$ref": "#/definitions/v1Address"
+        },
+        "payment": {
+          "$ref": "#/definitions/v1Payment"
+        },
+        "trackingCode": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "completedAt": {
+          "type": "string"
+        }
+      },
+      "title": "Order represents a customer order"
+    },
+    "v1OrderItem": {
+      "type": "object",
+      "properties": {
         "productId": {
+          "type": "string"
+        },
+        "productSku": {
+          "type": "string"
+        },
+        "name": {
           "type": "string"
         },
         "quantity": {
           "type": "integer",
           "format": "int32"
         },
-        "reserved": {
-          "type": "integer",
-          "format": "int32"
+        "price": {
+          "type": "number",
+          "format": "double"
         },
-        "sku": {
-          "type": "string"
-        },
-        "location": {
-          "type": "string"
-        },
-        "lastUpdated": {
-          "type": "string"
-        },
-        "createdAt": {
-          "type": "string"
+        "subtotal": {
+          "type": "number",
+          "format": "double"
         }
       },
-      "title": "InventoryItem represents a product's inventory information"
+      "title": "OrderItem represents an item in an order"
     },
-    "v1ListInventoryResponse": {
+    "v1OrderStatus": {
+      "type": "string",
+      "enum": [
+        "ORDER_STATUS_UNSPECIFIED",
+        "ORDER_STATUS_CREATED",
+        "ORDER_STATUS_PENDING",
+        "ORDER_STATUS_PAID",
+        "ORDER_STATUS_SHIPPED",
+        "ORDER_STATUS_DELIVERED",
+        "ORDER_STATUS_CANCELLED"
+      ],
+      "default": "ORDER_STATUS_UNSPECIFIED",
+      "title": "OrderStatus represents the status of an order"
+    },
+    "v1Payment": {
       "type": "object",
       "properties": {
-        "inventories": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/v1InventoryItem"
-          }
+        "method": {
+          "type": "string"
+        },
+        "transactionId": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "number",
+          "format": "double"
+        },
+        "status": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string"
         }
       },
-      "title": "ListInventoryResponse is the response for listing inventory items"
+      "title": "Payment represents payment information"
     },
-    "v1ReleaseReservationResponse": {
+    "v1UpdateOrderResponse": {
       "type": "object",
       "properties": {
         "success": {
           "type": "boolean"
         }
       },
-      "title": "ReleaseReservationResponse is the response for releasing a reservation"
+      "title": "UpdateOrderResponse is the response for updating an order"
     },
-    "v1RemoveStockResponse": {
+    "v1UpdateOrderStatusResponse": {
       "type": "object",
       "properties": {
         "success": {
           "type": "boolean"
         }
       },
-      "title": "RemoveStockResponse is the response for removing stock"
-    },
-    "v1ReserveStockResponse": {
-      "type": "object",
-      "properties": {
-        "success": {
-          "type": "boolean"
-        }
-      },
-      "title": "ReserveStockResponse is the response for reserving stock"
-    },
-    "v1UpdateInventoryResponse": {
-      "type": "object",
-      "properties": {
-        "success": {
-          "type": "boolean"
-        }
-      },
-      "title": "UpdateInventoryResponse is the response for updating an inventory item"
+      "title": "UpdateOrderStatusResponse is the response for updating an order's status"
     }
   }
 }

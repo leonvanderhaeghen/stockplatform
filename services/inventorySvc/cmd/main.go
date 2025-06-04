@@ -16,7 +16,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
-	inventoryv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/inventory/v1"
+	inventoryv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/inventory/v1"
 	"github.com/leonvanderhaeghen/stockplatform/services/inventorySvc/internal/application"
 	grpchandler "github.com/leonvanderhaeghen/stockplatform/services/inventorySvc/internal/interfaces/grpc"
 	"github.com/leonvanderhaeghen/stockplatform/services/inventorySvc/internal/infrastructure/mongodb"
@@ -24,8 +24,9 @@ import (
 
 // Config holds the application configuration
 type Config struct {
-	GRPCPort string `env:"GRPC_PORT,default=50054"`
-	MongoURI string `env:"MONGO_URI,default=mongodb://localhost:27017"`
+	GRPCPort    string `env:"GRPC_PORT,default=50054"`
+	MongoURI    string `env:"MONGO_URI,default=mongodb://localhost:27017"`
+	OrderSvcURL string `env:"ORDER_SERVICE_URL,default=order-service:50052"`
 }
 
 func main() {
@@ -40,13 +41,17 @@ func main() {
 
 	// Load configuration
 	config := Config{
-		GRPCPort: "50054",
-		MongoURI: "mongodb://localhost:27017",
+		GRPCPort:    "50054",
+		MongoURI:    "mongodb://localhost:27017",
+		OrderSvcURL: "order-service:50052",
 	}
 	
 	// Check for environment variables
 	if port := os.Getenv("GRPC_PORT"); port != "" {
 		config.GRPCPort = port
+	}
+	if orderSvcURL := os.Getenv("ORDER_SERVICE_URL"); orderSvcURL != "" {
+		config.OrderSvcURL = orderSvcURL
 	}
 	
 	if mongoURI := os.Getenv("MONGO_URI"); mongoURI != "" {
@@ -124,16 +129,30 @@ func main() {
 	db := mongoClient.Database(dbName)
 	inventoryRepo := mongodb.NewInventoryRepository(db, collectionName, logger)
 
-	// Initialize application services
-	inventorySvc := application.NewInventoryService(inventoryRepo, logger)
+	// Initialize inventory service
+	inventoryService := application.NewInventoryService(inventoryRepo, logger)
+
+	// Initialize inventory order service
+	inventoryOrderService, err := application.NewInventoryOrderService(
+		inventoryService,
+		config.OrderSvcURL,
+		logger,
+	)
+	if err != nil {
+		logger.Fatal("Failed to create inventory order service", zap.Error(err))
+	}
+	defer inventoryOrderService.Close()
 
 	// Create gRPC server
 	grpcServer := grpc.NewServer()
 
+	// Initialize gRPC server with the inventory service
+	inventoryServer := grpchandler.NewInventoryServer(inventoryService, logger)
+
 	// Register gRPC services
 	inventoryv1.RegisterInventoryServiceServer(
 		grpcServer,
-		grpchandler.NewInventoryServer(inventorySvc, logger),
+		inventoryServer,
 	)
 
 	// Enable reflection for gRPC CLI tools

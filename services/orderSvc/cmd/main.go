@@ -16,7 +16,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
-	orderv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/order/v1"
+	orderv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/order/v1"
 	"github.com/leonvanderhaeghen/stockplatform/services/orderSvc/internal/application"
 	grpchandler "github.com/leonvanderhaeghen/stockplatform/services/orderSvc/internal/interfaces/grpc"
 	"github.com/leonvanderhaeghen/stockplatform/services/orderSvc/internal/infrastructure/mongodb"
@@ -26,8 +26,8 @@ import (
 type Config struct {
 	GRPCPort              string `env:"GRPC_PORT,default=50055"`
 	MongoURI              string `env:"MONGO_URI,default=mongodb://localhost:27017"`
-	ProductServiceAddr    string `env:"PRODUCT_SERVICE_ADDR,default=localhost:50053"`
-	InventoryServiceAddr  string `env:"INVENTORY_SERVICE_ADDR,default=localhost:50054"`
+	ProductServiceAddr    string `env:"PRODUCT_SERVICE_ADDR,default=product-service:50052"`
+	InventoryServiceAddr  string `env:"INVENTORY_SERVICE_ADDR,default=inventory-service:50053"`
 }
 
 func main() {
@@ -138,16 +138,30 @@ func main() {
 	db := mongoClient.Database(dbName)
 	orderRepo := mongodb.NewOrderRepository(db, collectionName, logger)
 
-	// Initialize application services
-	orderSvc := application.NewOrderService(orderRepo, logger)
+	// Initialize order service
+	orderService := application.NewOrderService(orderRepo, logger)
+
+	// Initialize order inventory service
+	orderInventoryService, err := application.NewOrderInventoryService(
+		orderService,
+		config.InventoryServiceAddr,
+		logger,
+	)
+	if err != nil {
+		logger.Fatal("Failed to create order inventory service", zap.Error(err))
+	}
+	defer orderInventoryService.Close()
 
 	// Create gRPC server
 	grpcServer := grpc.NewServer()
 
+	// Initialize gRPC server with the order service
+	orderServer := grpchandler.NewOrderServer(orderService, logger)
+
 	// Register gRPC services
 	orderv1.RegisterOrderServiceServer(
 		grpcServer,
-		grpchandler.NewOrderServer(orderSvc, logger),
+		orderServer,
 	)
 
 	// Enable reflection for gRPC CLI tools

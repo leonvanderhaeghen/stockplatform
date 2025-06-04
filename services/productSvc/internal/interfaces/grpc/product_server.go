@@ -19,15 +19,21 @@ import (
 // ProductServer handles gRPC requests for the Product service
 type ProductServer struct {
 	productv1.UnimplementedProductServiceServer
-	service *application.ProductService
-	logger   *zap.Logger
+	service        *application.ProductService
+	categoryService *application.CategoryService
+	logger         *zap.Logger
 }
 
 // NewProductServer creates a new ProductServer
-func NewProductServer(service *application.ProductService, logger *zap.Logger) *ProductServer {
+func NewProductServer(
+	service *application.ProductService,
+	categoryService *application.CategoryService,
+	logger *zap.Logger,
+) *ProductServer {
 	return &ProductServer{
-		service: service,
-		logger:  logger.Named("grpc_product_server"),
+		service:        service,
+		categoryService: categoryService,
+		logger:         logger.Named("grpc_product_server"),
 	}
 }
 
@@ -60,11 +66,22 @@ func (s *ProductServer) CreateProduct(ctx context.Context, req *productv1.Create
 
 	// Convert protobuf message to domain model
 	product := &domain.Product{
-		Name:        req.GetName(),
-		Description: req.GetDescription(),
-		Price:       req.GetPrice(),
-		SKU:         req.GetSku(),
-		CategoryID:  req.GetCategoryId(),
+		Name:         req.GetName(),
+		Description:   req.GetDescription(),
+		CostPrice:     req.GetCostPrice(),
+		SellingPrice:  req.GetSellingPrice(),
+		Currency:      req.GetCurrency(),
+		SKU:           req.GetSku(),
+		Barcode:       req.GetBarcode(),
+		CategoryIDs:   req.GetCategoryIds(),
+		SupplierID:    req.GetSupplierId(),
+		IsActive:      req.GetIsActive(),
+		InStock:       req.GetInStock(),
+		StockQty:      req.GetStockQty(),
+		LowStockAt:    req.GetLowStockAt(),
+		ImageURLs:     req.GetImageUrls(),
+		VideoURLs:     req.GetVideoUrls(),
+		Metadata:      req.GetMetadata(),
 	}
 
 	// Call the application service
@@ -92,17 +109,36 @@ func (s *ProductServer) CreateProduct(ctx context.Context, req *productv1.Create
 	)
 
 	// Convert domain model back to protobuf
+	pbProduct := &productv1.Product{
+		Id:           created.ID.Hex(),
+		Name:         created.Name,
+		Description:   created.Description,
+		CostPrice:     created.CostPrice,
+		SellingPrice:  created.SellingPrice,
+		Currency:      created.Currency,
+		Sku:           created.SKU,
+		Barcode:       created.Barcode,
+		CategoryIds:   created.CategoryIDs,
+		SupplierId:    created.SupplierID,
+		IsActive:      created.IsActive,
+		InStock:       created.InStock,
+		StockQty:      created.StockQty,
+		LowStockAt:    created.LowStockAt,
+		ImageUrls:     created.ImageURLs,
+		VideoUrls:     created.VideoURLs,
+		Metadata:      created.Metadata,
+	}
+
+	// Only set timestamps if they are not zero
+	if !created.CreatedAt.IsZero() {
+		pbProduct.CreatedAt = timestamppb.New(created.CreatedAt)
+	}
+	if !created.UpdatedAt.IsZero() {
+		pbProduct.UpdatedAt = timestamppb.New(created.UpdatedAt)
+	}
+
 	return &productv1.CreateProductResponse{
-		Product: &productv1.Product{
-			Id:          created.ID.Hex(),
-			Name:        created.Name,
-			Description: created.Description,
-			Price:       created.Price,
-			Sku:         created.SKU,
-			CategoryId:  created.CategoryID,
-			CreatedAt:   timestamppb.New(created.CreatedAt),
-			UpdatedAt:   timestamppb.New(created.UpdatedAt),
-		},
+		Product: pbProduct,
 	}, nil
 }
 
@@ -149,18 +185,36 @@ func (s *ProductServer) GetProduct(ctx context.Context, req *productv1.GetProduc
 	)
 
 	// Convert domain model to protobuf
+	pbProduct := &productv1.Product{
+		Id:           product.ID.Hex(),
+		Name:         product.Name,
+		Description:   product.Description,
+		CostPrice:     product.CostPrice,
+		SellingPrice:  product.SellingPrice,
+		Currency:      product.Currency,
+		Sku:           product.SKU,
+		Barcode:       product.Barcode,
+		CategoryIds:   product.CategoryIDs,
+		SupplierId:    product.SupplierID,
+		IsActive:      product.IsActive,
+		InStock:       product.InStock,
+		StockQty:      product.StockQty,
+		LowStockAt:    product.LowStockAt,
+		ImageUrls:     product.ImageURLs,
+		VideoUrls:     product.VideoURLs,
+		Metadata:      product.Metadata,
+	}
+
+	// Only set timestamps if they are not zero
+	if !product.CreatedAt.IsZero() {
+		pbProduct.CreatedAt = timestamppb.New(product.CreatedAt)
+	}
+	if !product.UpdatedAt.IsZero() {
+		pbProduct.UpdatedAt = timestamppb.New(product.UpdatedAt)
+	}
+
 	return &productv1.GetProductResponse{
-		Product: &productv1.Product{
-			Id:          product.ID.Hex(),
-			Name:        product.Name,
-			Description: product.Description,
-			Price:       product.Price,
-			Sku:         product.SKU,
-			CategoryId:  product.CategoryID,
-			ImageUrls:   product.ImageURLs,
-			CreatedAt:   timestamppb.New(product.CreatedAt),
-			UpdatedAt:   timestamppb.New(product.UpdatedAt),
-		},
+		Product: pbProduct,
 	}, nil
 }
 
@@ -238,17 +292,35 @@ func (s *ProductServer) ListProducts(ctx context.Context, req *productv1.ListPro
 	// Convert domain models to protobuf
 	pbProducts := make([]*productv1.Product, 0, len(products))
 	for _, p := range products {
-		pbProducts = append(pbProducts, &productv1.Product{
-			Id:          p.ID.Hex(),
-			Name:        p.Name,
-			Description: p.Description,
-			Price:       p.Price,
-			Sku:         p.SKU,
-			CategoryId:  p.CategoryID,
-			ImageUrls:   p.ImageURLs,
-			CreatedAt:   timestamppb.New(p.CreatedAt),
-			UpdatedAt:   timestamppb.New(p.UpdatedAt),
-		})
+		pbProduct := &productv1.Product{
+			Id:           p.ID.Hex(),
+			Name:         p.Name,
+			Description:   p.Description,
+			CostPrice:     p.CostPrice,
+			SellingPrice:  p.SellingPrice,
+			Currency:      p.Currency,
+			Sku:           p.SKU,
+			Barcode:       p.Barcode,
+			CategoryIds:   p.CategoryIDs,
+			SupplierId:    p.SupplierID,
+			IsActive:      p.IsActive,
+			InStock:       p.InStock,
+			StockQty:      p.StockQty,
+			LowStockAt:    p.LowStockAt,
+			ImageUrls:     p.ImageURLs,
+			VideoUrls:     p.VideoURLs,
+			Metadata:      p.Metadata,
+		}
+
+		// Only set timestamps if they are not zero
+		if !p.CreatedAt.IsZero() {
+			pbProduct.CreatedAt = timestamppb.New(p.CreatedAt)
+		}
+		if !p.UpdatedAt.IsZero() {
+			pbProduct.UpdatedAt = timestamppb.New(p.UpdatedAt)
+		}
+
+		pbProducts = append(pbProducts, pbProduct)
 	}
 
 	// Log successful operation
@@ -263,6 +335,60 @@ func (s *ProductServer) ListProducts(ctx context.Context, req *productv1.ListPro
 		TotalCount: int32(total),
 		Page:       int32(opts.Pagination.Page),
 		PageSize:   int32(opts.Pagination.PageSize),
+	}, nil
+}
+
+// logError logs errors with additional context
+// ListCategories handles the ListCategories gRPC request
+func (s *ProductServer) ListCategories(ctx context.Context, req *productv1.ListCategoriesRequest) (*productv1.ListCategoriesResponse, error) {
+	start := time.Now()
+	log := s.logger.With(
+		zap.String("method", "ListCategories"),
+	)
+
+	// Log incoming request
+	log.Debug("Processing ListCategories request", zap.Any("request", req))
+
+	// Convert request parameters
+	var parentID string
+	if req.GetParentId() != "" {
+		parentID = req.GetParentId()
+	}
+
+	// Default depth to 3 levels if not specified
+	depth := int32(3)
+	if req.GetDepth() > 0 {
+		depth = req.GetDepth()
+	}
+
+	// Call the application service
+	categories, err := s.categoryService.ListCategories(ctx, parentID, depth)
+	if err != nil {
+		s.logError(log, err, "Failed to list categories")
+		return nil, status.Error(codes.Internal, "failed to list categories")
+	}
+
+	// Convert domain models to protobuf
+	pbCategories := make([]*productv1.Category, 0, len(categories))
+	for _, cat := range categories {
+		pbCategories = append(pbCategories, &productv1.Category{
+			Id:          cat.ID.Hex(),
+			Name:        cat.Name,
+			Description: cat.Description,
+			ParentId:    cat.ParentID,
+			CreatedAt:   timestamppb.New(cat.CreatedAt),
+			UpdatedAt:   timestamppb.New(cat.UpdatedAt),
+		})
+	}
+
+	// Log successful operation
+	log.Info("Categories listed successfully",
+		zap.Int("count", len(categories)),
+		zap.Duration("duration", time.Since(start)),
+	)
+
+	return &productv1.ListCategoriesResponse{
+		Categories: pbCategories,
 	}, nil
 }
 

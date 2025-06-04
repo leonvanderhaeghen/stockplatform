@@ -10,6 +10,9 @@ type ProductService interface {
 	// List products with filtering options
 	ListProducts(ctx context.Context, categoryID, query string, active bool, limit, offset int, sortBy string, ascending bool) (interface{}, error)
 	
+	// List all product categories
+	ListCategories(ctx context.Context) (interface{}, error)
+	
 	// Get a product by ID
 	GetProductByID(ctx context.Context, id string) (interface{}, error)
 	
@@ -86,7 +89,7 @@ type OrderService interface {
 // UserService defines the interface for user operations
 type UserService interface {
 	// Register a new user
-	RegisterUser(ctx context.Context, email, password, firstName, lastName string) (interface{}, error)
+	RegisterUser(ctx context.Context, email, password, firstName, lastName, role string) (interface{}, error)
 	
 	// Authenticate a user
 	AuthenticateUser(ctx context.Context, email, password string) (interface{}, error)

@@ -12,7 +12,7 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"go.uber.org/zap"
 
-	"stockplatform/services/gatewaySvc/internal/services"
+	"github.com/leonvanderhaeghen/stockplatform/services/gatewaySvc/internal/services"
 )
 
 // Server represents the REST API server
@@ -87,6 +87,11 @@ func (s *Server) SetupRoutes() {
 	users := v1.Group("/users")
 	users.Use(s.authMiddleware())
 	{
+		// Public user routes (for admin)
+		users.GET("", s.listUsers)
+		users.GET("/:id", s.getUserByID)
+		
+		// Current user routes
 		users.GET("/me", s.getCurrentUser)
 		users.PUT("/me", s.updateUserProfile)
 		users.PUT("/me/password", s.changeUserPassword)
@@ -115,6 +120,7 @@ func (s *Server) SetupRoutes() {
 	{
 		products.GET("", s.listProducts)
 		products.GET("/:id", s.getProduct)
+		products.GET("/categories", s.listCategories)
 		
 		// Protected product routes (admin/staff only)
 		productsAdmin := products.Group("")

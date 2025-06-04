@@ -20,14 +20,27 @@ COPY . .
 WORKDIR /app/services/gatewaySvc
 
 # Set GOPROXY with multiple mirrors and retry logic for go mod download
-ENV GOPROXY=https://proxy.golang.org,direct
+ENV GOPROXY=https://proxy.golang.org,https://goproxy.cn,direct \
+    GOPRIVATE= \
+    GOSUMDB=off \
+    GOPROXY_FALLBACK=1 \
+    GONOPROXY= \
+    GONOSUMDB=* \
+    GOTOOLCHAIN=local \
+    GOCACHE=/tmp/go-build \
+    GOMODCACHE=/go/pkg/mod \
+    GOMAXPROCS=4
 RUN \
     --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    for i in 1 2 3; do \
-        go mod download && break || \
-        (echo "Attempt $i failed, retrying..." && sleep 5); \
-    done
+    echo "Setting up Go module cache..." && \
+    for i in 1 2 3 4 5; do \
+        echo "Downloading dependencies (Attempt $i/5)..." && \
+        go mod download -x && break || \
+        (echo "Attempt $i failed, retrying in 5 seconds..." && sleep 5); \
+        [ $i -eq 5 ] && echo "All download attempts failed" && exit 1; \
+    done && \
+    echo "Dependencies downloaded successfully"
 
 # Generate protobuf code for all services
 # Product Service
@@ -66,8 +79,16 @@ RUN mkdir -p ../../pkg/gen/go/inventory/v1 && \
       --go-grpc_opt=paths=source_relative \
       ../../proto/inventory/v1/inventory.proto
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /gatewaySvc ./cmd/main.go
+# Build the application with retries
+RUN \
+    echo "Building application..." && \
+    for i in 1 2 3; do \
+        echo "Build attempt $i/3..." && \
+        CGO_ENABLED=0 GOOS=linux go build -v -a -installsuffix cgo -o /gatewaySvc ./cmd/main.go && break || \
+        (echo "Build attempt $i failed, retrying in 5 seconds..." && sleep 5); \
+        [ $i -eq 3 ] && echo "All build attempts failed" && exit 1; \
+    done && \
+    echo "Application built successfully"
 
 # Final stage
 FROM alpine:latest

@@ -18,26 +18,54 @@ COPY . .
 WORKDIR /app/services/orderSvc
 
 # Set GOPROXY with multiple mirrors and retry logic for go mod download
-ENV GOPROXY=https://proxy.golang.org,direct
+ENV GOPROXY=https://proxy.golang.org,https://goproxy.cn,direct \
+    GOPRIVATE= \
+    GOSUMDB=off \
+    GOPROXY_FALLBACK=1 \
+    GONOPROXY= \
+    GONOSUMDB=* \
+    GOTOOLCHAIN=local \
+    GOCACHE=/tmp/go-build \
+    GOMODCACHE=/go/pkg/mod \
+    GOMAXPROCS=4
+
+# Download dependencies with retries and verbose output
 RUN \
     --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    for i in 1 2 3; do \
-        go mod download && break || \
-        (echo "Attempt $i failed, retrying..." && sleep 5); \
-    done
+    echo "Setting up Go module cache..." && \
+    for i in 1 2 3 4 5; do \
+        echo "Downloading dependencies (Attempt $i/5)..." && \
+        go mod download -x && break || \
+        (echo "Attempt $i failed, retrying in 5 seconds..." && sleep 5); \
+        [ $i -eq 5 ] && echo "All download attempts failed" && exit 1; \
+    done && \
+    echo "Dependencies downloaded successfully"
+
+# Create necessary directories for generated code
+RUN mkdir -p /app/pkg/gen/go/order/v1
 
 # Generate protobuf code
-RUN mkdir -p ../../pkg/gen/go/order/v1 && \
-    protoc -I=../../proto \
-      --go_out=../../pkg/gen/go/order/v1 \
-      --go_opt=paths=source_relative \
-      --go-grpc_out=../../pkg/gen/go/order/v1 \
-      --go-grpc_opt=paths=source_relative \
-      ../../proto/order/v1/order.proto
+RUN protoc -I=/app/proto \
+    --go_out=/app/pkg/gen/go/order/v1 \
+    --go_opt=paths=source_relative \
+    --go-grpc_out=/app/pkg/gen/go/order/v1 \
+    --go-grpc_opt=paths=source_relative \
+    /app/proto/order/v1/order.proto
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /orderSvc ./cmd/main.go
+# Verify the generated files
+RUN ls -la /app/pkg/gen/go/order/v1/
+
+# Build the application with retries and verbose output
+RUN \
+    echo "Building application..." && \
+    for i in 1 2 3; do \
+        echo "Build attempt $i/3..." && \
+        CGO_ENABLED=0 GOOS=linux go build -v -o /orderSvc ./cmd/main.go && break || \
+        (echo "Build attempt $i failed, retrying in 5 seconds..." && sleep 5); \
+        [ $i -eq 3 ] && echo "All build attempts failed" && exit 1; \
+    done && \
+    echo "Application built successfully"
 
 # Final stage
 FROM alpine:latest

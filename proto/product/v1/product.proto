@@ -3,31 +3,63 @@ syntax = "proto3";
 package product.v1;
 
 import "google/protobuf/timestamp.proto";
-import "google/protobuf/empty.proto";
 
 option go_package = "github.com/leonvanderhaeghen/stockplatform/gen/go/product/v1;productv1";
+
+// Category represents a product category
+message Category {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string parent_id = 4;  // Optional parent category ID
+  int32 level = 5;       // Category level in the hierarchy (0 for root categories)
+  string path = 6;      // Path in the category tree (e.g., "electronics/computers/laptops")
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
 
 // Product represents an item in the inventory
 message Product {
   string id = 1;
   string name = 2;
   string description = 3;
-  double price = 4;
-  string sku = 5;
-  string category_id = 6;
-  repeated string image_urls = 7;
-  google.protobuf.Timestamp created_at = 8;
-  google.protobuf.Timestamp updated_at = 9;
+  string cost_price = 4;     // Cost price as a string for decimal precision
+  string selling_price = 5;  // Selling price as a string for decimal precision
+  string currency = 6;       // ISO 4217 currency code
+  string sku = 7;
+  string barcode = 8;
+  repeated string category_ids = 9;  // Multiple category support
+  string supplier_id = 10;
+  bool is_active = 11;
+  bool in_stock = 12;
+  int32 stock_qty = 13;
+  int32 low_stock_at = 14;
+  repeated string image_urls = 15;
+  repeated string video_urls = 16;
+  map<string, string> metadata = 17;  // Flexible metadata field
+  google.protobuf.Timestamp created_at = 18;
+  google.protobuf.Timestamp updated_at = 19;
+  google.protobuf.Timestamp deleted_at = 20;  // For soft deletes
 }
 
 // Request to create a new product
 message CreateProductRequest {
   string name = 1;
   string description = 2;
-  double price = 3;
-  string sku = 4;
-  string category_id = 5;
-  repeated string image_urls = 6;
+  string cost_price = 3;     // Cost price as a string for decimal precision
+  string selling_price = 4;  // Selling price as a string for decimal precision
+  string currency = 5;       // ISO 4217 currency code
+  string sku = 6;
+  string barcode = 7;
+  repeated string category_ids = 8;  // Multiple category support
+  string supplier_id = 9;
+  bool is_active = 10;
+  bool in_stock = 11;
+  int32 stock_qty = 12;
+  int32 low_stock_at = 13;
+  repeated string image_urls = 14;
+  repeated string video_urls = 15;
+  map<string, string> metadata = 16;  // Flexible metadata field
 }
 
 // Response containing the created product
@@ -97,6 +129,17 @@ message ListProductsResponse {
   int32 page_size = 4;           // Number of items per page
 }
 
+// Request to list all categories
+message ListCategoriesRequest {
+  string parent_id = 1;  // Optional: filter by parent category ID
+  int32 depth = 2;       // Optional: maximum depth of subcategories to return
+}
+
+// Response containing a list of categories
+message ListCategoriesResponse {
+  repeated Category categories = 1;
+}
+
 // Product service definition
 service ProductService {
   // Create a new product
@@ -107,4 +150,7 @@ service ProductService {
   
   // List products with filtering and sorting
   rpc ListProducts(ListProductsRequest) returns (ListProductsResponse);
+  
+  // List all product categories
+  rpc ListCategories(ListCategoriesRequest) returns (ListCategoriesResponse);
 }

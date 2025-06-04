@@ -8,7 +8,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	inventoryv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/inventory/v1"
+	inventoryv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/inventory/v1"
 	"github.com/leonvanderhaeghen/stockplatform/services/inventorySvc/internal/application"
 	"github.com/leonvanderhaeghen/stockplatform/services/inventorySvc/internal/domain"
 )

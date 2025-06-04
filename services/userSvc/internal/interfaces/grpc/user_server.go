@@ -8,7 +8,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	userv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/user/v1"
+	userv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/user/v1"
 	"github.com/leonvanderhaeghen/stockplatform/services/userSvc/internal/application"
 	"github.com/leonvanderhaeghen/stockplatform/services/userSvc/internal/domain"
 )
@@ -34,6 +34,7 @@ func (s *UserServer) RegisterUser(ctx context.Context, req *userv1.RegisterUserR
 		zap.String("email", req.Email),
 		zap.String("first_name", req.FirstName),
 		zap.String("last_name", req.LastName),
+		zap.String("role", req.Role),
 	)
 
 	if req.Email == "" {
@@ -49,7 +50,31 @@ func (s *UserServer) RegisterUser(ctx context.Context, req *userv1.RegisterUserR
 		return nil, status.Error(codes.InvalidArgument, "last_name is required")
 	}
 
-	user, err := s.service.RegisterUser(ctx, req.Email, req.Password, req.FirstName, req.LastName)
+	// Use the role from the request if provided, otherwise default to CUSTOMER
+	role := domain.RoleCustomer
+	if req.Role != "" {
+		switch req.Role {
+		case "ADMIN":
+			role = domain.RoleAdmin
+		case "STAFF":
+			role = domain.RoleStaff
+		case "CUSTOMER":
+			role = domain.RoleCustomer
+		default:
+			return nil, status.Error(codes.InvalidArgument, "invalid role. Must be one of: CUSTOMER, ADMIN, STAFF")
+		}
+	}
+
+	// Use CreateAdminUser for admin users, otherwise use standard RegisterUser
+	var user *domain.User
+	var err error
+
+	if role == domain.RoleAdmin {
+		user, err = s.service.CreateAdminUser(ctx, req.Email, req.Password, req.FirstName, req.LastName)
+	} else {
+		user, err = s.service.RegisterUserWithRole(ctx, req.Email, req.Password, req.FirstName, req.LastName, role)
+	}
+
 	if err != nil {
 		s.logger.Error("Failed to register user", zap.Error(err))
 		return nil, status.Error(codes.Internal, "failed to register user: "+err.Error())
