@@ -19,7 +19,7 @@ import (
 	"github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/user/v1"
 	"github.com/leonvanderhaeghen/stockplatform/services/userSvc/internal/application"
 	grpchandler "github.com/leonvanderhaeghen/stockplatform/services/userSvc/internal/interfaces/grpc"
-	"github.com/leonvanderhaeghen/stockplatform/services/userSvc/internal/infrastructure/mongodb"
+	mongorepo "github.com/leonvanderhaeghen/stockplatform/services/userSvc/internal/infrastructure/mongodb"
 )
 
 // Config holds the application configuration
@@ -130,19 +130,23 @@ func main() {
 	dbName := "stockplatform"
 	userCollectionName := "users"
 	addressCollectionName := "addresses"
+	permissionCollectionName := "permissions"
 	
 	logger.Info("Initializing MongoDB repositories", 
 		zap.String("database", dbName),
 		zap.String("user_collection", userCollectionName),
 		zap.String("address_collection", addressCollectionName),
+		zap.String("permission_collection", permissionCollectionName),
 	)
 	
-	db := mongoClient.Database(dbName)
-	userRepo := mongodb.NewUserRepository(db, userCollectionName, logger)
-	addressRepo := mongodb.NewAddressRepository(db, addressCollectionName, logger)
+	// Initialize repositories with logger
+	userRepo := mongorepo.NewUserRepository(mongoClient.Database(dbName), userCollectionName, logger)
+	addressRepo := mongorepo.NewAddressRepository(mongoClient.Database(dbName), addressCollectionName, logger)
+	permissionRepo := mongorepo.NewPermissionRepository(mongoClient.Database(dbName), permissionCollectionName)
 
-	// Initialize user service
+	// Initialize services
 	userService := application.NewUserService(userRepo, addressRepo, config.JWTSecret, logger)
+	_ = application.NewPermissionService(permissionRepo) // Initialize but don't use directly
 
 	// Initialize user auth service
 	userAuthService, err := application.NewUserAuthService(

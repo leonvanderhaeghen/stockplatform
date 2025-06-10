@@ -70,16 +70,26 @@ func (s *ExampleService) Close() {
 }
 
 // CreateProductWithInventory creates a new product and its initial inventory
-func (s *ExampleService) CreateProductWithInventory(ctx context.Context, name, description string, price float64, sku, categoryID string, imageURLs []string, initialStock int32) (string, error) {
+func (s *ExampleService) CreateProductWithInventory(ctx context.Context, name, description, costPrice, sellingPrice, currency, sku, barcode, supplierID string, categoryIDs []string, imageURLs []string, initialStock int32) (string, error) {
 	// Create the product
 	createResp, err := s.productClient.CreateProduct(
 		ctx,
 		name,
 		description,
-		price,
+		costPrice,
+		sellingPrice,
+		currency,
 		sku,
-		categoryID,
+		barcode,
+		supplierID,
+		categoryIDs,
+		true,  // isActive
+		true,  // inStock
+		initialStock, // stockQty
+		10,    // lowStockAt
 		imageURLs,
+		nil,   // videoURLs
+		nil,   // metadata
 	)
 	if err != nil {
 		return "", fmt.Errorf("failed to create product: %w", err)

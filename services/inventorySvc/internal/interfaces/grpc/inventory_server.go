@@ -78,13 +78,30 @@ func (s *InventoryServer) GetInventory(ctx context.Context, req *inventoryv1.Get
 
 // GetInventoryByProductID retrieves an inventory item by product ID
 func (s *InventoryServer) GetInventoryByProductID(ctx context.Context, req *inventoryv1.GetInventoryByProductIDRequest) (*inventoryv1.GetInventoryResponse, error) {
-	s.logger.Debug("gRPC GetInventoryByProductID called", zap.String("product_id", req.ProductId))
+	s.logger.Debug("gRPC GetInventoryByProductID called", 
+		zap.String("product_id", req.ProductId))
 
 	if req.ProductId == "" {
 		return nil, status.Error(codes.InvalidArgument, "product_id is required")
 	}
 
-	item, err := s.service.GetInventoryItemByProductID(ctx, req.ProductId)
+	// For now, just get all inventory items for this product and return the first one
+	// Once proto is updated, we can use location-aware methods
+	items, err := s.service.GetInventoryItemsByProductID(ctx, req.ProductId)
+	if err != nil {
+		s.logger.Error("Failed to get inventory items by product ID", zap.Error(err))
+		return nil, status.Error(codes.Internal, "failed to retrieve inventory items")
+	}
+	
+	if len(items) == 0 {
+		s.logger.Debug("No inventory items found for product ID", zap.String("product_id", req.ProductId))
+		return nil, status.Error(codes.NotFound, "inventory item not found")
+	}
+	
+	// For backwards compatibility, return the first location found
+	// This should be updated in a future API version to require location
+	item := items[0]
+
 	if err != nil {
 		s.logger.Error("Failed to get inventory item by product ID", zap.Error(err))
 		return nil, status.Error(codes.NotFound, "inventory item not found")
@@ -97,13 +114,30 @@ func (s *InventoryServer) GetInventoryByProductID(ctx context.Context, req *inve
 
 // GetInventoryBySKU retrieves an inventory item by SKU
 func (s *InventoryServer) GetInventoryBySKU(ctx context.Context, req *inventoryv1.GetInventoryBySKURequest) (*inventoryv1.GetInventoryResponse, error) {
-	s.logger.Debug("gRPC GetInventoryBySKU called", zap.String("sku", req.Sku))
+	s.logger.Debug("gRPC GetInventoryBySKU called", 
+		zap.String("sku", req.Sku))
 
 	if req.Sku == "" {
 		return nil, status.Error(codes.InvalidArgument, "sku is required")
 	}
 
-	item, err := s.service.GetInventoryItemBySKU(ctx, req.Sku)
+	// For now, just get all inventory items for this SKU and return the first one
+	// Once proto is updated, we can use location-aware methods
+	items, err := s.service.GetInventoryItemsBySKU(ctx, req.Sku)
+	if err != nil {
+		s.logger.Error("Failed to get inventory items by SKU", zap.Error(err))
+		return nil, status.Error(codes.Internal, "failed to retrieve inventory items")
+	}
+	
+	if len(items) == 0 {
+		s.logger.Debug("No inventory items found for SKU", zap.String("sku", req.Sku))
+		return nil, status.Error(codes.NotFound, "inventory item not found")
+	}
+	
+	// For backwards compatibility, return the first location found
+	// This should be updated in a future API version to require location
+	item := items[0]
+
 	if err != nil {
 		s.logger.Error("Failed to get inventory item by SKU", zap.Error(err))
 		return nil, status.Error(codes.NotFound, "inventory item not found")

@@ -1,0 +1,225 @@
+syntax = "proto3";
+
+package supplier.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/leonvanderhaeghen/stockplatform/gen/go/supplier/v1;supplierv1";
+
+// Supplier represents a product supplier
+message Supplier {
+  string id = 1;
+  string name = 2;
+  string contact_person = 3;
+  string email = 4;
+  string phone = 5;
+  string address = 6;
+  string city = 7;
+  string state = 8;
+  string country = 9;
+  string postal_code = 10;
+  string tax_id = 11;
+  string website = 12;
+  string currency = 13;  // Default currency for this supplier
+  int32 lead_time_days = 14;  // Default lead time in days
+  string payment_terms = 15;  // e.g., "Net 30"
+  
+  // Additional metadata
+  map<string, string> metadata = 16;
+  
+  // Timestamps
+  google.protobuf.Timestamp created_at = 17;
+  google.protobuf.Timestamp updated_at = 18;
+}
+
+// Request to create a new supplier
+message CreateSupplierRequest {
+  string name = 1;
+  string contact_person = 2;
+  string email = 3;
+  string phone = 4;
+  string address = 5;
+  string city = 6;
+  string state = 7;
+  string country = 8;
+  string postal_code = 9;
+  string tax_id = 10;
+  string website = 11;
+  string currency = 12;
+  int32 lead_time_days = 13;
+  string payment_terms = 14;
+  map<string, string> metadata = 15;
+}
+
+// Response containing the created supplier
+message CreateSupplierResponse {
+  Supplier supplier = 1;
+}
+
+// Request to get a supplier by ID
+message GetSupplierRequest {
+  string id = 1;
+}
+
+// Response containing the requested supplier
+message GetSupplierResponse {
+  Supplier supplier = 1;
+}
+
+// Request to update a supplier
+message UpdateSupplierRequest {
+  string id = 1;
+  string name = 2;
+  string contact_person = 3;
+  string email = 4;
+  string phone = 5;
+  string address = 6;
+  string city = 7;
+  string state = 8;
+  string country = 9;
+  string postal_code = 10;
+  string tax_id = 11;
+  string website = 12;
+  string currency = 13;
+  int32 lead_time_days = 14;
+  string payment_terms = 15;
+  map<string, string> metadata = 16;
+}
+
+// Response containing the updated supplier
+message UpdateSupplierResponse {
+  Supplier supplier = 1;
+}
+
+// Request to delete a supplier
+message DeleteSupplierRequest {
+  string id = 1;
+}
+
+// Response for delete operation
+message DeleteSupplierResponse {
+  bool success = 1;
+}
+
+// Request to list suppliers
+message ListSuppliersRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+  string search = 3;  // Optional search term
+}
+
+// Response containing a list of suppliers
+message ListSuppliersResponse {
+  repeated Supplier suppliers = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+// Adapter capabilities defines what features a supplier adapter supports
+message AdapterCapabilities {
+  map<string, bool> capabilities = 1;
+}
+
+// Supplier adapter information
+message SupplierAdapter {
+  string name = 1;
+  string description = 2;
+  AdapterCapabilities capabilities = 3;
+}
+
+// Options for synchronization operations
+message SyncOptions {
+  bool full_sync = 1;
+  int32 batch_size = 2;
+  google.protobuf.Timestamp since = 3;
+  bool include_inactive = 4;
+}
+
+// Request to list supplier adapters
+message ListAdaptersRequest {}
+
+// Response containing supplier adapters
+message ListAdaptersResponse {
+  repeated SupplierAdapter adapters = 1;
+}
+
+// Request to get adapter capabilities
+message GetAdapterCapabilitiesRequest {
+  string adapter_name = 1;
+}
+
+// Response containing adapter capabilities
+message GetAdapterCapabilitiesResponse {
+  AdapterCapabilities capabilities = 1;
+}
+
+// Request to test adapter connection
+message TestAdapterConnectionRequest {
+  string adapter_name = 1;
+  map<string, string> config = 2;
+}
+
+// Response for test connection
+message TestAdapterConnectionResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// Request to sync products
+message SyncProductsRequest {
+  string supplier_id = 1;
+  SyncOptions options = 2;
+}
+
+// Response for product synchronization
+message SyncProductsResponse {
+  string job_id = 1;
+  string message = 2;
+}
+
+// Request to sync inventory
+message SyncInventoryRequest {
+  string supplier_id = 1;
+  SyncOptions options = 2;
+}
+
+// Response for inventory synchronization
+message SyncInventoryResponse {
+  string job_id = 1;
+  string message = 2;
+}
+
+// SupplierService defines the service for managing suppliers
+service SupplierService {
+  // Create a new supplier
+  rpc CreateSupplier(CreateSupplierRequest) returns (CreateSupplierResponse) {}
+  
+  // Get a supplier by ID
+  rpc GetSupplier(GetSupplierRequest) returns (GetSupplierResponse) {}
+  
+  // Update an existing supplier
+  rpc UpdateSupplier(UpdateSupplierRequest) returns (UpdateSupplierResponse) {}
+  
+  // Delete a supplier
+  rpc DeleteSupplier(DeleteSupplierRequest) returns (DeleteSupplierResponse) {}
+  
+  // List suppliers with pagination
+  rpc ListSuppliers(ListSuppliersRequest) returns (ListSuppliersResponse) {}
+  
+  // List available supplier adapters
+  rpc ListAdapters(ListAdaptersRequest) returns (ListAdaptersResponse) {}
+  
+  // Get adapter capabilities
+  rpc GetAdapterCapabilities(GetAdapterCapabilitiesRequest) returns (GetAdapterCapabilitiesResponse) {}
+  
+  // Test adapter connection
+  rpc TestAdapterConnection(TestAdapterConnectionRequest) returns (TestAdapterConnectionResponse) {}
+  
+  // Sync products from supplier
+  rpc SyncProducts(SyncProductsRequest) returns (SyncProductsResponse) {}
+  
+  // Sync inventory from supplier
+  rpc SyncInventory(SyncInventoryRequest) returns (SyncInventoryResponse) {}
+}

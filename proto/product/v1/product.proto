@@ -131,13 +131,26 @@ message ListProductsResponse {
 
 // Request to list all categories
 message ListCategoriesRequest {
-  string parent_id = 1;  // Optional: filter by parent category ID
-  int32 depth = 2;       // Optional: maximum depth of subcategories to return
+  string parent_id = 1;  // Optional parent category ID to filter by
+  int32 depth = 2;       // Maximum depth of subcategories to return (0 for all)
 }
 
 // Response containing a list of categories
 message ListCategoriesResponse {
   repeated Category categories = 1;
+}
+
+// Request to create a new category
+message CreateCategoryRequest {
+  string name = 1;         // Required category name
+  string description = 2;  // Optional description
+  string parent_id = 3;    // Optional parent category ID
+  bool is_active = 4;      // Whether the category is active
+}
+
+// Response containing the created category
+message CreateCategoryResponse {
+  Category category = 1;
 }
 
 // Product service definition
@@ -153,4 +166,7 @@ service ProductService {
   
   // List all product categories
   rpc ListCategories(ListCategoriesRequest) returns (ListCategoriesResponse);
+  
+  // Create a new product category
+  rpc CreateCategory(CreateCategoryRequest) returns (CreateCategoryResponse);
 }

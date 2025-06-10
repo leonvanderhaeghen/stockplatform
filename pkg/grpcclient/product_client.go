@@ -37,14 +37,24 @@ func (c *ProductClient) Close() error {
 }
 
 // CreateProduct creates a new product
-func (c *ProductClient) CreateProduct(ctx context.Context, name, description string, price float64, sku, categoryID string, imageURLs []string) (*productpb.CreateProductResponse, error) {
+func (c *ProductClient) CreateProduct(ctx context.Context, name, description, costPrice, sellingPrice, currency, sku, barcode, supplierID string, categoryIDs []string, isActive, inStock bool, stockQty, lowStockAt int32, imageURLs, videoURLs []string, metadata map[string]string) (*productpb.CreateProductResponse, error) {
 	req := &productpb.CreateProductRequest{
-		Name:        name,
-		Description: description,
-		Price:       price,
-		Sku:         sku,
-		CategoryId:  categoryID,
-		ImageUrls:   imageURLs,
+		Name:         name,
+		Description:  description,
+		CostPrice:    costPrice,
+		SellingPrice: sellingPrice,
+		Currency:     currency,
+		Sku:          sku,
+		Barcode:      barcode,
+		CategoryIds:  categoryIDs,
+		SupplierId:   supplierID,
+		IsActive:     isActive,
+		InStock:      inStock,
+		StockQty:     stockQty,
+		LowStockAt:   lowStockAt,
+		ImageUrls:    imageURLs,
+		VideoUrls:    videoURLs,
+		Metadata:     metadata,
 	}
 	return c.client.CreateProduct(ctx, req)
 }
@@ -62,4 +72,15 @@ func (c *ProductClient) ListProducts(ctx context.Context, req *productpb.ListPro
 // ListCategories lists all product categories
 func (c *ProductClient) ListCategories(ctx context.Context, req *productpb.ListCategoriesRequest) (*productpb.ListCategoriesResponse, error) {
 	return c.client.ListCategories(ctx, req)
+}
+
+// CreateCategory creates a new product category
+func (c *ProductClient) CreateCategory(ctx context.Context, name, description, parentID string, isActive bool) (*productpb.CreateCategoryResponse, error) {
+	req := &productpb.CreateCategoryRequest{
+		Name:        name,
+		Description: description,
+		ParentId:    parentID,
+		IsActive:    isActive,
+	}
+	return c.client.CreateCategory(ctx, req)
 }

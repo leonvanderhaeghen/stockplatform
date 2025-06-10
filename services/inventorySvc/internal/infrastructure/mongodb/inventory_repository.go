@@ -90,23 +90,64 @@ func (r *InventoryRepository) GetByID(ctx context.Context, id string) (*domain.I
 }
 
 // GetByProductID finds inventory items by product ID
-func (r *InventoryRepository) GetByProductID(ctx context.Context, productID string) (*domain.InventoryItem, error) {
-	r.logger.Debug("Getting inventory item by product ID", 
+func (r *InventoryRepository) GetByProductID(ctx context.Context, productID string) ([]*domain.InventoryItem, error) {
+	r.logger.Debug("Getting inventory items by product ID", 
 		zap.String("product_id", productID),
 	)
 	
+	findOptions := options.Find()
+	
+	cursor, err := r.collection.Find(ctx, bson.M{"product_id": productID}, findOptions)
+	if err != nil {
+		r.logger.Error("Failed to get inventory items by product ID", 
+			zap.Error(err),
+			zap.String("product_id", productID),
+		)
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+	
+	var items []*domain.InventoryItem
+	for cursor.Next(ctx) {
+		var item domain.InventoryItem
+		if err := cursor.Decode(&item); err != nil {
+			r.logger.Error("Failed to decode inventory item", zap.Error(err))
+			return nil, err
+		}
+		items = append(items, &item)
+	}
+	
+	if err := cursor.Err(); err != nil {
+		r.logger.Error("Cursor error while getting inventory items by product ID", zap.Error(err))
+		return nil, err
+	}
+	
+	return items, nil
+}
+
+// GetByProductAndLocation finds inventory items by product ID and location ID
+func (r *InventoryRepository) GetByProductAndLocation(ctx context.Context, productID, locationID string) (*domain.InventoryItem, error) {
+	r.logger.Debug("Getting inventory item by product and location", 
+		zap.String("product_id", productID),
+		zap.String("location_id", locationID),
+	)
+	
 	var item domain.InventoryItem
-	err := r.collection.FindOne(ctx, bson.M{"product_id": productID}).Decode(&item)
+	filter := bson.M{"product_id": productID, "location_id": locationID}
+
+	err := r.collection.FindOne(ctx, filter).Decode(&item)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			r.logger.Debug("Inventory item not found", 
+			r.logger.Debug("Inventory item not found by product and location", 
 				zap.String("product_id", productID),
+				zap.String("location_id", locationID),
 			)
 			return nil, nil
 		}
-		r.logger.Error("Failed to get inventory item", 
+		r.logger.Error("Failed to get inventory item by product and location", 
 			zap.Error(err),
 			zap.String("product_id", productID),
+			zap.String("location_id", locationID),
 		)
 		return nil, err
 	}
@@ -114,25 +155,140 @@ func (r *InventoryRepository) GetByProductID(ctx context.Context, productID stri
 	return &item, nil
 }
 
-// GetBySKU finds an inventory item by SKU
-func (r *InventoryRepository) GetBySKU(ctx context.Context, sku string) (*domain.InventoryItem, error) {
-	r.logger.Debug("Getting inventory item by SKU", zap.String("sku", sku))
+// Deprecated: ListInventoryItemsByProduct is replaced by GetByProductID and kept for compatibility
+func (r *InventoryRepository) ListInventoryItemsByProduct(ctx context.Context, productID string) ([]*domain.InventoryItem, error) {
+	r.logger.Debug("Listing inventory items by product", 
+		zap.String("product_id", productID),
+	)
 	
-	var item domain.InventoryItem
-	err := r.collection.FindOne(ctx, bson.M{"sku": sku}).Decode(&item)
+	findOptions := options.Find()
+	
+	cursor, err := r.collection.Find(ctx, bson.M{"product_id": productID}, findOptions)
 	if err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			r.logger.Debug("Inventory item not found", zap.String("sku", sku))
-			return nil, nil
+		r.logger.Error("Failed to list inventory items by product", 
+			zap.Error(err),
+			zap.String("product_id", productID),
+		)
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+	
+	var items []*domain.InventoryItem
+	for cursor.Next(ctx) {
+		var item domain.InventoryItem
+		if err := cursor.Decode(&item); err != nil {
+			r.logger.Error("Failed to decode inventory item", zap.Error(err))
+			return nil, err
 		}
-		r.logger.Error("Failed to get inventory item", 
+		items = append(items, &item)
+	}
+	
+	if err := cursor.Err(); err != nil {
+		r.logger.Error("Cursor error while listing inventory items by product", zap.Error(err))
+		return nil, err
+	}
+	
+	return items, nil
+}
+
+// GetBySKU finds inventory items by SKU (across all locations)
+func (r *InventoryRepository) GetBySKU(ctx context.Context, sku string) ([]*domain.InventoryItem, error) {
+	r.logger.Debug("Getting inventory items by SKU", zap.String("sku", sku))
+	
+	findOptions := options.Find()
+	
+	cursor, err := r.collection.Find(ctx, bson.M{"sku": sku}, findOptions)
+	if err != nil {
+		r.logger.Error("Failed to get inventory items by SKU", 
 			zap.Error(err),
 			zap.String("sku", sku),
 		)
 		return nil, err
 	}
+	defer cursor.Close(ctx)
+	
+	var items []*domain.InventoryItem
+	for cursor.Next(ctx) {
+		var item domain.InventoryItem
+		if err := cursor.Decode(&item); err != nil {
+			r.logger.Error("Failed to decode inventory item", zap.Error(err))
+			return nil, err
+		}
+		items = append(items, &item)
+	}
+	
+	if err := cursor.Err(); err != nil {
+		r.logger.Error("Cursor error while getting inventory items by SKU", zap.Error(err))
+		return nil, err
+	}
+	
+	return items, nil
+}
+
+// GetBySKUAndLocation finds an inventory item by SKU and location ID
+func (r *InventoryRepository) GetBySKUAndLocation(ctx context.Context, sku, locationID string) (*domain.InventoryItem, error) {
+	r.logger.Debug("Getting inventory item by SKU and location",
+		zap.String("sku", sku),
+		zap.String("location_id", locationID),
+	)
+	
+	var item domain.InventoryItem
+	filter := bson.M{"sku": sku, "location_id": locationID}
+
+	err := r.collection.FindOne(ctx, filter).Decode(&item)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			r.logger.Debug("Inventory item not found by SKU and location",
+				zap.String("sku", sku),
+				zap.String("location_id", locationID),
+			)
+			return nil, nil
+		}
+		r.logger.Error("Failed to get inventory item by SKU and location",
+			zap.Error(err),
+			zap.String("sku", sku),
+			zap.String("location_id", locationID),
+		)
+		return nil, err
+	}
 	
 	return &item, nil
+}
+
+// Deprecated: ListInventoryItemsBySKU is replaced by GetBySKU and kept for compatibility
+func (r *InventoryRepository) ListInventoryItemsBySKU(ctx context.Context, sku string) ([]*domain.InventoryItem, error) {
+	r.logger.Debug("Listing inventory items by SKU",
+		zap.String("sku", sku),
+	)
+	
+	findOptions := options.Find()
+	
+	cursor, err := r.collection.Find(ctx, bson.M{"sku": sku}, findOptions)
+	if err != nil {
+		r.logger.Error("Failed to list inventory items by SKU",
+			zap.Error(err),
+			zap.String("sku", sku),
+		)
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+	
+	var items []*domain.InventoryItem
+	for cursor.Next(ctx) {
+		var item domain.InventoryItem
+		if err := cursor.Decode(&item); err != nil {
+			r.logger.Error("Failed to decode inventory item", zap.Error(err))
+			return nil, err
+		}
+		items = append(items, &item)
+	}
+	
+	if err := cursor.Err(); err != nil {
+		r.logger.Error("Cursor error while listing inventory items by SKU", zap.Error(err))
+		return nil, err
+	}
+	
+	return items, nil
 }
 
 // Update updates an existing inventory item
@@ -182,6 +338,46 @@ func (r *InventoryRepository) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
+// ListByLocation returns inventory items for a specific location with pagination
+func (r *InventoryRepository) ListByLocation(ctx context.Context, locationID string, limit, offset int) ([]*domain.InventoryItem, error) {
+	r.logger.Debug("Listing inventory items by location",
+		zap.String("location_id", locationID),
+		zap.Int("limit", limit),
+		zap.Int("offset", offset),
+	)
+	
+	findOptions := options.Find()
+	findOptions.SetLimit(int64(limit))
+	findOptions.SetSkip(int64(offset))
+	
+	cursor, err := r.collection.Find(ctx, bson.M{"location_id": locationID}, findOptions)
+	if err != nil {
+		r.logger.Error("Failed to list inventory items by location", 
+			zap.Error(err),
+			zap.String("location_id", locationID),
+		)
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+	
+	var items []*domain.InventoryItem
+	for cursor.Next(ctx) {
+		var item domain.InventoryItem
+		if err := cursor.Decode(&item); err != nil {
+			r.logger.Error("Failed to decode inventory item", zap.Error(err))
+			return nil, err
+		}
+		items = append(items, &item)
+	}
+	
+	if err := cursor.Err(); err != nil {
+		r.logger.Error("Cursor error while listing inventory items by location", zap.Error(err))
+		return nil, err
+	}
+	
+	return items, nil
+}
+
 // List returns all inventory items with optional pagination
 func (r *InventoryRepository) List(ctx context.Context, limit, offset int) ([]*domain.InventoryItem, error) {
 	r.logger.Debug("Listing inventory items", 
@@ -216,4 +412,202 @@ func (r *InventoryRepository) List(ctx context.Context, limit, offset int) ([]*d
 	}
 	
 	return items, nil
+}
+
+// ListLowStock returns inventory items that are below their reorder point
+func (r *InventoryRepository) ListLowStock(ctx context.Context, limit, offset int) ([]*domain.InventoryItem, error) {
+	r.logger.Debug("Listing low stock inventory items", 
+		zap.Int("limit", limit),
+		zap.Int("offset", offset),
+	)
+	
+	findOptions := options.Find()
+	findOptions.SetLimit(int64(limit))
+	findOptions.SetSkip(int64(offset))
+	
+	filter := bson.M{
+		"$expr": bson.M{
+			"$lt": []interface{}{
+				"$quantity", 
+				"$reorder_threshold",
+			},
+		},
+	}
+	
+	cursor, err := r.collection.Find(ctx, filter, findOptions)
+	if err != nil {
+		r.logger.Error("Failed to list low stock inventory items", zap.Error(err))
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+	
+	var items []*domain.InventoryItem
+	for cursor.Next(ctx) {
+		var item domain.InventoryItem
+		if err := cursor.Decode(&item); err != nil {
+			r.logger.Error("Failed to decode inventory item", zap.Error(err))
+			return nil, err
+		}
+		items = append(items, &item)
+	}
+	
+	if err := cursor.Err(); err != nil {
+		r.logger.Error("Cursor error while listing low stock inventory items", zap.Error(err))
+		return nil, err
+	}
+	
+	return items, nil
+}
+
+// ListByStockStatus returns inventory items based on stock status
+func (r *InventoryRepository) ListByStockStatus(ctx context.Context, status string, limit, offset int) ([]*domain.InventoryItem, error) {
+	r.logger.Debug("Listing inventory items by stock status", 
+		zap.String("status", status),
+		zap.Int("limit", limit),
+		zap.Int("offset", offset),
+	)
+	
+	findOptions := options.Find()
+	findOptions.SetLimit(int64(limit))
+	findOptions.SetSkip(int64(offset))
+	
+	var filter bson.M
+	
+	switch status {
+	case "in_stock":
+		// Items with quantity > 0
+		filter = bson.M{"quantity": bson.M{"$gt": 0}}
+		
+	case "low_stock":
+		// Items below reorder threshold but not zero
+		filter = bson.M{
+			"quantity": bson.M{"$gt": 0},
+			"$expr": bson.M{
+				"$lt": []interface{}{
+					"$quantity", 
+					"$reorder_threshold",
+				},
+			},
+		}
+		
+	case "out_of_stock":
+		// Items with zero quantity
+		filter = bson.M{"quantity": 0}
+		
+	default:
+		r.logger.Warn("Invalid stock status provided", zap.String("status", status))
+		return nil, domain.ErrInvalidInput
+	}
+	
+	cursor, err := r.collection.Find(ctx, filter, findOptions)
+	if err != nil {
+		r.logger.Error("Failed to list inventory items by stock status", 
+			zap.Error(err),
+			zap.String("status", status),
+		)
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+	
+	var items []*domain.InventoryItem
+	for cursor.Next(ctx) {
+		var item domain.InventoryItem
+		if err := cursor.Decode(&item); err != nil {
+			r.logger.Error("Failed to decode inventory item", zap.Error(err))
+			return nil, err
+		}
+		items = append(items, &item)
+	}
+	
+	if err := cursor.Err(); err != nil {
+		r.logger.Error("Cursor error while listing inventory items by stock status", zap.Error(err))
+		return nil, err
+	}
+	
+	return items, nil
+}
+
+// AdjustStock adjusts stock with a reason and user identification
+func (r *InventoryRepository) AdjustStock(ctx context.Context, id string, quantity int32, reason, performedBy string) error {
+	r.logger.Debug("Adjusting stock",
+		zap.String("id", id),
+		zap.Int32("quantity", quantity),
+		zap.String("reason", reason),
+		zap.String("performed_by", performedBy),
+	)
+	
+	// First, get the current inventory item
+	item, err := r.GetByID(ctx, id)
+	if err != nil {
+		r.logger.Error("Failed to get inventory item for stock adjustment",
+			zap.Error(err),
+			zap.String("id", id),
+		)
+		return err
+	}
+	
+	if item == nil {
+		r.logger.Error("Inventory item not found for stock adjustment",
+			zap.String("id", id),
+		)
+		return domain.ErrNotFound
+	}
+	
+	// Apply the adjustment
+	prevQuantity := item.Quantity
+	item.Quantity += quantity
+	item.LastUpdated = time.Now()
+	
+	// Don't allow negative stock
+	if item.Quantity < 0 {
+		r.logger.Warn("Stock adjustment would result in negative quantity",
+			zap.String("id", id),
+			zap.Int32("prev_quantity", prevQuantity),
+			zap.Int32("adjustment", quantity),
+		)
+		return domain.ErrInsufficientStock
+	}
+	
+	// Create update document
+	update := bson.M{
+		"$set": bson.M{
+			"quantity": item.Quantity,
+			"last_updated": item.LastUpdated,
+		},
+		"$push": bson.M{
+			"stock_adjustments": bson.M{
+				"adjustment": quantity,
+				"previous_quantity": prevQuantity,
+				"new_quantity": item.Quantity,
+				"reason": reason,
+				"performed_by": performedBy,
+				"timestamp": item.LastUpdated,
+			},
+		},
+	}
+	
+	result, err := r.collection.UpdateOne(ctx, bson.M{"_id": id}, update)
+	if err != nil {
+		r.logger.Error("Failed to update inventory for stock adjustment",
+			zap.Error(err),
+			zap.String("id", id),
+		)
+		return err
+	}
+	
+	if result.MatchedCount == 0 {
+		r.logger.Warn("No inventory item was updated during stock adjustment",
+			zap.String("id", id),
+		)
+		return domain.ErrNotFound
+	}
+	
+	r.logger.Info("Stock adjustment completed",
+		zap.String("id", id),
+		zap.Int32("prev_quantity", prevQuantity),
+		zap.Int32("new_quantity", item.Quantity),
+		zap.String("reason", reason),
+	)
+	
+	return nil
 }

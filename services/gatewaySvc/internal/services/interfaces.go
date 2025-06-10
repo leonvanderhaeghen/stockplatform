@@ -3,6 +3,8 @@ package services
 import (
 	"context"
 	"time"
+
+	supplierv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/supplier/v1"
 )
 
 // ProductService defines the interface for product operations
@@ -13,16 +15,40 @@ type ProductService interface {
 	// List all product categories
 	ListCategories(ctx context.Context) (interface{}, error)
 	
+	// Create a new product category
+	CreateCategory(ctx context.Context, name, description, parentID string, isActive bool) (interface{}, error)
+	
 	// Get a product by ID
 	GetProductByID(ctx context.Context, id string) (interface{}, error)
 	
 	// Create a new product
-	CreateProduct(ctx context.Context, name, description, sku string, categories []string, price, cost float64, active bool, images []string, attributes map[string]string) (interface{}, error)
+	CreateProduct(
+		ctx context.Context,
+		name, description string,
+		costPrice, sellingPrice string,
+		currency, sku, barcode string,
+		categoryIDs []string,
+		supplierID string,
+		isActive, inStock bool,
+		stockQty, lowStockAt int32,
+		imageURLs, videoURLs []string,
+		metadata map[string]string,
+	) (interface{}, error)
 	
 	// Update an existing product
-	UpdateProduct(ctx context.Context, id, name, description, sku string, categories []string, price, cost float64, active bool, images []string, attributes map[string]string) error
+	// Note: This is not fully implemented in the gRPC service
+	UpdateProduct(
+		ctx context.Context,
+		id, name, description, sku string,
+		categories []string,
+		price, cost string,
+		active bool,
+		images []string,
+		attributes map[string]string,
+	) error
 	
 	// Delete a product
+	// Note: This is not implemented in the gRPC service
 	DeleteProduct(ctx context.Context, id string) error
 }
 
@@ -90,43 +116,57 @@ type OrderService interface {
 type UserService interface {
 	// Register a new user
 	RegisterUser(ctx context.Context, email, password, firstName, lastName, role string) (interface{}, error)
-	
 	// Authenticate a user
 	AuthenticateUser(ctx context.Context, email, password string) (interface{}, error)
-	
 	// Get a user by ID
 	GetUserByID(ctx context.Context, userID string) (interface{}, error)
-	
 	// Update user profile
 	UpdateUserProfile(ctx context.Context, userID, firstName, lastName, phone string) error
-	
 	// Change user password
 	ChangeUserPassword(ctx context.Context, userID, currentPassword, newPassword string) error
-	
 	// Get addresses for a user
 	GetUserAddresses(ctx context.Context, userID string) (interface{}, error)
-	
 	// Create a new address for a user
 	CreateUserAddress(ctx context.Context, userID, name, street, city, state, postalCode, country, phone string, isDefault bool) (interface{}, error)
-	
 	// Get default address for a user
 	GetUserDefaultAddress(ctx context.Context, userID string) (interface{}, error)
-	
 	// Update an address for a user
 	UpdateUserAddress(ctx context.Context, addressID, userID, name, street, city, state, postalCode, country, phone string, isDefault bool) error
-	
 	// Delete an address for a user
 	DeleteUserAddress(ctx context.Context, addressID, userID string) error
-	
 	// Set an address as default for a user
 	SetDefaultUserAddress(ctx context.Context, addressID, userID string) error
-	
 	// List all users (admin only)
 	ListUsers(ctx context.Context, role string, active *bool, limit, offset int) (interface{}, error)
-	
 	// Activate a user (admin only)
 	ActivateUser(ctx context.Context, userID string) error
-	
 	// Deactivate a user (admin only)
 	DeactivateUser(ctx context.Context, userID string) error
+}
+
+// SupplierService defines the interface for supplier operations
+type SupplierService interface {
+	// Create a new supplier
+	CreateSupplier(ctx context.Context, req *supplierv1.CreateSupplierRequest) (*supplierv1.Supplier, error)
+	// Get a supplier by ID
+	GetSupplier(ctx context.Context, id string) (*supplierv1.Supplier, error)
+	// Update an existing supplier
+	UpdateSupplier(ctx context.Context, req *supplierv1.UpdateSupplierRequest) (*supplierv1.Supplier, error)
+	// Delete a supplier
+	DeleteSupplier(ctx context.Context, id string) error
+	// List suppliers with pagination and search
+	ListSuppliers(ctx context.Context, page, pageSize int32, search string) ([]*supplierv1.Supplier, int32, error)
+	// Close closes the connection to the supplier service
+	Close() error
+	
+	// ListAdapters returns all available supplier adapters
+	ListAdapters(ctx context.Context) ([]*supplierv1.SupplierAdapter, error)
+	// GetAdapterCapabilities returns the capabilities of a specific adapter
+	GetAdapterCapabilities(ctx context.Context, adapterName string) (*supplierv1.AdapterCapabilities, error)
+	// TestAdapterConnection tests the connection to a supplier's system using the specified adapter
+	TestAdapterConnection(ctx context.Context, adapterName string, config map[string]string) error
+	// SyncProducts synchronizes products from a supplier using their configured adapter
+	SyncProducts(ctx context.Context, supplierID string, options *supplierv1.SyncOptions) (string, error)
+	// SyncInventory synchronizes inventory from a supplier using their configured adapter
+	SyncInventory(ctx context.Context, supplierID string, options *supplierv1.SyncOptions) (string, error)
 }

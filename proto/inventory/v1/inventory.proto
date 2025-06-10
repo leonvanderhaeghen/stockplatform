@@ -27,6 +27,9 @@ service InventoryService {
   // ListInventory lists all inventory items with pagination
   rpc ListInventory(ListInventoryRequest) returns (ListInventoryResponse);
   
+  // ListInventoryByLocation lists inventory items for a specific location
+  rpc ListInventoryByLocation(ListInventoryByLocationRequest) returns (ListInventoryResponse);
+  
   // AddStock adds stock to an inventory item
   rpc AddStock(AddStockRequest) returns (AddStockResponse);
   
@@ -41,6 +44,33 @@ service InventoryService {
   
   // FulfillReservation completes a reservation and deducts from stock
   rpc FulfillReservation(FulfillReservationRequest) returns (FulfillReservationResponse);
+  
+  // CreateLocation creates a new store location
+  rpc CreateLocation(CreateLocationRequest) returns (CreateLocationResponse);
+  
+  // GetLocation retrieves a store location by ID
+  rpc GetLocation(GetLocationRequest) returns (GetLocationResponse);
+  
+  // UpdateLocation updates an existing store location
+  rpc UpdateLocation(UpdateLocationRequest) returns (UpdateLocationResponse);
+  
+  // DeleteLocation removes a store location
+  rpc DeleteLocation(DeleteLocationRequest) returns (DeleteLocationResponse);
+  
+  // ListLocations lists all store locations with pagination
+  rpc ListLocations(ListLocationsRequest) returns (ListLocationsResponse);
+  
+  // CreateTransfer creates a new inventory transfer between locations
+  rpc CreateTransfer(CreateTransferRequest) returns (CreateTransferResponse);
+  
+  // GetTransfer retrieves an inventory transfer by ID
+  rpc GetTransfer(GetTransferRequest) returns (GetTransferResponse);
+  
+  // UpdateTransferStatus updates the status of a transfer
+  rpc UpdateTransferStatus(UpdateTransferStatusRequest) returns (UpdateTransferStatusResponse);
+  
+  // ListTransfers lists transfers with pagination and filters
+  rpc ListTransfers(ListTransfersRequest) returns (ListTransfersResponse);
 }
 
 // InventoryItem represents a product's inventory information
@@ -50,9 +80,50 @@ message InventoryItem {
   int32 quantity = 3;
   int32 reserved = 4;
   string sku = 5;
-  string location = 6;
-  string last_updated = 7;
-  string created_at = 8;
+  string location_id = 6;
+  string shelf_location = 7;
+  int32 reorder_threshold = 8;
+  int32 reorder_amount = 9;
+  string last_updated = 10;
+  string created_at = 11;
+  string next_count_date = 12;
+}
+
+// StoreLocation represents a physical or virtual location where inventory is stored
+message StoreLocation {
+  string id = 1;
+  string name = 2;
+  string type = 3;  // store, warehouse, fulfillment_center, online
+  string address_line1 = 4;
+  string address_line2 = 5;
+  string city = 6;
+  string state = 7;
+  string postal_code = 8;
+  string country = 9;
+  string phone = 10;
+  string email = 11;
+  bool active = 12;
+  string created_at = 13;
+  string updated_at = 14;
+}
+
+// InventoryTransfer represents a movement of inventory between locations
+message InventoryTransfer {
+  string id = 1;
+  string source_location_id = 2;
+  string destination_location_id = 3;
+  string product_id = 4;
+  string sku = 5;
+  int32 quantity = 6;
+  string status = 7; // pending, approved, in_transit, completed, cancelled
+  string requested_by = 8;
+  string approved_by = 9;
+  string requested_date = 10;
+  string expected_delivery_date = 11;
+  string actual_delivery_date = 12;
+  string notes = 13;
+  string created_at = 14;
+  string updated_at = 15;
 }
 
 // CreateInventoryRequest is the request for creating an inventory item
@@ -60,7 +131,10 @@ message CreateInventoryRequest {
   string product_id = 1;
   int32 quantity = 2;
   string sku = 3;
-  string location = 4;
+  string location_id = 4;
+  string shelf_location = 5;
+  int32 reorder_threshold = 6;
+  int32 reorder_amount = 7;
 }
 
 // CreateInventoryResponse is the response for creating an inventory item
@@ -76,11 +150,13 @@ message GetInventoryRequest {
 // GetInventoryByProductIDRequest is the request for retrieving an inventory item by product ID
 message GetInventoryByProductIDRequest {
   string product_id = 1;
+  string location_id = 2;
 }
 
 // GetInventoryBySKURequest is the request for retrieving an inventory item by SKU
 message GetInventoryBySKURequest {
   string sku = 1;
+  string location_id = 2;
 }
 
 // GetInventoryResponse is the response for retrieving an inventory item
@@ -112,6 +188,15 @@ message DeleteInventoryResponse {
 message ListInventoryRequest {
   int32 limit = 1;
   int32 offset = 2;
+  string stock_status = 3; // in_stock, low_stock, out_of_stock, all
+}
+
+// ListInventoryByLocationRequest is the request for listing inventory items by location
+message ListInventoryByLocationRequest {
+  string location_id = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+  string stock_status = 4; // in_stock, low_stock, out_of_stock, all
 }
 
 // ListInventoryResponse is the response for listing inventory items
@@ -123,6 +208,8 @@ message ListInventoryResponse {
 message AddStockRequest {
   string id = 1;
   int32 quantity = 2;
+  string reason = 3;
+  string performed_by = 4;
 }
 
 // AddStockResponse is the response for adding stock
@@ -134,6 +221,8 @@ message AddStockResponse {
 message RemoveStockRequest {
   string id = 1;
   int32 quantity = 2;
+  string reason = 3;
+  string performed_by = 4;
 }
 
 // RemoveStockResponse is the response for removing stock
@@ -172,4 +261,122 @@ message FulfillReservationRequest {
 // FulfillReservationResponse is the response for fulfilling a reservation
 message FulfillReservationResponse {
   bool success = 1;
+}
+
+// CreateLocationRequest is the request for creating a store location
+message CreateLocationRequest {
+  string name = 1;
+  string type = 2;
+  string address_line1 = 3;
+  string address_line2 = 4;
+  string city = 5;
+  string state = 6;
+  string postal_code = 7;
+  string country = 8;
+  string phone = 9;
+  string email = 10;
+}
+
+// CreateLocationResponse is the response for creating a store location
+message CreateLocationResponse {
+  StoreLocation location = 1;
+}
+
+// GetLocationRequest is the request for retrieving a store location
+message GetLocationRequest {
+  string id = 1;
+}
+
+// GetLocationResponse is the response for retrieving a store location
+message GetLocationResponse {
+  StoreLocation location = 1;
+}
+
+// UpdateLocationRequest is the request for updating a store location
+message UpdateLocationRequest {
+  StoreLocation location = 1;
+}
+
+// UpdateLocationResponse is the response for updating a store location
+message UpdateLocationResponse {
+  bool success = 1;
+}
+
+// DeleteLocationRequest is the request for deleting a store location
+message DeleteLocationRequest {
+  string id = 1;
+}
+
+// DeleteLocationResponse is the response for deleting a store location
+message DeleteLocationResponse {
+  bool success = 1;
+}
+
+// ListLocationsRequest is the request for listing store locations
+message ListLocationsRequest {
+  int32 limit = 1;
+  int32 offset = 2;
+  bool include_inactive = 3;
+}
+
+// ListLocationsResponse is the response for listing store locations
+message ListLocationsResponse {
+  repeated StoreLocation locations = 1;
+}
+
+// CreateTransferRequest is the request for creating an inventory transfer
+message CreateTransferRequest {
+  string source_location_id = 1;
+  string destination_location_id = 2;
+  string product_id = 3;
+  string sku = 4;
+  int32 quantity = 5;
+  string requested_by = 6;
+  string expected_delivery_date = 7;
+  string notes = 8;
+}
+
+// CreateTransferResponse is the response for creating an inventory transfer
+message CreateTransferResponse {
+  InventoryTransfer transfer = 1;
+}
+
+// GetTransferRequest is the request for retrieving a transfer
+message GetTransferRequest {
+  string id = 1;
+}
+
+// GetTransferResponse is the response for retrieving a transfer
+message GetTransferResponse {
+  InventoryTransfer transfer = 1;
+}
+
+// UpdateTransferStatusRequest is the request for updating a transfer status
+message UpdateTransferStatusRequest {
+  string id = 1;
+  string status = 2;
+  string approved_by = 3;
+  string actual_delivery_date = 4;
+  string notes = 5;
+}
+
+// UpdateTransferStatusResponse is the response for updating a transfer status
+message UpdateTransferStatusResponse {
+  bool success = 1;
+  InventoryTransfer transfer = 2;
+}
+
+// ListTransfersRequest is the request for listing transfers
+message ListTransfersRequest {
+  int32 limit = 1;
+  int32 offset = 2;
+  string status = 3;
+  string source_location_id = 4;
+  string destination_location_id = 5;
+  string product_id = 6;
+}
+
+// ListTransfersResponse is the response for listing transfers
+message ListTransfersResponse {
+  repeated InventoryTransfer transfers = 1;
 }

@@ -8,59 +8,83 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/leonvanderhaeghen/stockplatform/services/supplierSvc/internal/application"
 	"github.com/leonvanderhaeghen/stockplatform/services/supplierSvc/internal/domain"
 )
 
 // SampleAdapter is an example adapter implementation for a fictional supplier API
 type SampleAdapter struct {
-	*application.BaseAdapter
-	client *http.Client
-	apiURL string
+	name         string
+	client       *http.Client
+	apiURL       string
+	apiKey       string
+	config       map[string]string
+	capabilities map[string]bool
 }
 
 // NewSampleAdapter creates a new sample adapter
 func NewSampleAdapter() *SampleAdapter {
-	baseAdapter := application.NewBaseAdapter("sample_supplier")
 	adapter := &SampleAdapter{
-		BaseAdapter: baseAdapter,
-		client:      &http.Client{Timeout: 30 * time.Second},
+		name:         "sample_supplier",
+		client:       &http.Client{Timeout: 30 * time.Second},
+		config:       make(map[string]string),
+		capabilities: make(map[string]bool),
 	}
 
 	// Set capabilities
-	adapter.SetCapability("sync_products", true)
-	adapter.SetCapability("sync_inventory", true)
-	adapter.SetCapability("real_time_inventory", false)
+	adapter.capabilities["sync_products"] = true
+	adapter.capabilities["sync_inventory"] = true
+	adapter.capabilities["real_time_inventory"] = false
 
 	return adapter
 }
 
 // Name returns the name of the adapter
 func (a *SampleAdapter) Name() string {
-	return a.BaseAdapter.Name()
+	return a.name
 }
 
 // Initialize initializes the adapter with supplier-specific configuration
 func (a *SampleAdapter) Initialize(ctx context.Context, config map[string]string) error {
-	if err := a.BaseAdapter.Initialize(ctx, config); err != nil {
-		return err
-	}
+	// Store the configuration
+	a.config = config
 
 	// Sample adapter requires API key and URL
 	requiredKeys := []string{"api_key", "api_url"}
-	if err := a.ValidateRequiredConfig(requiredKeys); err != nil {
+	if err := a.validateRequiredConfig(requiredKeys); err != nil {
 		return err
 	}
 
-	// Extract API URL from config
-	a.apiURL, _ = a.GetConfig("api_url")
+	// Extract API URL and key from config
+	a.apiURL = a.config["api_url"]
+	a.apiKey = a.config["api_key"]
 
 	return nil
 }
 
+// validateRequiredConfig checks if all required config keys are present
+func (a *SampleAdapter) validateRequiredConfig(requiredKeys []string) error {
+	missingKeys := []string{}
+
+	for _, key := range requiredKeys {
+		if _, ok := a.config[key]; !ok {
+			missingKeys = append(missingKeys, key)
+		}
+	}
+
+	if len(missingKeys) > 0 {
+		return fmt.Errorf("missing required configuration keys: %v", missingKeys)
+	}
+
+	return nil
+}
+
+// GetCapabilities returns the capabilities of this adapter
+func (a *SampleAdapter) GetCapabilities(ctx context.Context) map[string]bool {
+	return a.capabilities
+}
+
 // TestConnection tests the connection to the supplier's system
 func (a *SampleAdapter) TestConnection(ctx context.Context) error {
-	apiKey, _ := a.GetConfig("api_key")
 
 	// Create a test request to the supplier's health endpoint
 	req, err := http.NewRequestWithContext(ctx, "GET", a.apiURL+"/health", nil)
@@ -69,7 +93,7 @@ func (a *SampleAdapter) TestConnection(ctx context.Context) error {
 	}
 
 	// Add authentication
-	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("Authorization", "Bearer "+a.apiKey)
 
 	// Execute the request
 	resp, err := a.client.Do(req)
@@ -88,12 +112,11 @@ func (a *SampleAdapter) TestConnection(ctx context.Context) error {
 
 // GetProducts fetches products from the supplier
 func (a *SampleAdapter) GetProducts(ctx context.Context, options domain.SupplierSyncOptions) ([]domain.SupplierProductData, error) {
-	apiKey, _ := a.GetConfig("api_key")
 
 	// Construct the URL with query parameters based on options
-	url := fmt.Sprintf("%s/products?full=%t&batch_size=%d", 
-		a.apiURL, 
-		options.FullSync, 
+	url := fmt.Sprintf("%s/products?full=%t&batch_size=%d",
+		a.apiURL,
+		options.FullSync,
 		options.BatchSize,
 	)
 
@@ -112,7 +135,7 @@ func (a *SampleAdapter) GetProducts(ctx context.Context, options domain.Supplier
 	}
 
 	// Add authentication
-	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("Authorization", "Bearer "+a.apiKey)
 
 	// Execute the request
 	resp, err := a.client.Do(req)
@@ -129,25 +152,25 @@ func (a *SampleAdapter) GetProducts(ctx context.Context, options domain.Supplier
 	// Parse the response
 	var supplierResponse struct {
 		Products []struct {
-			ID          string  `json:"id"`
-			Name        string  `json:"name"`
-			SKU         string  `json:"sku"`
-			Description string  `json:"description"`
-			Price       float64 `json:"price"`
-			Currency    string  `json:"currency"`
-			Stock       int32   `json:"stock"`
-			MinOrder    int32   `json:"min_order"`
-			LeadTime    int32   `json:"lead_time"`
-			Categories  []string `json:"categories"`
-			Barcode     string  `json:"barcode"`
-			Weight      float64 `json:"weight"`
-			Length      float64 `json:"length"`
-			Width       float64 `json:"width"`
-			Height      float64 `json:"height"`
-			DimUnit     string  `json:"dim_unit"`
-			Images      []string `json:"images"`
-			Active      bool    `json:"active"`
-			UpdatedAt   string  `json:"updated_at"`
+			ID          string            `json:"id"`
+			Name        string            `json:"name"`
+			SKU         string            `json:"sku"`
+			Description string            `json:"description"`
+			Price       float64           `json:"price"`
+			Currency    string            `json:"currency"`
+			Stock       int32             `json:"stock"`
+			MinOrder    int32             `json:"min_order"`
+			LeadTime    int32             `json:"lead_time"`
+			Categories  []string          `json:"categories"`
+			Barcode     string            `json:"barcode"`
+			Weight      float64           `json:"weight"`
+			Length      float64           `json:"length"`
+			Width       float64           `json:"width"`
+			Height      float64           `json:"height"`
+			DimUnit     string            `json:"dim_unit"`
+			Images      []string          `json:"images"`
+			Active      bool              `json:"active"`
+			UpdatedAt   string            `json:"updated_at"`
 			Extra       map[string]string `json:"extra"`
 		} `json:"products"`
 	}
@@ -167,27 +190,27 @@ func (a *SampleAdapter) GetProducts(ctx context.Context, options domain.Supplier
 		}
 
 		product := domain.SupplierProductData{
-			ExternalID:    p.ID,
-			Name:          p.Name,
-			SKU:           p.SKU,
-			Description:   p.Description,
-			Price:         p.Price,
-			Currency:      p.Currency,
-			StockQuantity: p.Stock,
+			ExternalID:      p.ID,
+			Name:            p.Name,
+			SKU:             p.SKU,
+			Description:     p.Description,
+			Price:           p.Price,
+			Currency:        p.Currency,
+			StockQuantity:   p.Stock,
 			MinimumOrderQty: p.MinOrder,
-			LeadTimeDays: p.LeadTime,
-			Categories:   p.Categories,
-			Barcode:      p.Barcode,
-			Weight:       p.Weight,
+			LeadTimeDays:    p.LeadTime,
+			Categories:      p.Categories,
+			Barcode:         p.Barcode,
+			Weight:          p.Weight,
 			Dimensions: &domain.ProductDimensions{
 				Length: p.Length,
 				Width:  p.Width,
 				Height: p.Height,
 				Unit:   p.DimUnit,
 			},
-			Images:      p.Images,
-			Active:      p.Active,
-			LastUpdated: updatedAt,
+			Images:            p.Images,
+			Active:            p.Active,
+			LastUpdated:       updatedAt,
 			AdditionalDetails: p.Extra,
 		}
 		products = append(products, product)
@@ -198,14 +221,13 @@ func (a *SampleAdapter) GetProducts(ctx context.Context, options domain.Supplier
 
 // GetInventory fetches inventory data from the supplier
 func (a *SampleAdapter) GetInventory(ctx context.Context, externalIDs []string, options domain.SupplierSyncOptions) ([]domain.SupplierInventoryData, error) {
-	apiKey, _ := a.GetConfig("api_key")
-	
+
 	// Create request body with product IDs
 	idsJSON, err := json.Marshal(externalIDs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal product IDs: %w", err)
 	}
-	
+
 	// Create the request with JSON body
 	url := fmt.Sprintf("%s/inventory", a.apiURL)
 	reqBody := bytes.NewBuffer(idsJSON)
@@ -222,7 +244,7 @@ func (a *SampleAdapter) GetInventory(ctx context.Context, externalIDs []string, 
 	req.URL.RawQuery = q.Encode()
 
 	// Add authentication
-	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("Authorization", "Bearer "+a.apiKey)
 	req.Header.Set("Content-Type", "application/json")
 
 	// Execute the request
@@ -337,7 +359,7 @@ func (a *SampleAdapter) SyncInventory(ctx context.Context, options domain.Suppli
 
 	// For this example, we'll simulate a simple inventory sync
 	externalIDs := []string{"sample-product-1", "sample-product-2"}
-	
+
 	inventory, err := a.GetInventory(ctx, externalIDs, options)
 	if err != nil {
 		stats.EndTime = time.Now()

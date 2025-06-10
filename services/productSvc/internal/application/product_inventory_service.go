@@ -7,6 +7,7 @@ import (
 	"github.com/leonvanderhaeghen/stockplatform/pkg/grpcclient"
 	inventorypb "github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/inventory/v1"
 	"github.com/leonvanderhaeghen/stockplatform/services/productSvc/internal/domain"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.uber.org/zap"
 )
 
@@ -121,9 +122,16 @@ func (s *ProductInventoryService) UpdateProductInventory(
 	stockAdjustment *int32,
 ) (*domain.Product, *inventorypb.InventoryItem, error) {
 	// Update the product
-	updatedProduct, err := s.productService.UpdateProduct(ctx, productID, productUpdate)
+	productUpdate.ID, _ = primitive.ObjectIDFromHex(productID)
+	err := s.productService.UpdateProduct(ctx, productUpdate)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to update product: %w", err)
+	}
+	
+	// Get the updated product
+	updatedProduct, err := s.productService.GetProduct(ctx, productID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get updated product: %w", err)
 	}
 
 	var inventory *inventorypb.InventoryItem

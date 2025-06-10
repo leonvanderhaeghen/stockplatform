@@ -2,12 +2,13 @@ package application
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.uber.org/zap"
 
 	"github.com/leonvanderhaeghen/stockplatform/services/productSvc/internal/domain"
@@ -15,20 +16,117 @@ import (
 
 // ProductService implements the business logic for product operations
 type ProductService struct {
-	repo   domain.ProductRepository
-	logger *zap.Logger
+	repo           domain.ProductRepository
+	supplierSvc   *SupplierService
+	logger         *zap.Logger
+}
+
+// Ensure ProductService implements ProductUseCase
+var _ domain.ProductUseCase = (*ProductService)(nil)
+
+// GetLowStockProducts retrieves products with stock below the specified threshold
+func (s *ProductService) GetLowStockProducts(ctx context.Context, threshold int32, opts *domain.ListOptions) ([]*domain.Product, int64, error) {
+	if threshold < 0 {
+		return nil, 0, fmt.Errorf("threshold must be non-negative")
+	}
+
+	// Set default options if nil
+	if opts == nil {
+		opts = &domain.ListOptions{
+			Pagination: &domain.Pagination{
+				Page:     1,
+				PageSize: 20,
+			},
+		}
+	}
+
+	// Get low stock products from repository
+	products, total, err := s.repo.GetLowStockProducts(ctx, threshold, opts)
+	if err != nil {
+		s.logger.Error("Failed to get low stock products",
+			zap.Int32("threshold", threshold),
+			zap.Error(err))
+		return nil, 0, fmt.Errorf("failed to get low stock products: %w", err)
+	}
+
+	s.logger.Debug("Retrieved low stock products",
+		zap.Int("count", len(products)),
+		zap.Int64("total", total))
+
+	return products, total, nil
+}
+
+// ListProducts retrieves a paginated list of products with optional filtering
+func (s *ProductService) ListProducts(ctx context.Context, opts *domain.ListOptions) ([]*domain.Product, int64, error) {
+	if opts == nil {
+		opts = &domain.ListOptions{
+			Pagination: &domain.Pagination{
+				Page:     1,
+				PageSize: 20, // Default page size
+			},
+		}
+	}
+
+	// Initialize pagination if not provided
+	if opts.Pagination == nil {
+		opts.Pagination = &domain.Pagination{
+			Page:     1,
+			PageSize: 20,
+		}
+	}
+
+	// Ensure page and page size are within reasonable bounds
+	if opts.Pagination.Page < 1 {
+		opts.Pagination.Page = 1
+	}
+	if opts.Pagination.PageSize < 1 || opts.Pagination.PageSize > 100 {
+		opts.Pagination.PageSize = 20
+	}
+
+	// Call the repository to get the paginated list of products
+	products, total, err := s.repo.List(ctx, opts)
+	if err != nil {
+		s.logger.Error("Failed to list products", 
+			zap.Any("options", opts), 
+			zap.Error(err))
+		return nil, 0, fmt.Errorf("failed to list products: %w", err)
+	}
+
+	s.logger.Info("Listed products successfully", 
+		zap.Int("count", len(products)),
+		zap.Int64("total", total))
+
+	return products, total, nil
 }
 
 // NewProductService creates a new product service
-func NewProductService(repo domain.ProductRepository, logger *zap.Logger) *ProductService {
+func NewProductService(
+	repo domain.ProductRepository, 
+	supplierSvc *SupplierService,
+	logger *zap.Logger,
+) *ProductService {
 	return &ProductService{
-		repo:   repo,
-		logger: logger.Named("product_service"),
+		repo:         repo,
+		supplierSvc: supplierSvc,
+		logger:       logger.Named("product_service"),
 	}
 }
 
 // CreateProduct creates a new product
 func (s *ProductService) CreateProduct(ctx context.Context, input *domain.Product) (*domain.Product, error) {
+	// Validate supplier exists
+	if input.SupplierID == "" {
+		return nil, domain.ErrSupplierRequired
+	}
+
+	_, err := s.supplierSvc.GetSupplier(ctx, input.SupplierID)
+	if err != nil {
+		s.logger.Error("Invalid supplier ID", 
+			zap.String("supplierID", input.SupplierID), 
+			zap.Error(err))
+		return nil, domain.ErrSupplierNotFound
+	}
+
 	// Generate a new UUID for the product if not provided
 	if input.SKU == "" {
 		input.SKU = strings.ToUpper(uuid.New().String()[:8]) // Use first 8 chars of UUID as SKU
@@ -74,7 +172,7 @@ func (s *ProductService) CreateProduct(ctx context.Context, input *domain.Produc
 	}
 
 	// Validate the product
-	if err := s.validateProduct(input); err != nil {
+	if err := s.ValidateProduct(input); err != nil {
 		s.logger.Error("Product validation failed", 
 			zap.String("sku", input.SKU), 
 			zap.Error(err))
@@ -83,14 +181,13 @@ func (s *ProductService) CreateProduct(ctx context.Context, input *domain.Produc
 
 	// Check if product with same SKU or barcode already exists
 	existing, _, err := s.repo.List(ctx, &domain.ListOptions{
-		Search: input.SKU,
-		Filters: map[string]interface{}{
-			"$or": []bson.M{
-				{"sku": input.SKU},
-				{"barcode": input.Barcode},
-			},
+		Filter: &domain.ProductFilter{
+			SearchTerm: input.SKU,
 		},
-		PageSize: 1,
+		Pagination: &domain.Pagination{
+			Page:     1,
+			PageSize: 1,
+		},
 	})
 
 	if err != nil {
@@ -139,10 +236,12 @@ func (s *ProductService) GetProduct(ctx context.Context, id string) (*domain.Pro
 }
 
 // UpdateProduct updates an existing product
-func (s *ProductService) UpdateProduct(ctx context.Context, id string, input *domain.Product) (*domain.Product, error) {
-	if id == "" {
-		return nil, domain.ErrInvalidID
+func (s *ProductService) UpdateProduct(ctx context.Context, input *domain.Product) error {
+	if input == nil || input.ID.IsZero() {
+		return fmt.Errorf("invalid product")
 	}
+
+	id := input.ID.Hex()
 
 	// Get existing product
 	existing, err := s.repo.GetByID(ctx, id)
@@ -150,13 +249,27 @@ func (s *ProductService) UpdateProduct(ctx context.Context, id string, input *do
 		s.logger.Error("Failed to get product for update", 
 			zap.String("id", id), 
 			zap.Error(err))
-		return nil, fmt.Errorf("failed to get product: %w", err)
+		return fmt.Errorf("failed to get product: %w", err)
+	}
+
+	// If supplier ID is being updated, validate the new supplier exists
+	if input.SupplierID != "" && input.SupplierID != existing.SupplierID {
+		_, err := s.supplierSvc.GetSupplier(ctx, input.SupplierID)
+		if err != nil {
+			s.logger.Error("Invalid supplier ID", 
+				zap.String("supplierID", input.SupplierID), 
+				zap.Error(err))
+			return domain.ErrSupplierNotFound
+		}
+		existing.SupplierID = input.SupplierID
+	} else {
+		// Preserve existing supplier ID if not being changed
+		input.SupplierID = existing.SupplierID
 	}
 
 	// Preserve immutable fields
 	input.ID = existing.ID
 	input.CreatedAt = existing.CreatedAt
-	input.SupplierID = existing.SupplierID // Supplier cannot be changed
 
 	// Update timestamps
 	input.UpdatedAt = time.Now()
@@ -165,46 +278,42 @@ func (s *ProductService) UpdateProduct(ctx context.Context, id string, input *do
 	input.SKU = strings.TrimSpace(strings.ToUpper(input.SKU))
 
 	// Validate the product
-	if err := s.validateProduct(input); err != nil {
+	if err := s.ValidateProduct(input); err != nil {
 		s.logger.Error("Product validation failed", 
 			zap.String("id", id), 
 			zap.Error(err))
-		return nil, fmt.Errorf("validation failed: %w", err)
+		return fmt.Errorf("validation failed: %w", err)
 	}
 
 	// Check for duplicate SKU or barcode if they are being updated
 	if input.SKU != existing.SKU || input.Barcode != existing.Barcode {
-		filters := map[string]interface{}{
-			"_id": bson.M{"$ne": existing.ID},
-			"$or": []bson.M{
-				{"sku": input.SKU},
+		// Check for duplicates using the repository's search functionality
+		existingProducts, _, err := s.repo.Search(ctx, input.SKU, &domain.ListOptions{
+			Pagination: &domain.Pagination{
+				Page:     1,
+				PageSize: 1,
 			},
-		}
-
-		// Only check barcode if it's not empty
-		if input.Barcode != "" {
-			filters["$or"] = append(filters["$or"].([]bson.M), bson.M{"barcode": input.Barcode})
-		}
-
-		// Check for duplicates
-		existingProducts, _, err := s.repo.List(ctx, &domain.ListOptions{
-			Filters:  filters,
-			PageSize: 1,
 		})
 
 		if err != nil {
 			s.logger.Error("Failed to check for duplicate products", 
 				zap.String("id", id), 
 				zap.Error(err))
-			return nil, fmt.Errorf("failed to check for duplicate products: %w", err)
+			return fmt.Errorf("failed to check for duplicate products: %w", err)
 		}
 
-		if len(existingProducts) > 0 {
-			s.logger.Warn("Product with same SKU or barcode already exists", 
-				zap.String("id", id),
-				zap.String("sku", input.SKU),
-				zap.String("barcode", input.Barcode))
-			return nil, domain.ErrProductAlreadyExists
+		// Check if any product with the same SKU or barcode exists (excluding current product)
+		for _, p := range existingProducts {
+			// Convert both IDs to strings for comparison
+			existingID := p.ID.Hex()
+			if existingID != id && (p.SKU == input.SKU || (input.Barcode != "" && p.Barcode == input.Barcode)) {
+				s.logger.Warn("Product with same SKU or barcode already exists", 
+					zap.String("id", id),
+					zap.String("existing_id", existingID),
+					zap.String("sku", input.SKU),
+					zap.String("barcode", input.Barcode))
+				return fmt.Errorf("product with same SKU or barcode already exists")
+			}
 		}
 	}
 
@@ -213,46 +322,43 @@ func (s *ProductService) UpdateProduct(ctx context.Context, id string, input *do
 	for i := range input.Variants {
 		// If variant has no ID, it's a new variant
 		if input.Variants[i].ID == "" {
-			input.Variants[i].ID = uuid.New().String()
 			input.Variants[i].CreatedAt = now
 		}
 		input.Variants[i].UpdatedAt = now
-
-		// Update variant options timestamps
-		for j := range input.Variants[i].Options {
-			if input.Variants[i].Options[j].ID == "" {
-				input.Variants[i].Options[j].ID = uuid.New().String()
-				input.Variants[i].Options[j].CreatedAt = now
-			}
-			input.Variants[i].Options[j].UpdatedAt = now
-		}
 	}
 
-	// Update stock status
-	input.InStock = input.StockQty > 0
-
-	// Update fields
+	// Update product fields
 	existing.Name = input.Name
 	existing.Description = input.Description
-	existing.Price = input.Price
-	existing.CategoryID = input.CategoryID
+	existing.CostPrice = input.CostPrice
+	existing.SellingPrice = input.SellingPrice
+	existing.Currency = input.Currency
+	existing.Barcode = input.Barcode
+	existing.CategoryIDs = input.CategoryIDs
+	existing.IsActive = input.IsActive
+	existing.StockQty = input.StockQty
+	existing.LowStockAt = input.LowStockAt
 	existing.ImageURLs = input.ImageURLs
-	existing.UpdatedAt = time.Now()
+	existing.VideoURLs = input.VideoURLs
+	existing.Metadata = input.Metadata
 
-	// Validate the updated product
-	if err := validateProduct(existing); err != nil {
-		s.logger.Error("Product validation failed", zap.Error(err))
-		return nil, domain.ErrValidation
+	// Update timestamps
+	existing.UpdatedAt = now
+
+	// Update the product in the repository
+	err = s.repo.Update(ctx, existing)
+	if err != nil {
+		s.logger.Error("Failed to update product", 
+			zap.String("id", id), 
+			zap.Error(err))
+		return fmt.Errorf("failed to update product: %w", err)
 	}
 
-	// Update the product
-	if err := s.repo.Update(ctx, existing); err != nil {
-		s.logger.Error("Failed to update product", zap.String("id", id), zap.Error(err))
-		return nil, err
-	}
+	s.logger.Info("Product updated successfully", 
+		zap.String("id", id),
+		zap.String("sku", input.SKU))
 
-	s.logger.Info("Product updated successfully", zap.String("id", id))
-	return existing, nil
+	return nil
 }
 
 // DeleteProduct deletes a product by ID
@@ -285,43 +391,42 @@ func (s *ProductService) DeleteProduct(ctx context.Context, id string) error {
 	return nil
 }
 
-// ListProducts retrieves a paginated and filtered list of products
-func (s *ProductService) ListProducts(
+// List retrieves a paginated list of products with optional filtering
+func (s *ProductService) List(
 	ctx context.Context,
 	opts *domain.ListOptions,
 ) ([]*domain.Product, int64, error) {
-	// Apply default options if nil
+	// Set default values
 	if opts == nil {
 		opts = &domain.ListOptions{
-			Page:     1,
-			PageSize: 10,
+			Pagination: &domain.Pagination{
+				Page:     1,
+				PageSize: 20,
+			},
 		}
 	}
 
-	// Ensure page and page size are valid
-	if opts.Page < 1 {
-		opts.Page = 1
+	// Initialize pagination if nil
+	if opts.Pagination == nil {
+		opts.Pagination = &domain.Pagination{
+			Page:     1,
+			PageSize: 20,
+		}
 	}
 
-	if opts.PageSize < 1 || opts.PageSize > 100 {
-		opts.PageSize = 10
+	// Validate pagination
+	if opts.Pagination.Page < 1 {
+		opts.Pagination.Page = 1
+	}
+	if opts.Pagination.PageSize < 1 || opts.Pagination.PageSize > 100 {
+		opts.Pagination.PageSize = 20
 	}
 
-	// Add default filters if not provided
-	if opts.Filters == nil {
-		opts.Filters = make(map[string]interface{})
-	}
-
-	// Only include non-deleted products by default
-	if _, exists := opts.Filters["deleted_at"]; !exists {
-		opts.Filters["deleted_at"] = nil
-	}
-
-	// Get products from repository
+	// Call repository
 	products, total, err := s.repo.List(ctx, opts)
 	if err != nil {
-		s.logger.Error("Failed to list products", 
-			zap.Any("filters", opts.Filters),
+		s.logger.Error("Failed to list products",
+			zap.Any("options", opts),
 			zap.Error(err))
 		return nil, 0, fmt.Errorf("failed to list products: %w", err)
 	}
@@ -333,87 +438,525 @@ func (s *ProductService) ListProducts(
 	return products, total, nil
 }
 
-// validateProduct validates the product fields
-func (s *ProductService) validateProduct(p *domain.Product) error {
+// SoftDeleteProduct marks a product as deleted without removing it from the database
+func (s *ProductService) SoftDeleteProduct(ctx context.Context, id string) error {
+	if id == "" {
+		return domain.ErrInvalidID
+	}
+
+	// Check if product exists
+	_, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	return s.repo.SoftDelete(ctx, id)
+}
+
+// UpdateProductStock updates the stock quantity for a product
+func (s *ProductService) UpdateProductStock(ctx context.Context, id string, quantity int32) error {
+	if id == "" {
+		return domain.ErrInvalidID
+	}
+	if quantity < 0 {
+		return fmt.Errorf("quantity cannot be negative")
+	}
+
+	// Check if product exists
+	_, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	return s.repo.UpdateStock(ctx, id, quantity)
+}
+
+// BulkUpdateStock updates stock quantities for multiple products
+func (s *ProductService) BulkUpdateStock(ctx context.Context, updates map[string]int32) error {
+	if len(updates) == 0 {
+		return fmt.Errorf("no updates provided")
+	}
+
+	// Validate all quantities are non-negative
+	for productID, qty := range updates {
+		if qty < 0 {
+			return fmt.Errorf("negative quantity for product %s", productID)
+		}
+	}
+
+	return s.repo.BulkUpdateStock(ctx, updates)
+}
+
+// AdjustStock adjusts the stock quantity for a product by a delta value
+func (s *ProductService) AdjustStock(ctx context.Context, id string, adjustment int32, note string) error {
+	if id == "" {
+		return domain.ErrInvalidID
+	}
+
+	// Get current stock
+	product, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	// Calculate new quantity
+	newQty := product.StockQty + adjustment
+	if newQty < 0 {
+		return fmt.Errorf("insufficient stock for adjustment")
+	}
+
+	// Update stock
+	return s.repo.UpdateStock(ctx, id, newQty)
+}
+
+// UpdateProductPricing updates the pricing for a product
+func (s *ProductService) UpdateProductPricing(ctx context.Context, id string, costPrice, sellingPrice string) error {
+	if id == "" {
+		return domain.ErrInvalidID
+	}
+
+	// Parse and validate prices
+	cost, err := domain.ParsePrice(costPrice)
+	if err != nil {
+		return fmt.Errorf("invalid cost price: %w", err)
+	}
+
+	selling, err := domain.ParsePrice(sellingPrice)
+	if err != nil {
+		return fmt.Errorf("invalid selling price: %w", err)
+	}
+
+	if selling.LessThan(cost) {
+		return fmt.Errorf("selling price cannot be less than cost price")
+	}
+
+	// Get existing product
+	product, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	// Update prices
+	product.CostPrice = costPrice
+	product.SellingPrice = sellingPrice
+
+	return s.repo.Update(ctx, product)
+}
+
+// BulkUpdatePricing updates pricing for multiple products
+func (s *ProductService) BulkUpdatePricing(ctx context.Context, updates map[string]struct{ CostPrice, SellingPrice string }) error {
+	if len(updates) == 0 {
+		return fmt.Errorf("no updates provided")
+	}
+
+	// Process updates in a transaction
+	for productID, prices := range updates {
+		err := s.UpdateProductPricing(ctx, productID, prices.CostPrice, prices.SellingPrice)
+		if err != nil {
+			return fmt.Errorf("failed to update product %s: %w", productID, err)
+		}
+	}
+
+	return nil
+}
+
+// CalculateProfitMargin calculates the profit margin for a product
+func (s *ProductService) CalculateProfitMargin(productID string) (decimal.Decimal, decimal.Decimal, error) {
+	if productID == "" {
+		return decimal.Zero, decimal.Zero, domain.ErrInvalidID
+	}
+
+	product, err := s.repo.GetByID(context.Background(), productID)
+	if err != nil {
+		return decimal.Zero, decimal.Zero, err
+	}
+
+	costPrice, err := domain.ParsePrice(product.CostPrice)
+	if err != nil {
+		return decimal.Zero, decimal.Zero, fmt.Errorf("invalid cost price: %w", err)
+	}
+
+	sellingPrice, err := domain.ParsePrice(product.SellingPrice)
+	if err != nil {
+		return decimal.Zero, decimal.Zero, fmt.Errorf("invalid selling price: %w", err)
+	}
+
+	return domain.CalculateProfitMargin(costPrice, sellingPrice)
+}
+
+// CalculateMarkup calculates the markup percentage for a product
+func (s *ProductService) CalculateMarkup(productID string) (decimal.Decimal, decimal.Decimal, error) {
+	if productID == "" {
+		return decimal.Zero, decimal.Zero, domain.ErrInvalidID
+	}
+
+	product, err := s.repo.GetByID(context.Background(), productID)
+	if err != nil {
+		return decimal.Zero, decimal.Zero, err
+	}
+
+	costPrice, err := domain.ParsePrice(product.CostPrice)
+	if err != nil {
+		return decimal.Zero, decimal.Zero, fmt.Errorf("invalid cost price: %w", err)
+	}
+
+	sellingPrice, err := domain.ParsePrice(product.SellingPrice)
+	if err != nil {
+		return decimal.Zero, decimal.Zero, fmt.Errorf("invalid selling price: %w", err)
+	}
+
+	return domain.CalculateMarkup(costPrice, sellingPrice)
+}
+
+// AddVariant adds a variant to a product
+func (s *ProductService) AddVariant(ctx context.Context, productID string, variant *domain.Variant) error {
+	if productID == "" {
+		return domain.ErrInvalidID
+	}
+	if variant == nil {
+		return fmt.Errorf("variant is required")
+	}
+
+	// Get existing product
+	product, err := s.repo.GetByID(ctx, productID)
+	if err != nil {
+		return err
+	}
+
+	// Initialize variants slice if nil
+	if product.Variants == nil {
+		product.Variants = []domain.Variant{}
+	}
+
+	// Set timestamps
+	now := time.Now()
+	variant.ID = primitive.NewObjectID().Hex()
+	variant.CreatedAt = now
+	variant.UpdatedAt = now
+
+	// Add variant
+	product.Variants = append(product.Variants, *variant)
+
+	return s.repo.Update(ctx, product)
+}
+
+// UpdateVariant updates a variant for a product
+func (s *ProductService) UpdateVariant(ctx context.Context, productID string, variant *domain.Variant) error {
+	if productID == "" || variant == nil || variant.ID == "" {
+		return fmt.Errorf("product ID and variant ID are required")
+	}
+
+	// Get existing product
+	product, err := s.repo.GetByID(ctx, productID)
+	if err != nil {
+		return err
+	}
+
+	// Find and update variant
+	found := false
+	for i, v := range product.Variants {
+		if v.ID == variant.ID {
+			variant.CreatedAt = v.CreatedAt
+			variant.UpdatedAt = time.Now()
+			product.Variants[i] = *variant
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		return fmt.Errorf("variant not found")
+	}
+
+	return s.repo.Update(ctx, product)
+}
+
+// RemoveVariant removes a variant from a product
+func (s *ProductService) RemoveVariant(ctx context.Context, productID, variantID string) error {
+	if productID == "" || variantID == "" {
+		return fmt.Errorf("product ID and variant ID are required")
+	}
+
+	// Get existing product
+	product, err := s.repo.GetByID(ctx, productID)
+	if err != nil {
+		return err
+	}
+
+	// Find and remove variant
+	found := false
+	for i, v := range product.Variants {
+		if v.ID == variantID {
+			// Remove variant by slicing
+			product.Variants = append(product.Variants[:i], product.Variants[i+1:]...)
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		return fmt.Errorf("variant not found")
+	}
+
+	return s.repo.Update(ctx, product)
+}
+
+// UpdateVariantStock updates the stock for a specific variant
+func (s *ProductService) UpdateVariantStock(ctx context.Context, productID, variantID string, quantity int32) error {
+	if productID == "" || variantID == "" {
+		return fmt.Errorf("product ID and variant ID are required")
+	}
+
+	// Get existing product
+	product, err := s.repo.GetByID(ctx, productID)
+	if err != nil {
+		return err
+	}
+
+	// Find variant and update its stock
+	variantFound := false
+	for i, v := range product.Variants {
+		if v.ID == variantID {
+			// Update the variant's updated_at timestamp
+			product.Variants[i].UpdatedAt = time.Now()
+			variantFound = true
+			break
+		}
+	}
+
+	if !variantFound {
+		return fmt.Errorf("variant not found")
+	}
+
+	// Update the product's stock quantity
+	product.StockQty = quantity
+
+	// Update the product with modified variant
+	return s.repo.Update(ctx, product)
+}
+
+// BulkUpdateProductVisibility updates visibility for multiple products
+func (s *ProductService) BulkUpdateProductVisibility(ctx context.Context, supplierID string, productIDs []string, isVisible bool) error {
+	if supplierID == "" {
+		return domain.ErrSupplierRequired
+	}
+	if len(productIDs) == 0 {
+		return fmt.Errorf("no product IDs provided")
+	}
+
+	// Check if supplier exists
+	_, err := s.supplierSvc.GetSupplier(ctx, supplierID)
+	if err != nil {
+		s.logger.Error("Invalid supplier ID",
+			zap.String("supplierID", supplierID),
+			zap.Error(err))
+		return domain.ErrSupplierNotFound
+	}
+
+	return s.repo.BulkUpdateVisibility(ctx, supplierID, productIDs, isVisible)
+}
+
+// PublishProducts publishes or unpublishes multiple products
+func (s *ProductService) PublishProducts(ctx context.Context, productIDs []string, publish bool) error {
+	if len(productIDs) == 0 {
+		return fmt.Errorf("no product IDs provided")
+	}
+
+	return s.repo.PublishProducts(ctx, productIDs, publish)
+}
+
+// SearchProducts searches for products by query
+func (s *ProductService) SearchProducts(
+	ctx context.Context,
+	query string,
+	opts *domain.ListOptions,
+) ([]*domain.Product, int64, error) {
+	if query == "" {
+		return s.List(ctx, opts)
+	}
+	return s.repo.Search(ctx, query, opts)
+}
+
+// GetProductBySKU retrieves a product by SKU
+func (s *ProductService) GetProductBySKU(ctx context.Context, sku string) (*domain.Product, error) {
+	if sku == "" {
+		return nil, fmt.Errorf("SKU is required")
+	}
+	products, _, err := s.repo.Search(ctx, sku, &domain.ListOptions{
+		Pagination: &domain.Pagination{
+			Page:     1,
+			PageSize: 1,
+		},
+	})
+	if err != nil {
+		s.logger.Error("Failed to search product by SKU",
+			zap.String("sku", sku),
+			zap.Error(err))
+		return nil, fmt.Errorf("failed to search product by SKU: %w", err)
+	}
+
+	if len(products) == 0 {
+		return nil, domain.ErrProductNotFound
+	}
+
+	return products[0], nil
+}
+
+// GetProductByBarcode retrieves a product by barcode
+func (s *ProductService) GetProductByBarcode(ctx context.Context, barcode string) (*domain.Product, error) {
+	if barcode == "" {
+		return nil, fmt.Errorf("barcode is required")
+	}
+
+	products, _, err := s.repo.Search(ctx, barcode, &domain.ListOptions{
+		Pagination: &domain.Pagination{
+			Page:     1,
+			PageSize: 1,
+		},
+	})
+
+	if err != nil {
+		s.logger.Error("Failed to search product by barcode",
+			zap.String("barcode", barcode),
+			zap.Error(err))
+		return nil, fmt.Errorf("failed to search product by barcode: %w", err)
+	}
+
+	if len(products) == 0 {
+		return nil, domain.ErrProductNotFound
+	}
+
+	return products[0], nil
+}
+
+// GetProductsBySupplier retrieves products by supplier ID
+func (s *ProductService) GetProductsBySupplier(
+	ctx context.Context,
+	supplierID string,
+	opts *domain.ListOptions,
+) ([]*domain.Product, int64, error) {
+	if supplierID == "" {
+		return nil, 0, domain.ErrSupplierRequired
+	}
+
+	// Check if supplier exists
+	_, err := s.supplierSvc.GetSupplier(ctx, supplierID)
+	if err != nil {
+		s.logger.Error("Invalid supplier ID",
+			zap.String("supplierID", supplierID),
+			zap.Error(err))
+		return nil, 0, domain.ErrSupplierNotFound
+	}
+
+	return s.repo.GetBySupplier(ctx, supplierID, opts)
+}
+
+// GetProductsByCategory retrieves products by category ID
+func (s *ProductService) GetProductsByCategory(
+	ctx context.Context,
+	categoryID string,
+	opts *domain.ListOptions,
+) ([]*domain.Product, int64, error) {
+	if categoryID == "" {
+		return nil, 0, fmt.Errorf("category ID is required")
+	}
+
+	// Note: We assume category existence is validated by the category service
+	return s.repo.GetByCategory(ctx, categoryID, opts)
+}
+
+// ValidateProduct validates the product fields
+func (s *ProductService) ValidateProduct(p *domain.Product) error {
 	// Basic validations
 	if p.Name == "" {
-		return domain.ErrProductNameRequired
+		return fmt.Errorf("product name is required")
 	}
 
 	if p.SKU == "" {
-		return domain.ErrProductSKURequired
+		return fmt.Errorf("product SKU is required")
 	}
 
 	// Validate prices
 	if p.CostPrice != "" {
-		costPrice, err := domain.ParsePrice(p.CostPrice)
-		if err != nil || costPrice < 0 {
-			return domain.ErrInvalidCostPrice
+		_, err := domain.ParsePrice(p.CostPrice)
+		if err != nil {
+			return fmt.Errorf("invalid cost price: %w", err)
 		}
 	}
 
 	if p.SellingPrice == "" {
-		return domain.ErrSellingPriceRequired
+		return fmt.Errorf("selling price is required")
 	}
 
-	sellingPrice, err := domain.ParsePrice(p.SellingPrice)
-	if err != nil || sellingPrice < 0 {
-		return domain.ErrInvalidSellingPrice
+	_, err := domain.ParsePrice(p.SellingPrice)
+	if err != nil {
+		return fmt.Errorf("invalid selling price: %w", err)
 	}
 
 	// Validate stock quantity
 	if p.StockQty < 0 {
-		return domain.ErrInvalidStockQuantity
+		return fmt.Errorf("stock quantity cannot be negative")
 	}
 
 	// Validate currency (ISO 4217)
+	if p.Currency == "" {
+		return fmt.Errorf("currency is required")
+	}
 	if len(p.Currency) != 3 {
-		return domain.ErrInvalidCurrency
+		return fmt.Errorf("currency must be a 3-letter ISO 4217 code")
 	}
 
 	// Validate variants
-	variantSKUs := make(map[string]bool)
+	variantNames := make(map[string]bool)
 	for i, variant := range p.Variants {
-		if variant.SKU == "" {
-			return fmt.Errorf("variant at index %d: %w", i, domain.ErrVariantSKURequired)
+		if variant.Name == "" {
+			return fmt.Errorf("variant at index %d: name is required", i)
 		}
 
-		// Check for duplicate SKUs in variants
-		if _, exists := variantSKUs[variant.SKU]; exists {
-			return fmt.Errorf("duplicate variant SKU: %s", variant.SKU)
+		// Check for duplicate variant names
+		if _, exists := variantNames[variant.Name]; exists {
+			return fmt.Errorf("duplicate variant name: %s", variant.Name)
 		}
-		variantSKUs[variant.SKU] = true
+		variantNames[variant.Name] = true
 
 		// Validate variant options
 		optionNames := make(map[string]bool)
 		for j, option := range variant.Options {
 			if option.Name == "" {
-				return fmt.Errorf("variant %s: option at index %d: %w", 
-					variant.SKU, j, domain.ErrOptionNameRequired)
+				return fmt.Errorf("variant %s: option at index %d: name is required", 
+					variant.Name, j)
 			}
 
 			// Check for duplicate option names
 			if _, exists := optionNames[option.Name]; exists {
 				return fmt.Errorf("variant %s: duplicate option name: %s", 
-					variant.SKU, option.Name)
+					variant.Name, option.Name)
 			}
 			optionNames[option.Name] = true
 
 			// Validate option values
 			if option.Value == "" {
-				return fmt.Errorf("variant %s: option %s: %w", 
-					variant.SKU, option.Name, domain.ErrOptionValueRequired)
+				return fmt.Errorf("variant %s: option %s: value is required", 
+					variant.Name, option.Name)
 			}
 
 			// Validate option price adjustment if present
 			if option.PriceAdjustment != "" {
 				if _, err := domain.ParsePrice(option.PriceAdjustment); err != nil {
-					return fmt.Errorf("variant %s: option %s: %w: %v", 
-						variant.SKU, option.Name, domain.ErrInvalidPriceAdjustment, err)
+					return fmt.Errorf("variant %s: option %s: invalid price adjustment: %w", 
+						variant.Name, option.Name, err)
 				}
 			}
 		}
 	}
 
 	return nil
+}
+
+// GenerateProductReport generates a report for products
+func (s *ProductService) GenerateProductReport(ctx context.Context, format string) ([]byte, error) {
+	// This is a placeholder implementation
+	// In a real implementation, this would generate a report in the specified format (e.g., CSV, PDF, Excel)
+	// containing product details, stock levels, etc.
+	return []byte("Product report in " + format + " format"), nil
 }

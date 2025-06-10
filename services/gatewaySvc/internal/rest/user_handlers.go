@@ -5,7 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
-	userv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/user/v1"
+	userv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/user/v1"
 )
 
 // UserRegisterRequest represents the register request body

@@ -22,6 +22,7 @@ type Config struct {
 	InventoryServiceAddr string `env:"INVENTORY_SERVICE_ADDR,default=localhost:50054"`
 	OrderServiceAddr     string `env:"ORDER_SERVICE_ADDR,default=localhost:50055"`
 	UserServiceAddr      string `env:"USER_SERVICE_ADDR,default=localhost:50056"`
+	SupplierServiceAddr  string `env:"SUPPLIER_SERVICE_ADDR,default=localhost:50057"`
 }
 
 func main() {
@@ -42,6 +43,7 @@ func main() {
 		InventoryServiceAddr: "localhost:50054",
 		OrderServiceAddr:     "localhost:50055",
 		UserServiceAddr:      "localhost:50056",
+		SupplierServiceAddr:  "localhost:50057",
 	}
 	
 	// Check for environment variables
@@ -69,12 +71,17 @@ func main() {
 		config.UserServiceAddr = addr
 	}
 	
+	if addr := os.Getenv("SUPPLIER_SERVICE_ADDR"); addr != "" {
+		config.SupplierServiceAddr = addr
+	}
+	
 	logger.Info("Configuration loaded", 
 		zap.String("rest_port", config.RestPort),
 		zap.String("product_service_addr", config.ProductServiceAddr),
 		zap.String("inventory_service_addr", config.InventoryServiceAddr),
 		zap.String("order_service_addr", config.OrderServiceAddr),
 		zap.String("user_service_addr", config.UserServiceAddr),
+		zap.String("supplier_service_addr", config.SupplierServiceAddr),
 	)
 
 	// Initialize services
@@ -98,12 +105,18 @@ func main() {
 		logger.Fatal("Failed to create user service", zap.Error(err))
 	}
 
+	supplierSvc, err := services.NewSupplierService(config.SupplierServiceAddr, logger)
+	if err != nil {
+		logger.Fatal("Failed to create supplier service", zap.Error(err))
+	}
+
 	// Initialize REST server
 	server := rest.NewServer(
 		productSvc,
 		inventorySvc,
 		orderSvc,
 		userSvc,
+		supplierSvc,
 		config.JWTSecret,
 		config.RestPort,
 		logger,

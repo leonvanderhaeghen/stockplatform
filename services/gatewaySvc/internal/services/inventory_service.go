@@ -5,31 +5,24 @@ import (
 	"fmt"
 
 	"go.uber.org/zap"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 
-	inventoryv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/inventory/v1"
+	"github.com/leonvanderhaeghen/stockplatform/pkg/grpcclient"
+	inventoryv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/inventory/v1"
 )
 
 // InventoryServiceImpl implements the InventoryService interface
 type InventoryServiceImpl struct {
-	client inventoryv1.InventoryServiceClient
+	client *grpcclient.InventoryClient
 	logger *zap.Logger
 }
 
 // NewInventoryService creates a new instance of InventoryServiceImpl
 func NewInventoryService(inventoryServiceAddr string, logger *zap.Logger) (InventoryService, error) {
-	// Create a gRPC connection to the inventory service
-	conn, err := grpc.Dial(
-		inventoryServiceAddr,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
+	// Create a gRPC client
+	client, err := grpcclient.NewInventoryClient(inventoryServiceAddr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to inventory service: %w", err)
+		return nil, fmt.Errorf("failed to create inventory client: %w", err)
 	}
-
-	// Create a client
-	client := inventoryv1.NewInventoryServiceClient(conn)
 
 	return &InventoryServiceImpl{
 		client: client,
@@ -64,7 +57,7 @@ func (s *InventoryServiceImpl) ListInventory(
 		return nil, fmt.Errorf("failed to list inventory: %w", err)
 	}
 
-	return resp, nil
+	return resp.GetInventories(), nil
 }
 
 // GetInventoryItemByID gets an inventory item by ID
@@ -86,7 +79,7 @@ func (s *InventoryServiceImpl) GetInventoryItemByID(ctx context.Context, id stri
 		return nil, fmt.Errorf("failed to get inventory item: %w", err)
 	}
 
-	return resp.Inventory, nil
+	return resp.GetInventory(), nil
 }
 
 // GetInventoryItemsByProductID gets inventory items by product ID
@@ -108,7 +101,7 @@ func (s *InventoryServiceImpl) GetInventoryItemsByProductID(ctx context.Context,
 		return nil, fmt.Errorf("failed to get inventory by product ID: %w", err)
 	}
 
-	return resp.Inventory, nil
+	return resp.GetInventory(), nil
 }
 
 // GetInventoryItemBySKU gets an inventory item by SKU
@@ -130,7 +123,7 @@ func (s *InventoryServiceImpl) GetInventoryItemBySKU(ctx context.Context, sku st
 		return nil, fmt.Errorf("failed to get inventory by SKU: %w", err)
 	}
 
-	return resp.Inventory, nil
+	return resp.GetInventory(), nil
 }
 
 // CreateInventoryItem creates a new inventory item
@@ -166,7 +159,7 @@ func (s *InventoryServiceImpl) CreateInventoryItem(
 		return nil, fmt.Errorf("failed to create inventory item: %w", err)
 	}
 
-	return resp.Inventory, nil
+	return resp.GetInventory(), nil
 }
 
 // UpdateInventoryItem updates an existing inventory item
@@ -201,7 +194,7 @@ func (s *InventoryServiceImpl) UpdateInventoryItem(
 	}
 
 	// Update the fields
-	inventory := getResp.Inventory
+	inventory := getResp.GetInventory()
 	inventory.ProductId = productID
 	inventory.Quantity = quantity
 	inventory.Sku = sku
@@ -286,7 +279,7 @@ func (s *InventoryServiceImpl) AddStock(
 		return nil, fmt.Errorf("failed to get updated inventory item: %w", err)
 	}
 
-	return getResp.Inventory, nil
+	return getResp.GetInventory(), nil
 }
 
 // RemoveStock removes stock from an inventory item
@@ -330,5 +323,5 @@ func (s *InventoryServiceImpl) RemoveStock(
 		return nil, fmt.Errorf("failed to get updated inventory item: %w", err)
 	}
 
-	return getResp.Inventory, nil
+	return getResp.GetInventory(), nil
 }

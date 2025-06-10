@@ -7,17 +7,32 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// CategoryRequest represents the category request body
+type CategoryRequest struct {
+	Name        string `json:"name" binding:"required"`
+	Description string `json:"description"`
+	ParentID    string `json:"parent_id"`
+	IsActive    bool   `json:"is_active"`
+}
+
 // ProductRequest represents the product request body
 type ProductRequest struct {
-	Name        string   `json:"name" binding:"required"`
-	Description string   `json:"description"`
-	SKU         string   `json:"sku" binding:"required"`
-	Categories  []string `json:"categories"`
-	Price       float64  `json:"price" binding:"required,gt=0"`
-	Cost        float64  `json:"cost" binding:"required,gte=0"`
-	Active      bool     `json:"active"`
-	Images      []string `json:"images"`
-	Attributes  map[string]string `json:"attributes"`
+	Name         string            `json:"name" binding:"required"`
+	Description  string            `json:"description"`
+	CostPrice    string            `json:"cost_price" binding:"required"`
+	SellingPrice string            `json:"selling_price" binding:"required"`
+	Currency     string            `json:"currency"`
+	SKU          string            `json:"sku" binding:"required"`
+	Barcode      string            `json:"barcode"`
+	CategoryIDs  []string          `json:"category_ids"`
+	SupplierID   string            `json:"supplier_id"`
+	IsActive     bool              `json:"is_active"`
+	InStock      bool              `json:"in_stock"`
+	StockQty     int32             `json:"stock_qty"`
+	LowStockAt   int32             `json:"low_stock_at"`
+	ImageURLs    []string          `json:"image_urls"`
+	VideoURLs    []string          `json:"video_urls"`
+	Metadata     map[string]string `json:"metadata"`
 }
 
 // listCategories returns a list of product categories
@@ -29,6 +44,23 @@ func (s *Server) listCategories(c *gin.Context) {
 	}
 
 	respondWithSuccess(c, http.StatusOK, categories)
+}
+
+// createCategory creates a new product category
+func (s *Server) createCategory(c *gin.Context) {
+	var req CategoryRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		respondWithError(c, http.StatusBadRequest, "Invalid request: "+err.Error())
+		return
+	}
+
+	category, err := s.productSvc.CreateCategory(c.Request.Context(), req.Name, req.Description, req.ParentID, req.IsActive)
+	if err != nil {
+		genericErrorHandler(c, err, s.logger, "Create category")
+		return
+	}
+
+	respondWithSuccess(c, http.StatusCreated, category)
 }
 
 // listProducts returns a list of products
@@ -91,17 +123,36 @@ func (s *Server) createProduct(c *gin.Context) {
 		return
 	}
 
+	// Validate price formats
+	if _, err := strconv.ParseFloat(req.CostPrice, 64); err != nil {
+		respondWithError(c, http.StatusBadRequest, "Invalid cost price format")
+		return
+	}
+
+	if _, err := strconv.ParseFloat(req.SellingPrice, 64); err != nil {
+		respondWithError(c, http.StatusBadRequest, "Invalid selling price format")
+		return
+	}
+
+	// Convert the request to the format expected by the product service
 	product, err := s.productSvc.CreateProduct(
 		c.Request.Context(),
 		req.Name,
 		req.Description,
+		req.CostPrice,
+		req.SellingPrice,
+		req.Currency,
 		req.SKU,
-		req.Categories,
-		req.Price,
-		req.Cost,
-		req.Active,
-		req.Images,
-		req.Attributes,
+		req.Barcode,
+		req.CategoryIDs,
+		req.SupplierID,
+		req.IsActive,
+		req.InStock,
+		req.StockQty,
+		req.LowStockAt,
+		req.ImageURLs,
+		req.VideoURLs,
+		req.Metadata,
 	)
 	if err != nil {
 		genericErrorHandler(c, err, s.logger, "Create product")
@@ -125,18 +176,30 @@ func (s *Server) updateProduct(c *gin.Context) {
 		return
 	}
 
+	// Validate price formats
+	if _, err := strconv.ParseFloat(req.SellingPrice, 64); err != nil {
+		respondWithError(c, http.StatusBadRequest, "Invalid selling price format")
+		return
+	}
+
+	if _, err := strconv.ParseFloat(req.CostPrice, 64); err != nil {
+		respondWithError(c, http.StatusBadRequest, "Invalid cost price format")
+		return
+	}
+
+	// Call the service to update the product
 	err := s.productSvc.UpdateProduct(
 		c.Request.Context(),
 		id,
 		req.Name,
 		req.Description,
 		req.SKU,
-		req.Categories,
-		req.Price,
-		req.Cost,
-		req.Active,
-		req.Images,
-		req.Attributes,
+		req.CategoryIDs,
+		req.SellingPrice,
+		req.CostPrice,
+		req.IsActive,
+		req.ImageURLs,
+		req.Metadata,
 	)
 	if err != nil {
 		genericErrorHandler(c, err, s.logger, "Update product")

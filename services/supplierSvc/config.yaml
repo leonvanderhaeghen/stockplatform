@@ -1,0 +1,6 @@
+database:
+  uri: "mongodb://localhost:27017"
+  name: "stockplatform"
+
+server:
+  port: "50051"

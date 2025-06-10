@@ -4,6 +4,8 @@ go 1.23.0
 
 toolchain go1.23.3
 
+// This is a workspace module - see go.work for more details
+
 require (
 	github.com/bufbuild/buf v1.54.0
 	github.com/fullstorydev/grpcurl v1.9.3

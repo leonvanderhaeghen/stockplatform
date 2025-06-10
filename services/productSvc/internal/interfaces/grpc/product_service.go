@@ -2,9 +2,7 @@ package grpc
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"fmt"
 
 	"github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/product/v1"
 	"github.com/leonvanderhaeghen/stockplatform/services/productSvc/internal/application"
@@ -168,26 +166,6 @@ func toProtoCategory(c *domain.Category) *productv1.Category {
 
 // toProtoProduct converts a domain Product to a protobuf Product
 func toProtoProduct(p *domain.Product) *productv1.Product {
-	// Convert metadata from map[string]interface{} to map[string]string
-	metadata := make(map[string]string, len(p.Metadata))
-	for k, v := range p.Metadata {
-		switch val := v.(type) {
-		case string:
-			metadata[k] = val
-		case int, int32, int64, float32, float64, bool:
-			metadata[k] = fmt.Sprint(val)
-		default:
-			// For complex types, convert to JSON string
-			jsonData, err := json.Marshal(val)
-			if err != nil {
-				// If we can't marshal to JSON, use the string representation
-				metadata[k] = fmt.Sprint(val)
-			} else {
-				metadata[k] = string(jsonData)
-			}
-		}
-	}
-
 	pbProduct := &productv1.Product{
 		Id:           p.ID.Hex(),
 		Name:         p.Name,
@@ -205,7 +183,7 @@ func toProtoProduct(p *domain.Product) *productv1.Product {
 		LowStockAt:    p.LowStockAt,
 		ImageUrls:     p.ImageURLs,
 		VideoUrls:     p.VideoURLs,
-		Metadata:      metadata,
+		Metadata:      convertMetadata(p.Metadata),
 	}
 
 	// Only set timestamps if they are not zero

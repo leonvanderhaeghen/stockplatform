@@ -43,41 +43,23 @@ RUN \
     echo "Dependencies downloaded successfully"
 
 # Generate protobuf code for all services
-# Product Service
-RUN mkdir -p ../../pkg/gen/go/product/v1 && \
+RUN echo "Generating protobuf code..." && \
+    # Create directories
+    mkdir -p ../../pkg/gen/go/product/v1 && \
+    mkdir -p ../../pkg/gen/go/user/v1 && \
+    mkdir -p ../../pkg/gen/go/order/v1 && \
+    mkdir -p ../../pkg/gen/go/inventory/v1 && \
+    # Generate code for each service
     protoc -I=../../proto \
-      --go_out=../../pkg/gen/go/product/v1 \
+      --go_out=../../pkg/gen \
       --go_opt=paths=source_relative \
-      --go-grpc_out=../../pkg/gen/go/product/v1 \
+      --go-grpc_out=../../pkg/gen \
       --go-grpc_opt=paths=source_relative \
-      ../../proto/product/v1/product.proto
-
-# User Service
-RUN mkdir -p ../../pkg/gen/go/user/v1 && \
-    protoc -I=../../proto \
-      --go_out=../../pkg/gen/go/user/v1 \
-      --go_opt=paths=source_relative \
-      --go-grpc_out=../../pkg/gen/go/user/v1 \
-      --go-grpc_opt=paths=source_relative \
-      ../../proto/user/v1/user.proto
-
-# Order Service
-RUN mkdir -p ../../pkg/gen/go/order/v1 && \
-    protoc -I=../../proto \
-      --go_out=../../pkg/gen/go/order/v1 \
-      --go_opt=paths=source_relative \
-      --go-grpc_out=../../pkg/gen/go/order/v1 \
-      --go-grpc_opt=paths=source_relative \
-      ../../proto/order/v1/order.proto
-
-# Inventory Service
-RUN mkdir -p ../../pkg/gen/go/inventory/v1 && \
-    protoc -I=../../proto \
-      --go_out=../../pkg/gen/go/inventory/v1 \
-      --go_opt=paths=source_relative \
-      --go-grpc_out=../../pkg/gen/go/inventory/v1 \
-      --go-grpc_opt=paths=source_relative \
-      ../../proto/inventory/v1/inventory.proto
+      product/v1/product.proto \
+      user/v1/user.proto \
+      order/v1/order.proto \
+      inventory/v1/inventory.proto && \
+    echo "Protobuf code generated successfully"
 
 # Build the application with retries
 RUN \

@@ -48,7 +48,11 @@ var (
 
 	// Supplier errors
 	ErrSupplierNotFound         = fmt.Errorf("%w: supplier not found", ErrNotFound)
+	ErrSupplierRequired         = fmt.Errorf("%w: supplier is required", ErrValidation)
 	ErrSupplierNameRequired     = fmt.Errorf("%w: supplier name is required", ErrValidation)
+	ErrInvalidSupplierID        = fmt.Errorf("%w: invalid supplier ID", ErrValidation)
+	ErrNoProductsProvided       = fmt.Errorf("%w: no products provided", ErrValidation)
+	ErrNoProductsUpdated        = fmt.Errorf("%w: no products were updated", ErrValidation)
 
 	// Inventory errors
 	ErrInvalidQuantity          = fmt.Errorf("%w: quantity must be greater than zero", ErrValidation)

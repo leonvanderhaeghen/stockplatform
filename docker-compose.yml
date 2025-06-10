@@ -110,6 +110,25 @@ services:
     networks:
       - stockplatform-network
 
+  # Supplier Service
+  supplier-service:
+    build:
+      context: .
+      dockerfile: ./services/supplierSvc/Dockerfile
+    container_name: stockplatform-supplier-service
+    restart: unless-stopped
+    ports:
+      - "50057:50057"
+    environment:
+      - GRPC_PORT=50057
+      - MONGO_URI=mongodb://admin:admin123@mongodb:27017
+      - GO111MODULE=on
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - stockplatform-network
+
   # User Service
   user-service:
     build:
@@ -149,6 +168,7 @@ services:
       - INVENTORY_SERVICE_ADDR=inventory-service:50054
       - ORDER_SERVICE_ADDR=order-service:50055
       - USER_SERVICE_ADDR=user-service:50056
+      - SUPPLIER_SERVICE_ADDR=supplier-service:50057
       - JWT_SECRET=your-secret-key-here
       - GO111MODULE=on
     depends_on:
@@ -156,6 +176,7 @@ services:
       - inventory-service
       - order-service
       - user-service
+      - supplier-service
     networks:
       - stockplatform-network
 

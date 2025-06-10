@@ -12,19 +12,21 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"go.uber.org/zap"
 
+	_ "github.com/leonvanderhaeghen/stockplatform/services/gatewaySvc/docs" // Import generated docs
 	"github.com/leonvanderhaeghen/stockplatform/services/gatewaySvc/internal/services"
 )
 
 // Server represents the REST API server
 type Server struct {
-	router     *gin.Engine
-	productSvc services.ProductService
+	router      *gin.Engine
+	productSvc  services.ProductService
 	inventorySvc services.InventoryService
-	orderSvc   services.OrderService
-	userSvc    services.UserService
-	logger     *zap.Logger
-	jwtSecret  string
-	port       string
+	orderSvc    services.OrderService
+	userSvc     services.UserService
+	supplierSvc services.SupplierService
+	logger      *zap.Logger
+	jwtSecret   string
+	port        string
 }
 
 // NewServer creates a new REST API server
@@ -33,6 +35,7 @@ func NewServer(
 	inventorySvc services.InventoryService,
 	orderSvc services.OrderService,
 	userSvc services.UserService,
+	supplierSvc services.SupplierService,
 	jwtSecret string,
 	port string,
 	logger *zap.Logger,
@@ -54,14 +57,15 @@ func NewServer(
 	}))
 	
 	return &Server{
-		router:     router,
-		productSvc: productSvc,
+		router:      router,
+		productSvc:  productSvc,
 		inventorySvc: inventorySvc,
-		orderSvc:   orderSvc,
-		userSvc:    userSvc,
-		logger:     logger.Named("rest_server"),
-		jwtSecret:  jwtSecret,
-		port:       port,
+		orderSvc:    orderSvc,
+		userSvc:     userSvc,
+		supplierSvc: supplierSvc,
+		logger:      logger.Named("rest_server"),
+		jwtSecret:   jwtSecret,
+		port:        port,
 	}
 }
 
@@ -74,7 +78,10 @@ func (s *Server) SetupRoutes() {
 	v1.GET("/health", s.healthCheck)
 	
 	// Swagger documentation
-	s.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	s.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, 
+		ginSwagger.URL("/swagger/doc.json"), // The url pointing to API definition
+		ginSwagger.DefaultModelsExpandDepth(-1), // Hide models section
+	))
 	
 	// Authentication routes
 	auth := v1.Group("/auth")
@@ -129,6 +136,7 @@ func (s *Server) SetupRoutes() {
 			productsAdmin.POST("", s.createProduct)
 			productsAdmin.PUT("/:id", s.updateProduct)
 			productsAdmin.DELETE("/:id", s.deleteProduct)
+			productsAdmin.POST("/categories", s.createCategory)
 		}
 	}
 	
@@ -167,6 +175,21 @@ func (s *Server) SetupRoutes() {
 			ordersAdmin.POST("/:id/tracking", s.addOrderTracking)
 			ordersAdmin.PUT("/:id/cancel", s.cancelOrder)
 		}
+	}
+
+	// Supplier routes (admin/staff only)
+	suppliers := v1.Group("/suppliers")
+	suppliers.Use(s.authMiddleware(), s.staffMiddleware())
+	{
+		// Initialize supplier handler
+		supplierHandler := NewSupplierHandler(s.supplierSvc, s.logger)
+		
+		// CRUD operations
+		suppliers.GET("", supplierHandler.ListSuppliers)
+		suppliers.POST("", supplierHandler.CreateSupplier)
+		suppliers.GET("/:id", supplierHandler.GetSupplier)
+		suppliers.PUT("/:id", supplierHandler.UpdateSupplier)
+		suppliers.DELETE("/:id", supplierHandler.DeleteSupplier)
 	}
 }
 

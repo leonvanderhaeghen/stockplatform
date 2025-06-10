@@ -41,7 +41,9 @@ RUN protoc -I=/app/proto \
 # Verify the generated files
 RUN ls -la /app/pkg/gen/go/product/v1/
 
-# Build the application
+# Download all dependencies including github.com/gorilla/mux and github.com/gorilla/handlers
+RUN go mod download all
+
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build -o /productSvc ./cmd/main.go
 

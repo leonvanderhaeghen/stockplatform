@@ -2,8 +2,10 @@ package grpc
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"go.uber.org/zap"
@@ -11,10 +13,40 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/product/v1"
 	"github.com/leonvanderhaeghen/stockplatform/services/productSvc/internal/application"
 	"github.com/leonvanderhaeghen/stockplatform/services/productSvc/internal/domain"
+	productv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/product/v1"
 )
+
+// convertMetadata converts a map[string]interface{} to map[string]string by converting all values to strings
+func convertMetadata(metadata map[string]interface{}) map[string]string {
+	if metadata == nil {
+		return nil
+	}
+
+	result := make(map[string]string, len(metadata))
+	for k, v := range metadata {
+		switch v := v.(type) {
+		case string:
+			result[k] = v
+		case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+			result[k] = fmt.Sprintf("%d", v)
+		case float32, float64:
+			result[k] = strconv.FormatFloat(v.(float64), 'f', -1, 64)
+		case bool:
+			result[k] = strconv.FormatBool(v)
+		default:
+			// For complex types, use JSON marshaling
+			if b, err := json.Marshal(v); err == nil {
+				result[k] = string(b)
+			} else {
+				// Fallback to fmt.Sprint if JSON marshaling fails
+				result[k] = fmt.Sprint(v)
+			}
+		}
+	}
+	return result
+}
 
 // ProductServer handles gRPC requests for the Product service
 type ProductServer struct {
@@ -64,6 +96,12 @@ func (s *ProductServer) CreateProduct(ctx context.Context, req *productv1.Create
 		return nil, err
 	}
 
+	// Convert request metadata from map[string]string to map[string]interface{}
+	metadata := make(map[string]interface{})
+	for k, v := range req.GetMetadata() {
+		metadata[k] = v
+	}
+
 	// Convert protobuf message to domain model
 	product := &domain.Product{
 		Name:         req.GetName(),
@@ -81,7 +119,7 @@ func (s *ProductServer) CreateProduct(ctx context.Context, req *productv1.Create
 		LowStockAt:    req.GetLowStockAt(),
 		ImageURLs:     req.GetImageUrls(),
 		VideoURLs:     req.GetVideoUrls(),
-		Metadata:      req.GetMetadata(),
+		Metadata:      metadata,
 	}
 
 	// Call the application service
@@ -126,7 +164,7 @@ func (s *ProductServer) CreateProduct(ctx context.Context, req *productv1.Create
 		LowStockAt:    created.LowStockAt,
 		ImageUrls:     created.ImageURLs,
 		VideoUrls:     created.VideoURLs,
-		Metadata:      created.Metadata,
+		Metadata:      convertMetadata(created.Metadata),
 	}
 
 	// Only set timestamps if they are not zero
@@ -202,7 +240,7 @@ func (s *ProductServer) GetProduct(ctx context.Context, req *productv1.GetProduc
 		LowStockAt:    product.LowStockAt,
 		ImageUrls:     product.ImageURLs,
 		VideoUrls:     product.VideoURLs,
-		Metadata:      product.Metadata,
+		Metadata:      convertMetadata(product.Metadata),
 	}
 
 	// Only set timestamps if they are not zero
@@ -282,7 +320,7 @@ func (s *ProductServer) ListProducts(ctx context.Context, req *productv1.ListPro
 		}
 	}
 
-	// Call the application service
+	// Call the service to list products
 	products, total, err := s.service.ListProducts(ctx, opts)
 	if err != nil {
 		s.logError(log, err, "Failed to list products")
@@ -309,7 +347,7 @@ func (s *ProductServer) ListProducts(ctx context.Context, req *productv1.ListPro
 			LowStockAt:    p.LowStockAt,
 			ImageUrls:     p.ImageURLs,
 			VideoUrls:     p.VideoURLs,
-			Metadata:      p.Metadata,
+			Metadata:      convertMetadata(p.Metadata),
 		}
 
 		// Only set timestamps if they are not zero
@@ -392,10 +430,66 @@ func (s *ProductServer) ListCategories(ctx context.Context, req *productv1.ListC
 	}, nil
 }
 
+// CreateCategory handles the CreateCategory gRPC request
+func (s *ProductServer) CreateCategory(ctx context.Context, req *productv1.CreateCategoryRequest) (*productv1.CreateCategoryResponse, error) {
+	start := time.Now()
+	log := s.logger.With(
+		zap.String("method", "CreateCategory"),
+		zap.String("name", req.GetName()),
+	)
+
+	// Log incoming request
+	log.Debug("Processing CreateCategory request",
+		zap.Any("request", req),
+	)
+
+	// Validate request
+	if req.GetName() == "" {
+		err := status.Error(codes.InvalidArgument, "category name is required")
+		s.logError(log, err, "Validation failed")
+		return nil, err
+	}
+
+	// Convert request to domain model
+	category := &domain.Category{
+		Name:        req.GetName(),
+		Description: req.GetDescription(),
+		ParentID:    req.GetParentId(),
+	}
+
+	// Create category using the category service
+	createdCategory, err := s.categoryService.CreateCategory(ctx, category)
+	if err != nil {
+		s.logError(log, err, "Failed to create category")
+		return nil, status.Error(codes.Internal, "failed to create category")
+	}
+
+	// Convert domain model to protobuf response
+	categoryProto := &productv1.Category{
+		Id:          createdCategory.ID.Hex(),
+		Name:        createdCategory.Name,
+		Description: createdCategory.Description,
+		ParentId:    createdCategory.ParentID,
+		Level:       createdCategory.Level,
+		Path:        createdCategory.Path,
+		CreatedAt:   timestamppb.New(createdCategory.CreatedAt),
+		UpdatedAt:   timestamppb.New(createdCategory.UpdatedAt),
+	}
+
+	log.Info("Successfully created category",
+		zap.String("categoryID", createdCategory.ID.Hex()),
+		zap.Duration("duration", time.Since(start)),
+	)
+
+	return &productv1.CreateCategoryResponse{
+		Category: categoryProto,
+	}, nil
+}
+
 // logError logs errors with additional context
 func (s *ProductServer) logError(log *zap.Logger, err error, msg string) {
 	log.Error(msg,
-		zap.String("error", err.Error()),
+		zap.Error(err),
 		zap.String("error_type", fmt.Sprintf("%T", err)),
 		zap.Stack("stack"),
 	)

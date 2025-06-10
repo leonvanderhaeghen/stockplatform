@@ -5,31 +5,28 @@ import (
 	"fmt"
 
 	"go.uber.org/zap"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 
-	userv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/user/v1"
+	userv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/user/v1"
+	"github.com/leonvanderhaeghen/stockplatform/pkg/grpcclient"
+)
+
+var (
+	_ = userv1.UserService_ServiceDesc // Ensure the service is linked
 )
 
 // UserServiceImpl implements the UserService interface
 type UserServiceImpl struct {
-	client userv1.UserServiceClient
+	client *grpcclient.UserClient
 	logger *zap.Logger
 }
 
 // NewUserService creates a new instance of UserServiceImpl
 func NewUserService(userServiceAddr string, logger *zap.Logger) (UserService, error) {
-	// Create a gRPC connection to the user service
-	conn, err := grpc.Dial(
-		userServiceAddr,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
+	// Create a gRPC client
+	client, err := grpcclient.NewUserClient(userServiceAddr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to user service: %w", err)
+		return nil, fmt.Errorf("failed to create user client: %w", err)
 	}
-
-	// Create a client
-	client := userv1.NewUserServiceClient(conn)
 
 	return &UserServiceImpl{
 		client: client,
@@ -49,19 +46,16 @@ func (s *UserServiceImpl) RegisterUser(
 		zap.String("role", role),
 	)
 
-	// Create the registration request
+	// Create the request
 	req := &userv1.RegisterUserRequest{
 		Email:     email,
 		Password:  password,
 		FirstName: firstName,
 		LastName:  lastName,
+		Role:      role,
 	}
 
-	// Only set the role if it's not empty
-	if role != "" {
-		req.Role = role
-	}
-
+	// Call the gRPC service
 	resp, err := s.client.RegisterUser(ctx, req)
 	if err != nil {
 		s.logger.Error("Failed to register user",
@@ -71,7 +65,7 @@ func (s *UserServiceImpl) RegisterUser(
 		return nil, fmt.Errorf("failed to register user: %w", err)
 	}
 
-	return resp.User, nil
+	return resp.GetUser(), nil
 }
 
 // AuthenticateUser authenticates a user
@@ -83,11 +77,13 @@ func (s *UserServiceImpl) AuthenticateUser(
 		zap.String("email", email),
 	)
 
+	// Create the request
 	req := &userv1.AuthenticateUserRequest{
 		Email:    email,
 		Password: password,
 	}
 
+	// Call the gRPC service
 	resp, err := s.client.AuthenticateUser(ctx, req)
 	if err != nil {
 		s.logger.Error("Failed to authenticate user",
@@ -115,14 +111,14 @@ func (s *UserServiceImpl) GetUserByID(
 
 	resp, err := s.client.GetUser(ctx, req)
 	if err != nil {
-		s.logger.Error("Failed to get user",
+		s.logger.Error("Failed to get user by ID",
 			zap.String("userID", userID),
 			zap.Error(err),
 		)
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 
-	return resp.User, nil
+	return resp.GetUser(), nil
 }
 
 // UpdateUserProfile updates a user's profile
@@ -204,7 +200,7 @@ func (s *UserServiceImpl) GetUserAddresses(
 		return nil, fmt.Errorf("failed to get user addresses: %w", err)
 	}
 
-	return resp, nil
+	return resp.GetAddresses(), nil
 }
 
 // CreateUserAddress creates a new address for a user
@@ -217,7 +213,7 @@ func (s *UserServiceImpl) CreateUserAddress(
 		zap.String("userID", userID),
 		zap.String("name", name),
 		zap.String("city", city),
-		zap.Bool("isDefault", isDefault),
+		zap.String("country", country),
 	)
 
 	req := &userv1.CreateUserAddressRequest{
@@ -241,7 +237,7 @@ func (s *UserServiceImpl) CreateUserAddress(
 		return nil, fmt.Errorf("failed to create user address: %w", err)
 	}
 
-	return resp.Address, nil
+	return resp.GetAddress(), nil
 }
 
 // GetUserDefaultAddress gets the default address for a user
@@ -266,7 +262,7 @@ func (s *UserServiceImpl) GetUserDefaultAddress(
 		return nil, fmt.Errorf("failed to get user default address: %w", err)
 	}
 
-	return resp.Address, nil
+	return resp.GetAddress(), nil
 }
 
 // UpdateUserAddress updates an address for a user
@@ -278,21 +274,19 @@ func (s *UserServiceImpl) UpdateUserAddress(
 	s.logger.Debug("UpdateUserAddress",
 		zap.String("addressID", addressID),
 		zap.String("userID", userID),
-		zap.String("name", name),
-		zap.Bool("isDefault", isDefault),
 	)
 
 	req := &userv1.UpdateUserAddressRequest{
-		Id:         addressID,
-		UserId:     userID,
-		Name:       name,
-		Street:     street,
-		City:       city,
-		State:      state,
-		PostalCode: postalCode,
-		Country:    country,
-		Phone:      phone,
-		IsDefault:  isDefault,
+		Id:          addressID,
+		UserId:      userID,
+		Name:        name,
+		Street:      street,
+		City:        city,
+		State:       state,
+		PostalCode:  postalCode,
+		Country:     country,
+		Phone:       phone,
+		IsDefault:   isDefault,
 	}
 
 	_, err := s.client.UpdateUserAddress(ctx, req)
@@ -373,6 +367,7 @@ func (s *UserServiceImpl) ListUsers(
 ) (interface{}, error) {
 	s.logger.Debug("ListUsers",
 		zap.String("role", role),
+		zap.Bool("active", *active),
 		zap.Int("limit", limit),
 		zap.Int("offset", offset),
 	)
@@ -395,7 +390,7 @@ func (s *UserServiceImpl) ListUsers(
 		return nil, fmt.Errorf("failed to list users: %w", err)
 	}
 
-	return resp, nil
+	return resp.GetUsers(), nil
 }
 
 // ActivateUser activates a user (admin only)
