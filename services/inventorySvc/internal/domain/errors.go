@@ -10,4 +10,5 @@ var (
 	ErrInsufficientReservation = errors.New("insufficient reservation")
 	ErrDuplicateEntity = errors.New("entity already exists")
 	ErrInvalidOperation = errors.New("invalid operation")
+	ErrReservationNotFound = errors.New("reservation not found")
 )

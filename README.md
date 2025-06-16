@@ -6,6 +6,7 @@ A scalable stock management and e-commerce platform built with Go microservices 
 
 - [Architecture](#architecture)
 - [Services](#services)
+- [gRPC Architecture](#grpc-architecture)
 - [API Documentation](#api-documentation)
 - [Getting Started](#getting-started)
 - [Development Workflow](#development-workflow)
@@ -31,6 +32,8 @@ The Stock Platform is built using a microservices architecture with the followin
 ### Key Components
 
 - **Microservices**: Each service is implemented in Go with gRPC for efficient internal communication
+- **Service-Owned APIs**: Each service owns its protobuf definitions and generated code
+- **Client Abstractions**: Shared client libraries for clean inter-service communication
 - **API Gateway**: REST/HTTP API with OpenAPI documentation for client applications
 - **Frontend**: Vue.js 3 with TypeScript and Vite
 - **Backend**: Go with gRPC microservices
@@ -54,24 +57,123 @@ graph LR
     C --> E[Product Service]
     C --> F[Order Service]
     C --> G[Inventory Service]
+    C --> H[Supplier Service]
     
     style A fill:#f9f,stroke:#333,stroke-width:2px
     style B fill:#bbf,stroke:#333,stroke-width:2px
     style C fill:#9cf,stroke:#333,stroke-width:2px
-    style D,E,F,G fill:#9f9,stroke:#333,stroke-width:2px
-                                 | gRPC
-                                 v
- +------------+  +-------------+  +-----------+  +-----------+
- | Product    |  | Inventory   |  | Order     |  | User      |
- | Service    |  | Service     |  | Service   |  | Service   |
- +------------+  +-------------+  +-----------+  +-----------+
-       |               |               |              |
-       +---------------+---------------+--------------+
-                                |
-                                v
-                         +---------------+
-                         |   MongoDB     |
-                         +---------------+
+    style D,E,F,G,H fill:#9f9,stroke:#333,stroke-width:2px
+```
+
+### Microservices Communication
+
+```mermaid
+graph TB
+    subgraph "Client Abstractions (/pkg/clients)"
+        PC[Product Client]
+        IC[Inventory Client]
+        OC[Order Client]
+        UC[User Client]
+        SC[Supplier Client]
+    end
+    
+    subgraph "Services"
+        PS[Product Service]
+        IS[Inventory Service]
+        OS[Order Service]
+        US[User Service]
+        SS[Supplier Service]
+    end
+    
+    PC --> PS
+    IC --> IS
+    OC --> OS
+    UC --> US
+    SC --> SS
+    
+    OS -.-> PC
+    OS -.-> IC
+    OS -.-> UC
+    
+    style PC,IC,OC,UC,SC fill:#bbf,stroke:#333,stroke-width:2px
+    style PS,IS,OS,US,SS fill:#9f9,stroke:#333,stroke-width:2px
+```
+
+## gRPC Architecture
+
+The platform uses a **service-owned protobuf architecture** that ensures clean service boundaries and loose coupling:
+
+### Architecture Principles
+
+- **Service Autonomy**: Each service owns its API contract (protobuf definitions)
+- **Loose Coupling**: Services communicate only through client abstractions
+- **Clean Boundaries**: No direct imports of generated protobuf code between services
+- **Maintainability**: API changes don't break other services directly
+
+### Directory Structure
+
+```text
+services/
+├── productSvc/
+│   ├── api/
+│   │   ├── proto/product/v1/product.proto    # Service-owned proto definition
+│   │   └── gen/go/proto/product/v1/          # Service-generated code
+│   ├── cmd/
+│   └── internal/
+├── inventorySvc/
+│   ├── api/
+│   │   ├── proto/inventory/v1/inventory.proto
+│   │   └── gen/go/proto/inventory/v1/
+│   └── ...
+└── ...
+
+pkg/clients/                                   # Shared client abstractions
+├── product/client.go                          # Product service client
+├── inventory/client.go                        # Inventory service client
+├── order/client.go                           # Order service client
+├── user/client.go                            # User service client
+└── supplier/client.go                        # Supplier service client
+```
+
+### Client Abstractions
+
+Each service has a corresponding client abstraction in `/pkg/clients/` that:
+
+- Encapsulates gRPC connection management
+- Provides high-level methods for service operations
+- Handles logging and error wrapping
+- Maintains stable interfaces for inter-service communication
+
+**Example Usage:**
+
+```go
+// Services use client abstractions, never direct protobuf imports
+import "github.com/leonvanderhaeghen/stockplatform/pkg/clients/product"
+
+// Create client
+productClient, err := product.NewClient("product-service:50053", logger)
+if err != nil {
+    return err
+}
+defer productClient.Close()
+
+// Use client methods
+resp, err := productClient.GetProduct(ctx, &productv1.GetProductRequest{
+    Id: "product-123",
+})
+```
+
+### Code Generation
+
+Each service generates its own protobuf code using `buf generate`:
+
+```bash
+# Generate code for a specific service
+cd services/productSvc
+buf generate
+
+# Or generate for all services
+make generate-proto
 ```
 
 ## Services
@@ -190,9 +292,10 @@ The API Gateway provides RESTful endpoints for client applications. The full Ope
 
 ### Prerequisites
 
-- Go 1.22+
+- Docker and Docker Compose
+- Go 1.22+ (for local development)
 
-### Development Setup
+### Quick Start with Docker Compose
 
 1. **Clone the repository**
 
@@ -201,118 +304,206 @@ The API Gateway provides RESTful endpoints for client applications. The full Ope
    cd stockplatform
    ```
 
-2. **Install dependencies**
+2. **Copy environment configuration**
+
+   ```bash
+   cp .env.example .env
+   ```
+
+3. **Start all services with Docker Compose**
+
+   ```bash
+   # Enable BuildKit for faster builds
+   export DOCKER_BUILDKIT=1
+   
+   # Start all services
+   docker-compose up -d
+   ```
+
+4. **Verify services are running**
+
+   ```bash
+   docker-compose ps
+   ```
+
+5. **Access the application**
+
+   - **API Gateway**: [http://localhost:8080](http://localhost:8080)
+   - **Frontend**: [http://localhost:3001](http://localhost:3001)
+   - **MongoDB Express**: [http://localhost:8083](http://localhost:8083) (admin/admin123)
+   - **Grafana**: [http://localhost:3000](http://localhost:3000) (admin/admin)
+   - **Prometheus**: [http://localhost:9090](http://localhost:9090)
+   - **Jaeger**: [http://localhost:16686](http://localhost:16686)
+
+### Health Checks
+
+Check service health:
+
+```bash
+# Gateway health check
+curl http://localhost:8080/api/v1/health
+
+# Individual service logs
+docker-compose logs product-service
+docker-compose logs inventory-service
+```
+
+### Development Setup (Alternative)
+
+For local development without Docker:
+
+1. **Install dependencies**
 
    ```bash
    make deps
    ```
 
-3. **Generate protobuf code**
+2. **Generate protobuf code**
 
    ```bash
    make generate
    ```
 
-4. **Build all services**
+3. **Start MongoDB**
 
    ```bash
-   make build
+   # Using Docker
+   docker run -d --name mongodb -p 27017:27017 mongo:7.0
+   
+   # Or using local installation
+   mongod --dbpath /path/to/your/db
    ```
 
-5. **Start the services** (in separate terminal windows):
+4. **Start services individually**
 
    ```bash
-   # Start User Service
-   cd services/userSvc
-   go run cmd/main.go
+   # Terminal 1 - Product Service
+   cd services/productSvc && go run cmd/main.go
+   
+   # Terminal 2 - Inventory Service  
+   cd services/inventorySvc && go run cmd/main.go
+   
+   # Terminal 3 - Order Service
+   cd services/orderSvc && go run cmd/main.go
+   
+   # Terminal 4 - User Service
+   cd services/userSvc && go run cmd/main.go
+   
+   # Terminal 5 - Supplier Service
+   cd services/supplierSvc && go run cmd/main.go
+   
+   # Terminal 6 - Gateway Service
+   cd services/gatewaySvc && go run cmd/main.go
    ```
-
-   ```bash
-   # Start Product Service
-   cd services/productSvc
-   go run cmd/main.go
-   ```
-
-   ```bash
-   # Start Inventory Service
-   cd services/inventorySvc
-   go run cmd/main.go
-   ```
-
-   ```bash
-   # Start Order Service
-   cd services/orderSvc
-   go run cmd/main.go
-   ```
-
-   ```bash
-   # Start Gateway Service
-   cd services/gatewaySvc
-   go run cmd/main.go
-   ```
-
-6. Access the following URLs:
-
-   - API Gateway: [http://localhost:8080](http://localhost:8080)
-   - Swagger UI: [http://localhost:8080/swagger/index.html](http://localhost:8080/swagger/index.html)
 
 ### Environment Variables
 
-Each service can be configured using environment variables:
+The application uses Docker Compose environment variables. Key configurations:
 
-#### User Service
+#### Docker Compose Environment
 
-- `GRPC_PORT` - Port for gRPC server (default: 50056)
-- `MONGO_URI` - MongoDB connection string (default: mongodb://localhost:27017)
-- `JWT_SECRET` - Secret for JWT token generation
+- `MONGO_URI=mongodb://admin:admin123@mongodb:27017` - MongoDB connection (Docker internal)
+- `JWT_SECRET=your-secret-key-here-change-in-production` - JWT signing secret
+- Service addresses use Docker service names (e.g., `product-service:50053`)
 
-#### Product Service
+#### Local Development Environment
 
-- `GRPC_PORT` - Port for gRPC server (default: 50053)
-- `MONGO_URI` - MongoDB connection string (default: mongodb://localhost:27017)
-
-#### Inventory Service
-
-- `GRPC_PORT` - Port for gRPC server (default: 50054)
-- `MONGO_URI` - MongoDB connection string (default: mongodb://localhost:27017)
-- `PRODUCT_SERVICE_ADDR` - Product service address (default: localhost:50053)
-
-#### Order Service
-
-- `GRPC_PORT` - Port for gRPC server (default: 50055)
-- `MONGO_URI` - MongoDB connection string (default: mongodb://localhost:27017)
-- `PRODUCT_SERVICE_ADDR` - Product service address (default: localhost:50053)
-- `INVENTORY_SERVICE_ADDR` - Inventory service address (default: localhost:50054)
-- `USER_SERVICE_ADDR` - User service address (default: localhost:50056)
-
-#### Gateway Service
-
-- `REST_PORT` - Port for REST server (default: 8080)
-- `JWT_SECRET` - Secret for JWT token validation
-- `PRODUCT_SERVICE_ADDR` - Product service address (default: localhost:50053)
-- `INVENTORY_SERVICE_ADDR` - Inventory service address (default: localhost:50054)
-- `ORDER_SERVICE_ADDR` - Order service address (default: localhost:50055)
-- `USER_SERVICE_ADDR` - User service address (default: localhost:50056)
+- `MONGO_URI=mongodb://localhost:27017` - MongoDB connection (local)
+- Service addresses use localhost (e.g., `localhost:50053`)
 
 ## Development Workflow
 
 ### Code Organization
 
-Each service follows a clean architecture pattern:
+Each service follows a clean architecture pattern with service-owned protobuf definitions:
 
 ```text
 services/
   └── [serviceName]/
+      ├── api/                 # API definitions and generated code
+      │   ├── proto/           # Protobuf definitions (.proto files)
+      │   │   └── [service]/v1/[service].proto
+      │   └── gen/go/          # Generated Go code (gitignored)
+      │       └── proto/[service]/v1/
       ├── cmd/                 # Command-line entry points
       ├── internal/
+      │   ├── config/          # Configuration management
+      │   ├── database/        # Database initialization and repositories
+      │   ├── server/          # Server setup and dependency injection
       │   ├── domain/          # Domain models and interfaces
       │   ├── application/     # Application services (business logic)
       │   ├── infrastructure/  # External dependencies (database, etc.)
-      │   └── interfaces/      # Interface adapters (gRPC, etc.)
-      ├── Dockerfile           # Container definition
+      │   └── interfaces/      # Interface adapters (gRPC handlers, etc.)
       ├── buf.gen.yaml         # Protocol buffer generation config
-      └── buf.work.yaml        # Protocol buffer workspace config
+      ├── buf.work.yaml        # Protocol buffer workspace config
+      └── Dockerfile           # Container definition
+
+pkg/clients/                  # Shared client abstractions
+  ├── [service]/client.go     # Client abstraction for each service
+  └── ...
 ```
+
+### Protobuf Development Guidelines
+
+#### 1. Service-Owned Proto Files
+
+- Each service owns its `.proto` files in `services/[serviceName]/api/proto/[service]/v1/`
+- Never import proto files from other services
+- Use semantic versioning for proto packages (v1, v2, etc.)
+
+#### 2. Code Generation
+
+Generate protobuf code for a specific service:
+
+```bash
+cd services/productSvc
+buf generate
+```
+
+Generate for all services:
+
+```bash
+make generate-proto
+```
+
+#### 3. Client Abstractions
+
+- All inter-service communication must use client abstractions from `/pkg/clients/`
+- Never import generated protobuf code directly from other services
+- Client abstractions provide stable interfaces and handle connection management
+
+**Example: Adding a new service method**
+
+1. Update the service's `.proto` file:
+   ```protobuf
+   service ProductService {
+     rpc GetProduct(GetProductRequest) returns (GetProductResponse);
+     rpc CreateProduct(CreateProductRequest) returns (CreateProductResponse);
+     // Add new method
+     rpc UpdateProductPrice(UpdateProductPriceRequest) returns (UpdateProductPriceResponse);
+   }
+   ```
+
+2. Regenerate protobuf code:
+   ```bash
+   cd services/productSvc
+   buf generate
+   ```
+
+3. Implement the method in the service handler
+
+4. Add the method to the client abstraction in `/pkg/clients/product/client.go`:
+   ```go
+   func (c *Client) UpdateProductPrice(ctx context.Context, req *productv1.UpdateProductPriceRequest) (*productv1.UpdateProductPriceResponse, error) {
+       // Implementation
+   }
+   ```
+
+#### 4. Breaking Changes
+
+- Use semantic versioning for major API changes (v1 → v2)
+- Maintain backward compatibility within the same version
+- Coordinate breaking changes across dependent services
 
 ### Making Changes
 
@@ -322,21 +513,32 @@ services/
    git checkout -b feature/your-feature-name
    ```
 
-2. Make your changes
+2. Make your changes following the architecture guidelines
 
-3. Run tests:
+3. If modifying protobuf definitions:
+   ```bash
+   # Regenerate code
+   cd services/[serviceName]
+   buf generate
+   
+   # Update client abstractions if needed
+   # Test compilation
+   go build ./pkg/clients/...
+   ```
+
+4. Run tests:
 
    ```bash
    go test ./...
    ```
 
-4. Commit your changes with a descriptive message following Conventional Commits:
+5. Commit your changes with a descriptive message following Conventional Commits:
 
    ```bash
-   git commit -m "feat: add new product attribute functionality"
-   ````
+   git commit -m "feat: add new product price update functionality"
+   ```
 
-5. Push changes and create a pull request
+6. Push changes and create a pull request
 
 ## Testing
 

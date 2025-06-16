@@ -7,20 +7,21 @@ import (
 	"github.com/leonvanderhaeghen/stockplatform/services/supplierSvc/internal/domain"
 )
 
-type supplierService struct {
+// supplierServiceImpl implements the SupplierService interface
+type supplierServiceImpl struct {
 	repo domain.SupplierRepository
 	adapterRegistry domain.AdapterRegistry
 }
 
 // NewSupplierService creates a new supplier service
-func NewSupplierService(repo domain.SupplierRepository) domain.SupplierUseCase {
-	return &supplierService{
+func NewSupplierService(repo domain.SupplierRepository) SupplierService {
+	return &supplierServiceImpl{
 		repo: repo,
 		adapterRegistry: NewAdapterRegistry(),
 	}
 }
 
-func (s *supplierService) CreateSupplier(ctx context.Context, supplier *domain.Supplier) (*domain.Supplier, error) {
+func (s *supplierServiceImpl) CreateSupplier(ctx context.Context, supplier *domain.Supplier) (*domain.Supplier, error) {
 	// Validate supplier data
 	if supplier.Name == "" {
 		return nil, domain.ErrInvalidInput
@@ -30,11 +31,11 @@ func (s *supplierService) CreateSupplier(ctx context.Context, supplier *domain.S
 	return s.repo.Create(ctx, supplier)
 }
 
-func (s *supplierService) GetSupplier(ctx context.Context, id string) (*domain.Supplier, error) {
+func (s *supplierServiceImpl) GetSupplier(ctx context.Context, id string) (*domain.Supplier, error) {
 	return s.repo.GetByID(ctx, id)
 }
 
-func (s *supplierService) UpdateSupplier(ctx context.Context, supplier *domain.Supplier) (*domain.Supplier, error) {
+func (s *supplierServiceImpl) UpdateSupplier(ctx context.Context, supplier *domain.Supplier) (*domain.Supplier, error) {
 	// Check if supplier exists
 	existing, err := s.repo.GetByID(ctx, supplier.ID.Hex())
 	if err != nil {
@@ -66,11 +67,11 @@ func (s *supplierService) UpdateSupplier(ctx context.Context, supplier *domain.S
 	return existing, nil
 }
 
-func (s *supplierService) DeleteSupplier(ctx context.Context, id string) error {
+func (s *supplierServiceImpl) DeleteSupplier(ctx context.Context, id string) error {
 	return s.repo.Delete(ctx, id)
 }
 
-func (s *supplierService) ListSuppliers(ctx context.Context, page, pageSize int32, search string) ([]*domain.Supplier, int32, error) {
+func (s *supplierServiceImpl) ListSuppliers(ctx context.Context, page, pageSize int32, search string) ([]*domain.Supplier, int32, error) {
 	// Ensure page and pageSize are within reasonable bounds
 	if page < 1 {
 		page = 1
@@ -83,12 +84,12 @@ func (s *supplierService) ListSuppliers(ctx context.Context, page, pageSize int3
 }
 
 // RegisterAdapter registers a new supplier adapter
-func (s *supplierService) RegisterAdapter(ctx context.Context, adapter domain.SupplierAdapter) error {
+func (s *supplierServiceImpl) RegisterAdapter(ctx context.Context, adapter domain.SupplierAdapter) error {
 	return s.adapterRegistry.Register(adapter)
 }
 
 // ListAdapters lists all registered adapters
-func (s *supplierService) ListAdapters(ctx context.Context) ([]string, error) {
+func (s *supplierServiceImpl) ListAdapters(ctx context.Context) ([]string, error) {
 	adapters := s.adapterRegistry.List()
 	adapterNames := make([]string, len(adapters))
 	for i, adapter := range adapters {
@@ -98,7 +99,7 @@ func (s *supplierService) ListAdapters(ctx context.Context) ([]string, error) {
 }
 
 // GetAdapterCapabilities returns the capabilities of a specific adapter
-func (s *supplierService) GetAdapterCapabilities(ctx context.Context, adapterName string) (map[string]bool, error) {
+func (s *supplierServiceImpl) GetAdapterCapabilities(ctx context.Context, adapterName string) (map[string]bool, error) {
 	adapter, err := s.adapterRegistry.Get(adapterName)
 	if err != nil {
 		return nil, err
@@ -107,7 +108,7 @@ func (s *supplierService) GetAdapterCapabilities(ctx context.Context, adapterNam
 }
 
 // TestAdapterConnection tests the connection to a supplier's system
-func (s *supplierService) TestAdapterConnection(ctx context.Context, adapterName string, config map[string]string) error {
+func (s *supplierServiceImpl) TestAdapterConnection(ctx context.Context, adapterName string, config map[string]string) error {
 	adapter, err := s.adapterRegistry.Get(adapterName)
 	if err != nil {
 		return err
@@ -123,7 +124,7 @@ func (s *supplierService) TestAdapterConnection(ctx context.Context, adapterName
 }
 
 // SyncAdapterProducts syncs product data from the supplier
-func (s *supplierService) SyncAdapterProducts(ctx context.Context, adapterName string, options domain.SupplierSyncOptions) (*domain.SupplierSyncStats, error) {
+func (s *supplierServiceImpl) SyncAdapterProducts(ctx context.Context, adapterName string, options domain.SupplierSyncOptions) (*domain.SupplierSyncStats, error) {
 	adapter, err := s.adapterRegistry.Get(adapterName)
 	if err != nil {
 		return nil, err
@@ -134,7 +135,7 @@ func (s *supplierService) SyncAdapterProducts(ctx context.Context, adapterName s
 }
 
 // SyncAdapterInventory syncs inventory data from the supplier
-func (s *supplierService) SyncAdapterInventory(ctx context.Context, adapterName string, options domain.SupplierSyncOptions) (*domain.SupplierSyncStats, error) {
+func (s *supplierServiceImpl) SyncAdapterInventory(ctx context.Context, adapterName string, options domain.SupplierSyncOptions) (*domain.SupplierSyncStats, error) {
 	adapter, err := s.adapterRegistry.Get(adapterName)
 	if err != nil {
 		return nil, err

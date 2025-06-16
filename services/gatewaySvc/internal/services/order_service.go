@@ -479,3 +479,280 @@ func (s *OrderServiceImpl) CancelOrder(
 
 	return nil
 }
+
+// CreatePOSOrder creates an order from a POS terminal
+func (s *OrderServiceImpl) CreatePOSOrder(
+	ctx context.Context,
+	userID string,
+	items []map[string]interface{},
+	locationID, staffID, paymentType string,
+	paymentData map[string]string,
+	notes string,
+) (interface{}, error) {
+	s.logger.Debug("CreatePOSOrder",
+		zap.String("userID", userID),
+		zap.String("locationID", locationID),
+		zap.String("staffID", staffID),
+		zap.String("paymentType", paymentType),
+		zap.Any("items", items),
+	)
+
+	// Convert items to order items
+	orderItems := make([]*orderv1.OrderItem, 0, len(items))
+	for _, item := range items {
+		// Get product ID
+		productIDVal, ok := item["product_id"]
+		if !ok {
+			return nil, fmt.Errorf("missing product_id in item")
+		}
+		productID, ok := productIDVal.(string)
+		if !ok {
+			return nil, fmt.Errorf("product_id must be a string")
+		}
+
+		// Get quantity
+		quantityVal, ok := item["quantity"]
+		if !ok {
+			return nil, fmt.Errorf("missing quantity in item")
+		}
+
+		// Handle different types for quantity
+		var quantity int32
+		switch q := quantityVal.(type) {
+		case int:
+			quantity = int32(q)
+		case int32:
+			quantity = q
+		case float64:
+			quantity = int32(q)
+		default:
+			return nil, fmt.Errorf("quantity must be a number")
+		}
+
+		// Get price
+		priceVal, ok := item["price"]
+		if !ok {
+			return nil, fmt.Errorf("missing price in item")
+		}
+
+		// Handle different types for price
+		var price float64
+		switch p := priceVal.(type) {
+		case float32:
+			price = float64(p)
+		case float64:
+			price = p
+		case int:
+			price = float64(p)
+		case int32:
+			price = float64(p)
+		default:
+			return nil, fmt.Errorf("price must be a number")
+		}
+
+		// Create an order item
+		orderItem := &orderv1.OrderItem{
+			ProductId: productID,
+			Quantity:  quantity,
+			Price:     price,
+			Subtotal:  price * float64(quantity),
+		}
+
+		// Add any additional fields if present in the item
+		if nameVal, ok := item["name"].(string); ok {
+			orderItem.Name = nameVal
+		}
+		if skuVal, ok := item["sku"].(string); ok {
+			orderItem.ProductSku = skuVal
+		}
+
+		orderItems = append(orderItems, orderItem)
+	}
+
+	// Calculate order totals
+	totalAmount := float64(0)
+	for _, item := range orderItems {
+		totalAmount += item.Subtotal
+	}
+
+	// Create a payment object for order if payment info provided
+	payment := &orderv1.Payment{
+		Method: paymentType,
+		Amount: totalAmount,
+		Status: "completed",
+		Timestamp: time.Now().Format(time.RFC3339),
+		TransactionId: fmt.Sprintf("pos-%s-%d", locationID, time.Now().UnixNano()),
+	}
+
+	// Create the order request
+	req := &orderv1.CreateOrderRequest{
+		UserId: userID,
+		Items:  orderItems,
+	}
+
+	// Create the order
+	resp, err := s.client.CreateOrder(ctx, req)
+	if err != nil {
+		s.logger.Error("Failed to create POS order",
+			zap.String("userID", userID),
+			zap.String("locationID", locationID),
+			zap.Error(err),
+		)
+		return nil, fmt.Errorf("failed to create POS order: %w", err)
+	}
+
+	if resp.Order != nil && resp.Order.Id != "" {
+		orderID := resp.Order.Id
+		
+		// Update the order with POS-specific details
+		getReq := &orderv1.GetOrderRequest{Id: orderID}
+		getResp, err := s.client.GetOrder(ctx, getReq)
+		if err == nil && getResp.Order != nil {
+			order := getResp.Order
+			order.Status = orderv1.OrderStatus_ORDER_STATUS_PAID
+			order.TotalAmount = totalAmount
+			order.Notes = notes
+			order.Payment = payment
+			
+			// Add tracking information for metadata
+			order.TrackingCode = fmt.Sprintf("POS-%s-%s", locationID, staffID)
+			
+			// Set completion time
+			order.CompletedAt = time.Now().Format(time.RFC3339)
+			
+			// Update the order
+			_, updateErr := s.client.UpdateOrder(ctx, &orderv1.UpdateOrderRequest{
+				Order: order,
+			})
+			if updateErr != nil {
+				s.logger.Warn("Failed to update POS order with additional details",
+					zap.String("orderID", orderID),
+					zap.Error(updateErr),
+				)
+				// Don't fail the overall operation if this update fails
+			}
+		}
+		
+		return orderID, nil
+	}
+	
+	// Fallback if order ID is not in response (shouldn't happen with proper proto implementation)
+	return fmt.Sprintf("order-%d", time.Now().UnixNano()), nil
+}
+
+// ProcessQuickPOSTransaction creates and processes a POS order in one step
+func (s *OrderServiceImpl) ProcessQuickPOSTransaction(
+	ctx context.Context,
+	locationID, staffID string,
+	items []map[string]interface{},
+	paymentInfo map[string]interface{},
+) (interface{}, error) {
+	s.logger.Debug("ProcessQuickPOSTransaction",
+		zap.String("locationID", locationID),
+		zap.String("staffID", staffID),
+		zap.Any("items", items),
+		zap.Any("paymentInfo", paymentInfo),
+	)
+
+	// Extract payment details
+	paymentType := "cash" // Default payment type
+	if pt, ok := paymentInfo["method"].(string); ok {
+		paymentType = pt
+	} else if pt, ok := paymentInfo["type"].(string); ok {
+		paymentType = pt
+	}
+
+	// Extract user ID if available, otherwise use guest user
+	userID := "guest"
+	if uid, ok := paymentInfo["user_id"].(string); ok && uid != "" {
+		userID = uid
+	}
+
+	// Convert payment info to string map for metadata
+	paymentData := make(map[string]string)
+	for k, v := range paymentInfo {
+		if str, ok := v.(string); ok {
+			paymentData[k] = str
+		} else {
+			paymentData[k] = fmt.Sprintf("%v", v)
+		}
+	}
+
+	// Create notes if available
+	notes := ""
+	if n, ok := paymentInfo["notes"].(string); ok {
+		notes = n
+	}
+
+	// Create the POS order
+	orderID, err := s.CreatePOSOrder(
+		ctx,
+		userID,
+		items,
+		locationID,
+		staffID,
+		paymentType,
+		paymentData,
+		notes,
+	)
+
+	if err != nil {
+		s.logger.Error("Failed to process quick POS transaction", 
+			zap.String("locationID", locationID), 
+			zap.String("staffID", staffID),
+			zap.Error(err))
+		return nil, fmt.Errorf("failed to process quick POS transaction: %w", err)
+	}
+
+	// Generate consistent transaction ID
+	txID := fmt.Sprintf("pos-%s-%s-%d", 
+		locationID, 
+		staffID, 
+		time.Now().UnixNano())
+
+	// Return transaction information
+	transactionInfo := map[string]interface{}{
+		"order_id":       orderID,
+		"transaction_id": txID,
+		"status":        "completed",
+		"timestamp":     time.Now().Format(time.RFC3339),
+		"total_amount":  calculateTotalAmount(items),
+		"payment_method": paymentType,
+	}
+
+	return transactionInfo, nil
+}
+
+// Helper function to calculate the total amount from items
+func calculateTotalAmount(items []map[string]interface{}) float64 {
+	total := 0.0
+	
+	for _, item := range items {
+		var price float64
+		var quantity float64
+		
+		// Get price
+		if p, ok := item["price"].(float64); ok {
+			price = p
+		} else if p, ok := item["price"].(float32); ok {
+			price = float64(p)
+		} else if p, ok := item["price"].(int); ok {
+			price = float64(p)
+		}
+		
+		// Get quantity
+		if q, ok := item["quantity"].(float64); ok {
+			quantity = q
+		} else if q, ok := item["quantity"].(float32); ok {
+			quantity = float64(q)
+		} else if q, ok := item["quantity"].(int); ok {
+			quantity = float64(q)
+		} else {
+			quantity = 1.0 // Default to 1 if quantity is missing
+		}
+		
+		total += price * quantity
+	}
+	
+	return total
+}

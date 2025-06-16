@@ -527,6 +527,48 @@ func (r *InventoryRepository) ListByStockStatus(ctx context.Context, status stri
 	return items, nil
 }
 
+// GetByOrderAndLocation finds inventory items reserved for a specific order at a location
+func (r *InventoryRepository) GetByOrderAndLocation(ctx context.Context, orderID, locationID string) ([]*domain.InventoryItem, error) {
+	r.logger.Debug("Getting inventory items by order and location",
+		zap.String("order_id", orderID),
+		zap.String("location_id", locationID),
+	)
+	
+	// Find items that have reservations for this order at this location
+	filter := bson.M{
+		"location_id": locationID,
+		"reservations.order_id": orderID,
+	}
+	
+	cursor, err := r.collection.Find(ctx, filter)
+	if err != nil {
+		r.logger.Error("Failed to get inventory items by order and location",
+			zap.Error(err),
+			zap.String("order_id", orderID),
+			zap.String("location_id", locationID),
+		)
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+	
+	var items []*domain.InventoryItem
+	for cursor.Next(ctx) {
+		var item domain.InventoryItem
+		if err := cursor.Decode(&item); err != nil {
+			r.logger.Error("Failed to decode inventory item", zap.Error(err))
+			return nil, err
+		}
+		items = append(items, &item)
+	}
+	
+	if err := cursor.Err(); err != nil {
+		r.logger.Error("Cursor error while getting inventory items by order and location", zap.Error(err))
+		return nil, err
+	}
+	
+	return items, nil
+}
+
 // AdjustStock adjusts stock with a reason and user identification
 func (r *InventoryRepository) AdjustStock(ctx context.Context, id string, quantity int32, reason, performedBy string) error {
 	r.logger.Debug("Adjusting stock",

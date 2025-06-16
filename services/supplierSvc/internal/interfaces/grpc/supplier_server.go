@@ -3,23 +3,27 @@ package grpc
 import (
 	"context"
 
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	supplierv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/supplier/v1"
+	"github.com/leonvanderhaeghen/stockplatform/services/supplierSvc/internal/application"
 	"github.com/leonvanderhaeghen/stockplatform/services/supplierSvc/internal/domain"
 )
 
 type SupplierServer struct {
 	supplierv1.UnimplementedSupplierServiceServer
-	service domain.SupplierUseCase
+	service application.SupplierService
+	logger  *zap.Logger
 }
 
 // NewSupplierServer creates a new gRPC supplier server
-func NewSupplierServer(service domain.SupplierUseCase) *SupplierServer {
+func NewSupplierServer(service application.SupplierService, logger *zap.Logger) *SupplierServer {
 	return &SupplierServer{
 		service: service,
+		logger:  logger.Named("supplier_grpc_server"),
 	}
 }
 

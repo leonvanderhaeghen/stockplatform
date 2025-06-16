@@ -16,15 +16,17 @@ import (
 // OrderServer implements the gRPC interface for order service
 type OrderServer struct {
 	orderv1.UnimplementedOrderServiceServer
-	service *application.OrderService
-	logger  *zap.Logger
+	service              *application.OrderService
+	posTransactionService *application.POSTransactionService
+	logger               *zap.Logger
 }
 
 // NewOrderServer creates a new order gRPC server
-func NewOrderServer(service *application.OrderService, logger *zap.Logger) orderv1.OrderServiceServer {
+func NewOrderServer(service *application.OrderService, posService *application.POSTransactionService, logger *zap.Logger) orderv1.OrderServiceServer {
 	return &OrderServer{
-		service: service,
-		logger:  logger.Named("order_grpc_server"),
+		service:              service,
+		posTransactionService: posService,
+		logger:               logger.Named("order_grpc_server"),
 	}
 }
 

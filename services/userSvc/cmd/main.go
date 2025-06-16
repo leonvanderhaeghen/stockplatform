@@ -1,34 +1,14 @@
 package main
 
 import (
-	"context"
 	"log"
-	"net"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
 
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.uber.org/zap"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
 
-	"github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/user/v1"
-	"github.com/leonvanderhaeghen/stockplatform/services/userSvc/internal/application"
-	grpchandler "github.com/leonvanderhaeghen/stockplatform/services/userSvc/internal/interfaces/grpc"
-	mongorepo "github.com/leonvanderhaeghen/stockplatform/services/userSvc/internal/infrastructure/mongodb"
+	"github.com/leonvanderhaeghen/stockplatform/services/userSvc/internal/config"
+	"github.com/leonvanderhaeghen/stockplatform/services/userSvc/internal/database"
+	"github.com/leonvanderhaeghen/stockplatform/services/userSvc/internal/server"
 )
-
-// Config holds the application configuration
-type Config struct {
-	GRPCPort     string `env:"GRPC_PORT,default=50056"`
-	MongoURI     string `env:"MONGO_URI,default=mongodb://localhost:27017"`
-	JWTSecret    string `env:"JWT_SECRET,default=your-secret-key-here"`
-	OrderSvcURL  string `env:"ORDER_SERVICE_URL,default=order-service:50055"`
-}
 
 func main() {
 	// Initialize logger
@@ -41,175 +21,29 @@ func main() {
 	logger.Info("Starting user service...")
 
 	// Load configuration
-	config := Config{
-		GRPCPort:    "50056",
-		MongoURI:    "mongodb://localhost:27017",
-		JWTSecret:   "your-secret-key-here",
-		OrderSvcURL: "order-service:50055",
-	}
-	
-	// Check for environment variables
-	if port := os.Getenv("GRPC_PORT"); port != "" {
-		config.GRPCPort = port
-	}
-	
-	if mongoURI := os.Getenv("MONGO_URI"); mongoURI != "" {
-		config.MongoURI = mongoURI
-	}
-	
-	if jwtSecret := os.Getenv("JWT_SECRET"); jwtSecret != "" {
-		config.JWTSecret = jwtSecret
-	}
-	
-	if orderSvcURL := os.Getenv("ORDER_SERVICE_URL"); orderSvcURL != "" {
-		config.OrderSvcURL = orderSvcURL
-	}
-	
-	logger.Info("Configuration loaded", 
-		zap.String("grpc_port", config.GRPCPort),
-		zap.String("mongo_uri", config.MongoURI),
-	)
+	cfg := config.Load(logger)
 
-	// Create context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	// Connect to MongoDB
-	logger.Info("Connecting to MongoDB...", 
-		zap.String("uri", config.MongoURI),
-	)
-
-	// Set up client options with timeouts and retry settings
-	clientOptions := options.Client()
-	clientOptions.ApplyURI(config.MongoURI)
-	clientOptions.SetConnectTimeout(10 * time.Second)
-	clientOptions.SetSocketTimeout(30 * time.Second)
-	clientOptions.SetServerSelectionTimeout(10 * time.Second)
-	clientOptions.SetMaxPoolSize(10)
-
-	mongoClient, err := mongo.Connect(ctx, clientOptions)
+	// Initialize database
+	db, err := database.Initialize(cfg, logger)
 	if err != nil {
-		logger.Fatal("Failed to create MongoDB client", 
-			zap.Error(err),
-		)
+		logger.Fatal("Failed to initialize database", zap.Error(err))
 	}
-
-	// Log MongoDB server status
-	serverStatus, err := mongoClient.ListDatabaseNames(ctx, bson.M{})
-	if err != nil {
-		logger.Error("Failed to list MongoDB databases", 
-			zap.Error(err),
-		)
-	} else {
-		logger.Info("Successfully connected to MongoDB server",
-			zap.Strings("databases", serverStatus),
-		)
-	}
-
-	// Verify initial connection
-	if err := mongoClient.Ping(ctx, nil); err != nil {
-		logger.Fatal("Failed to ping MongoDB", 
-			zap.Error(err),
-		)
-	}
-
-	logger.Info("Successfully connected to MongoDB")
-
 	defer func() {
-		logger.Info("Disconnecting from MongoDB...")
-		if err := mongoClient.Disconnect(ctx); err != nil {
-			logger.Error("Failed to disconnect from MongoDB", 
-				zap.Error(err),
-			)
-		} else {
-			logger.Info("Successfully disconnected from MongoDB")
+		if err := db.Close(); err != nil {
+			logger.Error("Failed to close database", zap.Error(err))
 		}
 	}()
 
-	// Initialize repositories
-	dbName := "stockplatform"
-	userCollectionName := "users"
-	addressCollectionName := "addresses"
-	permissionCollectionName := "permissions"
-	
-	logger.Info("Initializing MongoDB repositories", 
-		zap.String("database", dbName),
-		zap.String("user_collection", userCollectionName),
-		zap.String("address_collection", addressCollectionName),
-		zap.String("permission_collection", permissionCollectionName),
-	)
-	
-	// Initialize repositories with logger
-	userRepo := mongorepo.NewUserRepository(mongoClient.Database(dbName), userCollectionName, logger)
-	addressRepo := mongorepo.NewAddressRepository(mongoClient.Database(dbName), addressCollectionName, logger)
-	permissionRepo := mongorepo.NewPermissionRepository(mongoClient.Database(dbName), permissionCollectionName)
-
-	// Initialize services
-	userService := application.NewUserService(userRepo, addressRepo, config.JWTSecret, logger)
-	_ = application.NewPermissionService(permissionRepo) // Initialize but don't use directly
-
-	// Initialize user auth service
-	userAuthService, err := application.NewUserAuthService(
-		userService,
-		config.OrderSvcURL,
-		logger,
-	)
-	if err != nil {
-		logger.Fatal("Failed to create user auth service", zap.Error(err))
-	}
-	defer userAuthService.Close()
-
-	// Create gRPC server
-	grpcServer := grpc.NewServer()
-	
-	// Initialize gRPC server with the user service
-	userServer := grpchandler.NewUserServer(userService, logger)
-	
-	// Register gRPC services
-	userv1.RegisterUserServiceServer(
-		grpcServer,
-		userServer,
-	)
-
-	// Enable reflection for gRPC CLI tools
-	reflection.Register(grpcServer)
-
-	// Start gRPC server
-	addr := "0.0.0.0:" + config.GRPCPort
-	logger.Info("Starting gRPC server", 
-		zap.String("address", addr),
-	)
-
-	// Create a TCP listener
-	listener, err := net.Listen("tcp", addr)
-	if err != nil {
-		logger.Fatal("Failed to listen", 
-			zap.String("address", addr),
-			zap.Error(err),
-		)
+	// Initialize server
+	srv := server.New(cfg, db, logger)
+	if err := srv.Initialize(); err != nil {
+		logger.Fatal("Failed to initialize server", zap.Error(err))
 	}
 
-	// Log listener details
-	logger.Info("TCP listener created successfully",
-		zap.String("local_address", listener.Addr().String()),
-		zap.String("network", listener.Addr().Network()),
-	)
+	// Start server (blocks until shutdown)
+	if err := srv.Start(); err != nil {
+		logger.Fatal("Server failed", zap.Error(err))
+	}
 
-	// Start server in a goroutine
-	go func() {
-		if err := grpcServer.Serve(listener); err != nil {
-			logger.Fatal("Failed to serve gRPC server", zap.Error(err))
-		}
-	}()
-
-	// Wait for interrupt signal to gracefully shut down the server
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-
-	logger.Info("Shutting down server...")
-
-	// Gracefully stop the gRPC server
-	grpcServer.GracefulStop()
-	logger.Info("Server stopped gracefully")
+	logger.Info("User service exited properly")
 }

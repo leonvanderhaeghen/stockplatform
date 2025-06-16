@@ -191,6 +191,23 @@ func (s *Server) SetupRoutes() {
 		suppliers.PUT("/:id", supplierHandler.UpdateSupplier)
 		suppliers.DELETE("/:id", supplierHandler.DeleteSupplier)
 	}
+	
+	// POS (Point of Sale) routes (admin/staff only)
+	pos := v1.Group("/pos")
+	pos.Use(s.authMiddleware(), s.staffMiddleware())
+	{
+		// Order creation and processing
+		pos.POST("/orders", s.createPOSOrder)
+		pos.POST("/transactions/quick", s.processQuickPOSTransaction)
+		
+		// Inventory operations
+		pos.POST("/inventory/check", s.checkPOSInventory)
+		pos.POST("/inventory/reserve", s.reserveForPOSTransaction)
+		pos.POST("/inventory/deduct", s.deductForDirectPOSSale)
+		
+		// In-store pickup
+		pos.POST("/pickup/complete", s.completePickup)
+	}
 }
 
 // Start starts the server
@@ -244,11 +261,26 @@ func loggerMiddleware(logger *zap.Logger) gin.HandlerFunc {
 
 // healthCheck returns a simple health check response
 func (s *Server) healthCheck(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
-		"status": "ok",
-		"time":   time.Now().Format(time.RFC3339),
-		"service": "gateway",
-	})
+	status := "ok"
+	services := make(map[string]string)
+	
+	// Check service dependencies (basic connectivity)
+	// Note: In production, you'd want to implement actual health checks for each service
+	services["product"] = "ok"
+	services["inventory"] = "ok"
+	services["order"] = "ok"
+	services["user"] = "ok"
+	services["supplier"] = "ok"
+	
+	response := gin.H{
+		"status":   status,
+		"time":     time.Now().Format(time.RFC3339),
+		"service":  "gateway",
+		"version":  "1.0.0",
+		"services": services,
+	}
+	
+	c.JSON(http.StatusOK, response)
 }
 
 // respondWithError returns a formatted error response

@@ -6,6 +6,20 @@ import (
 	"github.com/google/uuid"
 )
 
+// OrderSourceType represents the source of an order
+type OrderSourceType string
+
+const (
+	// SourceOnline represents an order placed online
+	SourceOnline OrderSourceType = "ONLINE"
+	// SourcePOS represents an order placed at a point of sale terminal
+	SourcePOS OrderSourceType = "POS"
+	// SourceMobile represents an order placed through a mobile app
+	SourceMobile OrderSourceType = "MOBILE"
+	// SourceAPI represents an order placed through API integration
+	SourceAPI OrderSourceType = "API"
+)
+
 // OrderStatus represents the current status of an order
 type OrderStatus string
 
@@ -54,23 +68,38 @@ type Payment struct {
 
 // Order represents a customer order
 type Order struct {
-	ID            string      `bson:"_id,omitempty"`
-	UserID        string      `bson:"user_id"`
-	Items         []OrderItem `bson:"items"`
-	TotalAmount   float64     `bson:"total_amount"`
-	Status        OrderStatus `bson:"status"`
-	ShippingAddr  Address     `bson:"shipping_address"`
-	BillingAddr   Address     `bson:"billing_address"`
-	Payment       Payment     `bson:"payment,omitempty"`
-	TrackingCode  string      `bson:"tracking_code,omitempty"`
-	Notes         string      `bson:"notes,omitempty"`
-	CreatedAt     time.Time   `bson:"created_at"`
-	UpdatedAt     time.Time   `bson:"updated_at"`
-	CompletedAt   time.Time   `bson:"completed_at,omitempty"`
+	ID            string          `bson:"_id,omitempty"`
+	UserID        string          `bson:"user_id"`
+	Items         []OrderItem     `bson:"items"`
+	TotalAmount   float64         `bson:"total_amount"`
+	Status        OrderStatus     `bson:"status"`
+	Source        OrderSourceType `bson:"source"`
+	ShippingAddr  Address         `bson:"shipping_address"`
+	BillingAddr   Address         `bson:"billing_address"`
+	Payment       Payment         `bson:"payment,omitempty"`
+	TrackingCode  string          `bson:"tracking_code,omitempty"`
+	Notes         string          `bson:"notes,omitempty"`
+	CreatedAt     time.Time       `bson:"created_at"`
+	UpdatedAt     time.Time       `bson:"updated_at"`
+	CompletedAt   time.Time       `bson:"completed_at,omitempty"`
+	LocationID    string          `bson:"location_id,omitempty"` // Store location for POS orders
+	StaffID       string          `bson:"staff_id,omitempty"`    // Staff member who processed the POS order
 }
 
 // NewOrder creates a new order
 func NewOrder(userID string, items []OrderItem, shippingAddr, billingAddr Address) *Order {
+	return NewOrderWithSource(userID, items, shippingAddr, billingAddr, SourceOnline, "", "")
+}
+
+// NewOrderWithSource creates a new order with specified source
+func NewOrderWithSource(
+	userID string,
+	items []OrderItem,
+	shippingAddr, billingAddr Address,
+	source OrderSourceType,
+	locationID string,
+	staffID string,
+) *Order {
 	now := time.Now()
 	order := &Order{
 		ID:           uuid.New().String(),
@@ -78,10 +107,13 @@ func NewOrder(userID string, items []OrderItem, shippingAddr, billingAddr Addres
 		Items:        items,
 		TotalAmount:  calculateTotal(items),
 		Status:       StatusCreated,
+		Source:       source,
 		ShippingAddr: shippingAddr,
 		BillingAddr:  billingAddr,
 		CreatedAt:    now,
 		UpdatedAt:    now,
+		LocationID:   locationID,
+		StaffID:      staffID,
 	}
 	return order
 }
@@ -114,6 +146,19 @@ func (o *Order) AddPayment(method string, transactionID string, amount float64) 
 		Timestamp:     time.Now(),
 	}
 	o.UpdateStatus(StatusPaid)
+}
+
+// IsPOSOrder returns true if this is a Point of Sale order
+func (o *Order) IsPOSOrder() bool {
+	return o.Source == SourcePOS
+}
+
+// SetPOSInfo sets Point of Sale specific information
+func (o *Order) SetPOSInfo(locationID, staffID string) {
+	o.Source = SourcePOS
+	o.LocationID = locationID
+	o.StaffID = staffID
+	o.UpdatedAt = time.Now()
 }
 
 // AddTrackingCode adds a tracking code to the order

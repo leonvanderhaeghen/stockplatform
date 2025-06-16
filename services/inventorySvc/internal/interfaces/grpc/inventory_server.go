@@ -16,15 +16,19 @@ import (
 // InventoryServer implements the gRPC interface for inventory service
 type InventoryServer struct {
 	inventoryv1.UnimplementedInventoryServiceServer
-	service *application.InventoryService
-	logger  *zap.Logger
+	service         *application.InventoryService
+	transferService *application.TransferService
+	locationService *application.LocationService
+	logger          *zap.Logger
 }
 
 // NewInventoryServer creates a new inventory gRPC server
-func NewInventoryServer(service *application.InventoryService, logger *zap.Logger) inventoryv1.InventoryServiceServer {
+func NewInventoryServer(service *application.InventoryService, transferService *application.TransferService, locationService *application.LocationService, logger *zap.Logger) inventoryv1.InventoryServiceServer {
 	return &InventoryServer{
-		service: service,
-		logger:  logger.Named("inventory_grpc_server"),
+		service:         service,
+		transferService:  transferService,
+		locationService: locationService,
+		logger:          logger.Named("inventory_grpc_server"),
 	}
 }
 
@@ -46,7 +50,7 @@ func (s *InventoryServer) CreateInventory(ctx context.Context, req *inventoryv1.
 		return nil, status.Error(codes.InvalidArgument, "sku is required")
 	}
 
-	item, err := s.service.CreateInventoryItem(ctx, req.ProductId, req.Quantity, req.Sku, req.Location)
+	item, err := s.service.CreateInventoryItem(ctx, req.ProductId, req.Quantity, req.Sku, req.LocationId)
 	if err != nil {
 		s.logger.Error("Failed to create inventory item", zap.Error(err))
 		return nil, status.Error(codes.Internal, "failed to create inventory item: "+err.Error())
@@ -170,7 +174,9 @@ func (s *InventoryServer) UpdateInventory(ctx context.Context, req *inventoryv1.
 	existingItem.Quantity = req.Inventory.Quantity
 	existingItem.Reserved = req.Inventory.Reserved
 	existingItem.SKU = req.Inventory.Sku
-	existingItem.Location = req.Inventory.Location
+	if req.Inventory.LocationId != existingItem.LocationID {
+		existingItem.LocationID = req.Inventory.LocationId
+	}
 	existingItem.LastUpdated = time.Now()
 
 	if err := s.service.UpdateInventoryItem(ctx, existingItem); err != nil {
@@ -362,7 +368,7 @@ func toProtoInventoryItem(item *domain.InventoryItem) *inventoryv1.InventoryItem
 		Quantity:    item.Quantity,
 		Reserved:    item.Reserved,
 		Sku:         item.SKU,
-		Location:    item.Location,
+		LocationId:  item.LocationID,
 		LastUpdated: item.LastUpdated.Format(time.RFC3339),
 		CreatedAt:   item.CreatedAt.Format(time.RFC3339),
 	}

@@ -80,6 +80,20 @@ type InventoryService interface {
 	
 	// Remove stock from an inventory item
 	RemoveStock(ctx context.Context, id string, quantity int32, reason, reference string) (interface{}, error)
+	
+	// POS-related inventory operations
+	
+	// PerformPOSInventoryCheck checks inventory availability for POS
+	PerformPOSInventoryCheck(ctx context.Context, locationID string, items []map[string]interface{}) (interface{}, error)
+	
+	// ReserveForPOSTransaction reserves inventory for POS transactions
+	ReserveForPOSTransaction(ctx context.Context, locationID string, orderID string, items []map[string]interface{}) (interface{}, error)
+	
+	// CompletePickup marks a pickup as complete
+	CompletePickup(ctx context.Context, reservationID string, staffID string, notes string) (interface{}, error)
+	
+	// DeductForDirectPOSTransaction directly deducts inventory for POS sales
+	DeductForDirectPOSTransaction(ctx context.Context, locationID string, staffID string, items []map[string]interface{}, reason string) (interface{}, error)
 }
 
 // OrderService defines the interface for order operations
@@ -103,6 +117,14 @@ type OrderService interface {
 	UpdateOrderStatus(ctx context.Context, orderID, status, description string) error
 	
 	// Add payment to an order (admin/staff)
+	
+	// POS-related order operations
+	
+	// CreatePOSOrder creates an order from a POS terminal
+	CreatePOSOrder(ctx context.Context, userID string, items []map[string]interface{}, locationID, staffID, paymentType string, paymentData map[string]string, notes string) (interface{}, error)
+	
+	// ProcessQuickPOSTransaction creates and processes a POS order in one step
+	ProcessQuickPOSTransaction(ctx context.Context, locationID, staffID string, items []map[string]interface{}, paymentInfo map[string]interface{}) (interface{}, error)
 	AddOrderPayment(ctx context.Context, orderID string, amount float64, paymentType, reference, status string, date time.Time, description string, metadata map[string]string) error
 	
 	// Add tracking info to an order (admin/staff)
@@ -169,4 +191,60 @@ type SupplierService interface {
 	SyncProducts(ctx context.Context, supplierID string, options *supplierv1.SyncOptions) (string, error)
 	// SyncInventory synchronizes inventory from a supplier using their configured adapter
 	SyncInventory(ctx context.Context, supplierID string, options *supplierv1.SyncOptions) (string, error)
+}
+
+// POSService defines the interface for point-of-sale operations
+type POSService interface {
+	// ProcessTransaction processes a point-of-sale transaction (sale, return, exchange)
+	ProcessTransaction(
+		ctx context.Context,
+		transactionType string, // "sale", "return", or "exchange"
+		locationID string,
+		staffID string,
+		referenceOrderID string,
+		items []map[string]interface{},
+		paymentInfo map[string]interface{},
+	) (interface{}, error)
+	
+	// CheckInventoryAvailability checks if items are available at the specified location
+	CheckInventoryAvailability(
+		ctx context.Context,
+		locationID string,
+		items []map[string]interface{},
+	) (interface{}, error)
+	
+	// GetNearbyInventory finds nearby locations with available inventory
+	GetNearbyInventory(
+		ctx context.Context,
+		productID string,
+		sku string,
+		quantity int32,
+		lat, lng float64,
+		radiusKm int32,
+	) (interface{}, error)
+	
+	// ReserveForPickup reserves inventory for in-store pickup
+	ReserveForPickup(
+		ctx context.Context,
+		userID string,
+		locationID string,
+		items []map[string]interface{},
+		pickupTime time.Time,
+		notes string,
+	) (interface{}, error)
+	
+	// CompletePickup marks a pickup reservation as completed
+	CompletePickup(
+		ctx context.Context,
+		reservationID string,
+		staffID string,
+		notes string,
+	) (interface{}, error)
+	
+	// CancelPickup cancels a pickup reservation
+	CancelPickup(
+		ctx context.Context,
+		reservationID string,
+		reason string,
+	) (interface{}, error)
 }

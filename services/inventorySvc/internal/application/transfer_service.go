@@ -42,7 +42,7 @@ func (s *TransferService) RequestTransfer(
 	destLocationID string,
 	quantity int32,
 	requestedBy string,
-) (*domain.InventoryTransfer, error) {
+) (*domain.Transfer, error) {
 	s.logger.Info("Requesting inventory transfer",
 		zap.String("product_id", productID),
 		zap.String("sku", sku),
@@ -82,13 +82,20 @@ func (s *TransferService) RequestTransfer(
 	}
 
 	// Create the transfer request
-	transfer := domain.NewInventoryTransfer(
-		productID,
-		sku,
+	transferItems := []domain.TransferItem{
+		{
+			ProductID: productID,
+			SKU:       sku,
+			Quantity:  quantity,
+			Status:    "pending",
+		},
+	}
+	transfer := domain.NewTransfer(
 		sourceLocationID,
 		destLocationID,
-		quantity,
+		transferItems,
 		requestedBy,
+		"stock_transfer",
 	)
 
 	if err := s.transferRepo.Create(ctx, transfer); err != nil {
@@ -99,7 +106,7 @@ func (s *TransferService) RequestTransfer(
 }
 
 // GetTransfer retrieves a transfer by ID
-func (s *TransferService) GetTransfer(ctx context.Context, id string) (*domain.InventoryTransfer, error) {
+func (s *TransferService) GetTransfer(ctx context.Context, id string) (*domain.Transfer, error) {
 	s.logger.Debug("Getting transfer", zap.String("id", id))
 
 	transfer, err := s.transferRepo.GetByID(ctx, id)
@@ -127,15 +134,15 @@ func (s *TransferService) ApproveTransfer(ctx context.Context, id string, approv
 		return errors.New("transfer not found")
 	}
 
-	if transfer.Status != domain.TransferStatusPending {
-		return errors.New("transfer is not in pending status")
+	if transfer.Status != domain.TransferStatusRequested {
+		return errors.New("transfer is not in requested status")
 	}
 
-	transfer.ApprovedBy = approvedBy
-	transfer.UpdateTransferStatus(domain.TransferStatusInTransit)
+	// Set estimated arrival time - example calculation
+	estimatedArrival := time.Now().Add(24 * time.Hour)
 	
-	// Set estimated arrival time - just an example, could be calculated based on distance
-	transfer.EstimatedArrival = time.Now().Add(24 * time.Hour)
+	// Use the built-in Approve method from the Transfer model
+	transfer.Approve(approvedBy, &estimatedArrival)
 	
 	return s.transferRepo.Update(ctx, transfer)
 }
@@ -153,12 +160,23 @@ func (s *TransferService) CompleteTransfer(ctx context.Context, id string) error
 		return errors.New("transfer not found")
 	}
 
-	if transfer.Status != domain.TransferStatusInTransit {
-		return errors.New("transfer is not in transit")
+	if transfer.Status != domain.TransferStatusApproved && transfer.Status != domain.TransferStatusShipped {
+		return errors.New("transfer is not approved or shipped")
 	}
 
+	// Make sure transfer has items
+	if len(transfer.Items) == 0 {
+		return errors.New("transfer has no items")
+	}
+	
+	// Use the first item's data (typically transfers handle one product at a time)
+	transferItem := transfer.Items[0]
+	productID := transferItem.ProductID
+	sku := transferItem.SKU
+	quantity := transferItem.Quantity
+
 	// Get source inventory
-	sourceInventory, err := s.inventoryRepo.GetByProductAndLocation(ctx, transfer.ProductID, transfer.SourceLocationID)
+	sourceInventory, err := s.inventoryRepo.GetByProductAndLocation(ctx, productID, transfer.SourceLocationID)
 	if err != nil {
 		return err
 	}
@@ -168,8 +186,8 @@ func (s *TransferService) CompleteTransfer(ctx context.Context, id string) error
 	}
 
 	// Check if there's sufficient stock
-	if !sourceInventory.IsAvailable(transfer.Quantity) {
-		transfer.UpdateTransferStatus(domain.TransferStatusCancelled)
+	if !sourceInventory.IsAvailable(quantity) {
+		transfer.Status = domain.TransferStatusCancelled
 		if err := s.transferRepo.Update(ctx, transfer); err != nil {
 			return err
 		}
@@ -177,7 +195,7 @@ func (s *TransferService) CompleteTransfer(ctx context.Context, id string) error
 	}
 
 	// Get or create destination inventory
-	destInventory, err := s.inventoryRepo.GetByProductAndLocation(ctx, transfer.ProductID, transfer.DestLocationID)
+	destInventory, err := s.inventoryRepo.GetByProductAndLocation(ctx, productID, transfer.DestinationLocationID)
 	if err != nil && !errors.Is(err, domain.ErrNotFound) {
 		return err
 	}
@@ -185,10 +203,10 @@ func (s *TransferService) CompleteTransfer(ctx context.Context, id string) error
 	// If destination inventory doesn't exist, create it
 	if destInventory == nil {
 		destInventory = domain.NewInventoryItem(
-			transfer.ProductID,
+			productID,
 			0, // Start with 0 quantity
-			transfer.SKU,
-			transfer.DestLocationID,
+			sku,
+			transfer.DestinationLocationID,
 		)
 		
 		if err := s.inventoryRepo.Create(ctx, destInventory); err != nil {
@@ -197,7 +215,7 @@ func (s *TransferService) CompleteTransfer(ctx context.Context, id string) error
 	}
 
 	// Perform the stock transfer
-	if err := sourceInventory.TransferStock(transfer.Quantity, destInventory); err != nil {
+	if err := sourceInventory.TransferStock(quantity, destInventory); err != nil {
 		return err
 	}
 
@@ -208,13 +226,13 @@ func (s *TransferService) CompleteTransfer(ctx context.Context, id string) error
 
 	if err := s.inventoryRepo.Update(ctx, destInventory); err != nil {
 		// Try to roll back the source inventory if destination update fails
-		sourceInventory.AddStock(transfer.Quantity)
+		sourceInventory.AddStock(quantity)
 		s.inventoryRepo.Update(ctx, sourceInventory) // best effort, ignore error
 		return err
 	}
 
 	// Mark transfer as completed
-	transfer.UpdateTransferStatus(domain.TransferStatusCompleted)
+	transfer.Complete("system")
 	return s.transferRepo.Update(ctx, transfer)
 }
 
@@ -239,12 +257,13 @@ func (s *TransferService) CancelTransfer(ctx context.Context, id string) error {
 		return errors.New("transfer is already cancelled")
 	}
 
-	transfer.UpdateTransferStatus(domain.TransferStatusCancelled)
+	// Use Cancel method from Transfer domain model
+	transfer.Status = domain.TransferStatusCancelled
 	return s.transferRepo.Update(ctx, transfer)
 }
 
 // ListPendingTransfers retrieves all pending transfers
-func (s *TransferService) ListPendingTransfers(ctx context.Context, limit, offset int) ([]*domain.InventoryTransfer, error) {
+func (s *TransferService) ListPendingTransfers(ctx context.Context, limit, offset int) ([]*domain.Transfer, error) {
 	s.logger.Debug("Listing pending transfers",
 		zap.Int("limit", limit),
 		zap.Int("offset", offset),
@@ -254,9 +273,9 @@ func (s *TransferService) ListPendingTransfers(ctx context.Context, limit, offse
 }
 
 // ListTransfersByStatus retrieves transfers with a specific status
-func (s *TransferService) ListTransfersByStatus(ctx context.Context, status string, limit, offset int) ([]*domain.InventoryTransfer, error) {
+func (s *TransferService) ListTransfersByStatus(ctx context.Context, status domain.TransferStatus, limit, offset int) ([]*domain.Transfer, error) {
 	s.logger.Debug("Listing transfers by status",
-		zap.String("status", status),
+		zap.String("status", string(status)),
 		zap.Int("limit", limit),
 		zap.Int("offset", offset),
 	)
@@ -265,7 +284,7 @@ func (s *TransferService) ListTransfersByStatus(ctx context.Context, status stri
 }
 
 // ListTransfersByLocation retrieves transfers for a specific location (source or destination)
-func (s *TransferService) ListTransfersByLocation(ctx context.Context, locationID string, isSource bool, limit, offset int) ([]*domain.InventoryTransfer, error) {
+func (s *TransferService) ListTransfersByLocation(ctx context.Context, locationID string, isSource bool, limit, offset int) ([]*domain.Transfer, error) {
 	s.logger.Debug("Listing transfers by location",
 		zap.String("location_id", locationID),
 		zap.Bool("is_source", isSource),
@@ -280,7 +299,7 @@ func (s *TransferService) ListTransfersByLocation(ctx context.Context, locationI
 }
 
 // ListTransfersByProduct retrieves transfers for a specific product
-func (s *TransferService) ListTransfersByProduct(ctx context.Context, productID string, limit, offset int) ([]*domain.InventoryTransfer, error) {
+func (s *TransferService) ListTransfersByProduct(ctx context.Context, productID string, limit, offset int) ([]*domain.Transfer, error) {
 	s.logger.Debug("Listing transfers by product",
 		zap.String("product_id", productID),
 		zap.Int("limit", limit),

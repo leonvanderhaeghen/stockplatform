@@ -17,6 +17,10 @@ type StoreLocation struct {
 	State       string    `bson:"state"`
 	PostalCode  string    `bson:"postal_code"`
 	Country     string    `bson:"country"`
+	Latitude    float64   `bson:"latitude"`
+	Longitude   float64   `bson:"longitude"`
+	PhoneNumber string    `bson:"phone_number"`
+	Email       string    `bson:"email"`
 	IsActive    bool      `bson:"is_active"`
 	CreatedAt   time.Time `bson:"created_at"`
 	UpdatedAt   time.Time `bson:"updated_at"`
@@ -31,20 +35,24 @@ const (
 )
 
 // NewStoreLocation creates a new store location
-func NewStoreLocation(name, locationType, address, city, state, postalCode, country string) *StoreLocation {
+func NewStoreLocation(name, locationType, address, city, state, postalCode, country string, lat, long float64, phone, email string) *StoreLocation {
 	now := time.Now()
 	return &StoreLocation{
-		ID:         uuid.New().String(),
-		Name:       name,
-		Type:       locationType,
-		Address:    address,
-		City:       city,
-		State:      state,
-		PostalCode: postalCode,
-		Country:    country,
-		IsActive:   true,
-		CreatedAt:  now,
-		UpdatedAt:  now,
+		ID:          uuid.New().String(),
+		Name:        name,
+		Type:        locationType,
+		Address:     address,
+		City:        city,
+		State:       state,
+		PostalCode:  postalCode,
+		Country:     country,
+		Latitude:    lat,
+		Longitude:   long,
+		PhoneNumber: phone,
+		Email:       email,
+		IsActive:    true,
+		CreatedAt:   now,
+		UpdatedAt:   now,
 	}
 }
 
@@ -66,12 +74,11 @@ type InventoryTransfer struct {
 	UpdatedAt          time.Time `bson:"updated_at"`
 }
 
-// Transfer status constants
+// Transfer status constants for legacy code
+// Note: For typed TransferStatus constants, see transfer.go (TransferStatus type)
 const (
-	TransferStatusPending    = "pending"
-	TransferStatusInTransit  = "in_transit"
-	TransferStatusCompleted  = "completed"
-	TransferStatusCancelled  = "cancelled"
+	TransferStatusPending   = "pending"
+	TransferStatusInTransit = "in_transit"
 )
 
 // NewInventoryTransfer creates a new inventory transfer request
@@ -96,10 +103,18 @@ func (t *InventoryTransfer) UpdateTransferStatus(status string) {
 	t.Status = status
 	t.UpdatedAt = time.Now()
 	
-	if status == TransferStatusCompleted {
+	if status == "completed" {
 		t.CompletedAt = time.Now()
 	}
 }
+
+// Reservation status constants
+const (
+	ReservationStatusActive    = "active"
+	ReservationStatusFulfilled = "fulfilled"
+	ReservationStatusCancelled = "cancelled"
+	ReservationStatusExpired   = "expired"
+)
 
 // InventoryItem represents a product's inventory information
 type InventoryItem struct {
@@ -116,6 +131,10 @@ type InventoryItem struct {
 	ReorderQuantity   int32     `bson:"reorder_quantity,omitempty"`
 	LastCountDate     time.Time `bson:"last_count_date,omitempty"`
 	NextCountDate     time.Time `bson:"next_count_date,omitempty"`
+	OrderID           string    `bson:"order_id,omitempty"`       // Order ID if this item is reserved for an order
+	ReservedQuantity  int32     `bson:"reserved_quantity,omitempty"` // Quantity reserved for a specific order
+	ReservationStatus string    `bson:"reservation_status,omitempty"` // Status of reservation: active, fulfilled, cancelled, expired
+	ReservationNotes  string    `bson:"reservation_notes,omitempty"` // Notes related to the reservation
 	LastUpdated       time.Time `bson:"last_updated"`
 	CreatedAt         time.Time `bson:"created_at"`
 }
@@ -218,6 +237,12 @@ func (i *InventoryItem) NeedsReorder() bool {
 func (i *InventoryItem) ScheduleInventoryCount(nextCountDate time.Time) {
 	i.LastCountDate = time.Now()
 	i.NextCountDate = nextCountDate
+	i.LastUpdated = time.Now()
+}
+
+// SetReservationStatus updates the reservation status of an inventory item
+func (i *InventoryItem) SetReservationStatus(status string) {
+	i.ReservationStatus = status
 	i.LastUpdated = time.Now()
 }
 

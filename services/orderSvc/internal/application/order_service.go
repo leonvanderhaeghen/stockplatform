@@ -46,6 +46,63 @@ func (s *OrderService) CreateOrder(ctx context.Context, userID string, items []d
 	return order, nil
 }
 
+// CreatePOSOrder creates a new order from a Point of Sale terminal
+func (s *OrderService) CreatePOSOrder(ctx context.Context, userID string, items []domain.OrderItem, 
+	shippingAddr, billingAddr domain.Address, locationID, staffID string) (*domain.Order, error) {
+	s.logger.Info("Creating POS order",
+		zap.String("user_id", userID),
+		zap.Int("item_count", len(items)),
+		zap.String("location_id", locationID),
+		zap.String("staff_id", staffID),
+	)
+
+	if userID == "" {
+		return nil, errors.New("user ID is required")
+	}
+	if len(items) == 0 {
+		return nil, errors.New("order must have at least one item")
+	}
+	if locationID == "" {
+		return nil, errors.New("location ID is required for POS orders")
+	}
+
+	order := domain.NewOrderWithSource(userID, items, shippingAddr, billingAddr, domain.SourcePOS, locationID, staffID)
+	if err := s.repo.Create(ctx, order); err != nil {
+		return nil, err
+	}
+
+	return order, nil
+}
+
+// ProcessQuickPOSTransaction processes a quick checkout at a POS terminal (create order and add payment in one operation)
+func (s *OrderService) ProcessQuickPOSTransaction(ctx context.Context, userID string, items []domain.OrderItem, 
+	shippingAddr, billingAddr domain.Address, locationID, staffID string, 
+	paymentMethod, paymentTransactionID string, paymentAmount float64) (*domain.Order, error) {
+	
+	s.logger.Info("Processing quick POS transaction",
+		zap.String("user_id", userID),
+		zap.Int("item_count", len(items)),
+		zap.String("location_id", locationID),
+		zap.String("payment_method", paymentMethod),
+	)
+
+	// Create the POS order
+	order, err := s.CreatePOSOrder(ctx, userID, items, shippingAddr, billingAddr, locationID, staffID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Add payment immediately
+	order.AddPayment(paymentMethod, paymentTransactionID, paymentAmount)
+	
+	// Update the order with payment information
+	if err := s.repo.Update(ctx, order); err != nil {
+		return nil, err
+	}
+
+	return order, nil
+}
+
 // GetOrder retrieves an order by ID
 func (s *OrderService) GetOrder(ctx context.Context, id string) (*domain.Order, error) {
 	s.logger.Debug("Getting order", zap.String("id", id))

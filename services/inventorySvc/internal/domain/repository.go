@@ -2,55 +2,31 @@ package domain
 
 import "context"
 
-// LocationRepository defines the interface for store location persistence
-type LocationRepository interface {
-	// Create adds a new store location
-	Create(ctx context.Context, location *StoreLocation) error
-	
-	// GetByID finds a store location by its ID
-	GetByID(ctx context.Context, id string) (*StoreLocation, error)
-	
-	// GetByName finds a store location by name
-	GetByName(ctx context.Context, name string) (*StoreLocation, error)
-	
-	// Update updates an existing store location
-	Update(ctx context.Context, location *StoreLocation) error
-	
-	// Delete marks a store location as inactive
-	Delete(ctx context.Context, id string) error
-	
-	// List returns all store locations with optional pagination and filters
-	List(ctx context.Context, limit, offset int, includeInactive bool) ([]*StoreLocation, error)
-	
-	// ListByType returns all store locations of a specific type
-	ListByType(ctx context.Context, locationType string, limit, offset int) ([]*StoreLocation, error)
-}
-
 // TransferRepository defines the interface for inventory transfer persistence
 type TransferRepository interface {
 	// Create adds a new inventory transfer
-	Create(ctx context.Context, transfer *InventoryTransfer) error
+	Create(ctx context.Context, transfer *Transfer) error
 	
 	// GetByID finds an inventory transfer by its ID
-	GetByID(ctx context.Context, id string) (*InventoryTransfer, error)
+	GetByID(ctx context.Context, id string) (*Transfer, error)
 	
 	// Update updates an existing inventory transfer
-	Update(ctx context.Context, transfer *InventoryTransfer) error
+	Update(ctx context.Context, transfer *Transfer) error
 	
 	// ListBySourceLocation lists transfers from a specific source location
-	ListBySourceLocation(ctx context.Context, sourceLocationID string, limit, offset int) ([]*InventoryTransfer, error)
+	ListBySourceLocation(ctx context.Context, sourceLocationID string, limit, offset int) ([]*Transfer, error)
 	
 	// ListByDestLocation lists transfers to a specific destination location
-	ListByDestLocation(ctx context.Context, destLocationID string, limit, offset int) ([]*InventoryTransfer, error)
+	ListByDestLocation(ctx context.Context, destLocationID string, limit, offset int) ([]*Transfer, error)
 	
 	// ListByProduct lists transfers for a specific product
-	ListByProduct(ctx context.Context, productID string, limit, offset int) ([]*InventoryTransfer, error)
+	ListByProduct(ctx context.Context, productID string, limit, offset int) ([]*Transfer, error)
 	
 	// ListByStatus lists transfers with a specific status
-	ListByStatus(ctx context.Context, status string, limit, offset int) ([]*InventoryTransfer, error)
+	ListByStatus(ctx context.Context, status TransferStatus, limit, offset int) ([]*Transfer, error)
 	
 	// ListPendingTransfers lists all pending transfers
-	ListPendingTransfers(ctx context.Context, limit, offset int) ([]*InventoryTransfer, error)
+	ListPendingTransfers(ctx context.Context, limit, offset int) ([]*Transfer, error)
 }
 
 // InventoryRepository defines the interface for inventory persistence
@@ -90,6 +66,9 @@ type InventoryRepository interface {
 	
 	// ListByStockStatus returns inventory items based on stock status (in stock, low stock, out of stock)
 	ListByStockStatus(ctx context.Context, status string, limit, offset int) ([]*InventoryItem, error)
+	
+	// GetByOrderAndLocation finds inventory items reserved for a specific order at a specific location
+	GetByOrderAndLocation(ctx context.Context, orderID, locationID string) ([]*InventoryItem, error)
 	
 	// AdjustStock adjusts inventory quantity and records reason
 	AdjustStock(ctx context.Context, itemID string, quantity int32, reason string, performedBy string) error

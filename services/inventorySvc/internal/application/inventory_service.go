@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"go.uber.org/zap"
@@ -83,7 +84,8 @@ func (s *InventoryService) GetInventoryItemsByProductID(ctx context.Context, pro
 	}
 	
 	if len(items) == 0 {
-		return nil, errors.New("inventory items not found")
+		// Return empty slice rather than nil to maintain consistent return type
+		return []*domain.InventoryItem{}, nil
 	}
 	
 	return items, nil
@@ -118,7 +120,8 @@ func (s *InventoryService) GetInventoryItemsBySKU(ctx context.Context, sku strin
 	}
 	
 	if len(items) == 0 {
-		return nil, errors.New("inventory items not found")
+		// Return empty slice rather than nil to maintain consistent return type
+		return []*domain.InventoryItem{}, nil
 	}
 	
 	return items, nil
@@ -380,3 +383,247 @@ func (s *InventoryService) FulfillReservation(ctx context.Context, id string, qu
 	
 	return s.repo.Update(ctx, item)
 }
+
+// CancelPickupReservation cancels a pickup reservation for an order at a specific location
+func (s *InventoryService) CancelPickupReservation(ctx context.Context, orderID string, locationID string, reason string) error {
+	s.logger.Info("Cancelling pickup reservation",
+		zap.String("order_id", orderID),
+		zap.String("location_id", locationID),
+		zap.String("reason", reason),
+	)
+
+	// Get inventory items associated with this order at this location
+	inventoryItems, err := s.repo.GetByOrderAndLocation(ctx, orderID, locationID)
+	if err != nil {
+		return err
+	}
+
+	if len(inventoryItems) == 0 {
+		return errors.New("no reserved inventory items found for this order at this location")
+	}
+
+	// Release the reservations for all items
+	for _, item := range inventoryItems {
+		item.SetReservationStatus(domain.ReservationStatusCancelled)
+		err := s.repo.Update(ctx, item)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// CompletePickup completes an in-store pickup reservation
+func (s *InventoryService) CompletePickup(ctx context.Context, orderID string, locationID string, staffID string, notes string) error {
+	s.logger.Info("Completing pickup reservation",
+		zap.String("order_id", orderID),
+		zap.String("location_id", locationID),
+		zap.String("staff_id", staffID),
+	)
+
+	// Get inventory items associated with this order at this location
+	inventoryItems, err := s.repo.GetByOrderAndLocation(ctx, orderID, locationID)
+	if err != nil {
+		return err
+	}
+
+	if len(inventoryItems) == 0 {
+		return errors.New("no reserved inventory items found for this order at this location")
+	}
+
+	// Process each item for fulfillment
+	for _, item := range inventoryItems {
+		// Mark as fulfilled and update the inventory
+		if !item.FulfillReservation(item.Reserved) {
+			return errors.New("insufficient reserved quantity for item: " + item.ID)
+		}
+		
+		// Set reservation status to fulfilled
+		item.SetReservationStatus(domain.ReservationStatusFulfilled)
+		if notes != "" {
+			item.AddNote(fmt.Sprintf("Pickup completed by staff %s: %s", staffID, notes))
+		}
+		
+		// Update the item in repository
+		err := s.repo.Update(ctx, item)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// PerformPOSInventoryCheck checks inventory availability for POS transactions
+func (s *InventoryService) PerformPOSInventoryCheck(
+	ctx context.Context, 
+	locationID string, 
+	items []domain.InventoryCheckItem,
+) ([]*domain.InventoryCheckResult, error) {
+	s.logger.Info("Performing POS inventory check",
+		zap.String("location_id", locationID),
+		zap.Int("item_count", len(items)),
+	)
+
+	if locationID == "" {
+		return nil, errors.New("location ID is required")
+	}
+
+	results := make([]*domain.InventoryCheckResult, 0, len(items))
+
+	for _, checkItem := range items {
+		result := &domain.InventoryCheckResult{
+			ProductID: checkItem.ProductID,
+			SKU:       checkItem.SKU,
+			Quantity:  checkItem.Quantity,
+			Available: false,
+		}
+
+		// First try to find by product ID if provided
+		var inventoryItem *domain.InventoryItem
+		var err error
+
+		if checkItem.ProductID != "" {
+			inventoryItem, err = s.GetInventoryItemByProductAndLocation(ctx, checkItem.ProductID, locationID)
+		} else if checkItem.SKU != "" {
+			inventoryItem, err = s.GetInventoryItemBySKUAndLocation(ctx, checkItem.SKU, locationID)
+		} else {
+			result.Error = "Either product ID or SKU must be provided"
+			results = append(results, result)
+			continue
+		}
+
+		if err != nil {
+			if errors.Is(err, domain.ErrNotFound) {
+				result.Error = "Item not found"
+			} else {
+				result.Error = err.Error()
+			}
+			results = append(results, result)
+			continue
+		}
+
+		// Check availability
+		result.AvailableQuantity = inventoryItem.GetAvailable()
+		result.Location = inventoryItem.LocationID
+		result.Available = inventoryItem.HasSufficientStock(checkItem.Quantity)
+
+		results = append(results, result)
+	}
+
+	return results, nil
+}
+
+// ReserveForPOSTransaction reserves inventory items for a POS transaction
+func (s *InventoryService) ReserveForPOSTransaction(
+	ctx context.Context, 
+	orderID string,
+	locationID string,
+	items []domain.ReservationItem,
+) error {
+	s.logger.Info("Reserving inventory for POS transaction",
+		zap.String("order_id", orderID),
+		zap.String("location_id", locationID),
+		zap.Int("item_count", len(items)),
+	)
+
+	if orderID == "" {
+		return errors.New("order ID is required")
+	}
+	if locationID == "" {
+		return errors.New("location ID is required")
+	}
+	if len(items) == 0 {
+		return errors.New("at least one item must be specified")
+	}
+
+	for _, reserveItem := range items {
+		// Find the inventory item
+		var inventoryItem *domain.InventoryItem
+		var err error
+
+		if reserveItem.ProductID != "" {
+			inventoryItem, err = s.GetInventoryItemByProductAndLocation(ctx, reserveItem.ProductID, locationID)
+		} else if reserveItem.SKU != "" {
+			inventoryItem, err = s.GetInventoryItemBySKUAndLocation(ctx, reserveItem.SKU, locationID)
+		} else {
+			return errors.New("either product ID or SKU must be provided for each item")
+		}
+
+		if err != nil {
+			return err
+		}
+
+		// Reserve the stock
+		if !inventoryItem.ReserveForOrder(reserveItem.Quantity, orderID) {
+			return errors.New("insufficient stock available for item: " + inventoryItem.ProductID)
+		}
+
+		// Update the inventory
+		if err := s.repo.Update(ctx, inventoryItem); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// DeductForDirectPOSTransaction immediately deducts inventory for direct POS sales (no reservation)
+func (s *InventoryService) DeductForDirectPOSTransaction(
+	ctx context.Context,
+	locationID string,
+	staffID string,
+	items []domain.InventoryCheckItem,
+) error {
+	s.logger.Info("Deducting inventory for direct POS transaction",
+		zap.String("location_id", locationID),
+		zap.String("staff_id", staffID),
+		zap.Int("item_count", len(items)),
+	)
+
+	if locationID == "" {
+		return errors.New("location ID is required")
+	}
+	if staffID == "" {
+		return errors.New("staff ID is required")
+	}
+	if len(items) == 0 {
+		return errors.New("at least one item must be specified")
+	}
+
+	for _, checkItem := range items {
+		// Find the inventory item
+		var inventoryItem *domain.InventoryItem
+		var err error
+
+		if checkItem.ProductID != "" {
+			inventoryItem, err = s.GetInventoryItemByProductAndLocation(ctx, checkItem.ProductID, locationID)
+		} else if checkItem.SKU != "" {
+			inventoryItem, err = s.GetInventoryItemBySKUAndLocation(ctx, checkItem.SKU, locationID)
+		} else {
+			return errors.New("either product ID or SKU must be provided for each item")
+		}
+
+		if err != nil {
+			return err
+		}
+
+		// Directly remove the stock (no reservation)
+		if !inventoryItem.RemoveStock(checkItem.Quantity) {
+			return errors.New("insufficient stock available for item: " + inventoryItem.ProductID)
+		}
+
+		// Add a note about the POS transaction
+		inventoryItem.AddNote(fmt.Sprintf("POS transaction: %d units sold by staff %s", checkItem.Quantity, staffID))
+
+		// Update the inventory
+		if err := s.repo.Update(ctx, inventoryItem); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// End of service methods

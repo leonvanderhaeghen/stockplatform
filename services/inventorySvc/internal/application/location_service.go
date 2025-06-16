@@ -24,7 +24,7 @@ func NewLocationService(repo domain.LocationRepository, logger *zap.Logger) *Loc
 }
 
 // CreateLocation creates a new store location
-func (s *LocationService) CreateLocation(ctx context.Context, name, locationType, address, city, state, postalCode, country string) (*domain.StoreLocation, error) {
+func (s *LocationService) CreateLocation(ctx context.Context, name, locationType, address, city, state, postalCode, country string, latitude, longitude float64, phoneNumber, email string) (*domain.StoreLocation, error) {
 	s.logger.Info("Creating store location",
 		zap.String("name", name),
 		zap.String("type", locationType),
@@ -43,7 +43,7 @@ func (s *LocationService) CreateLocation(ctx context.Context, name, locationType
 		return nil, errors.New("store location with this name already exists")
 	}
 
-	location := domain.NewStoreLocation(name, locationType, address, city, state, postalCode, country)
+	location := domain.NewStoreLocation(name, locationType, address, city, state, postalCode, country, latitude, longitude, phoneNumber, email)
 	if err := s.repo.Create(ctx, location); err != nil {
 		return nil, err
 	}
