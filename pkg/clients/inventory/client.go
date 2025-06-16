@@ -158,9 +158,9 @@ func (c *Client) ReserveStock(ctx context.Context, req *inventoryv1.ReserveStock
 	return resp, nil
 }
 
-// CheckAvailability checks if a product is available in inventory
+// CheckAvailability checks item availability at a specific location
 func (c *Client) CheckAvailability(ctx context.Context, req *inventoryv1.CheckAvailabilityRequest) (*inventoryv1.CheckAvailabilityResponse, error) {
-	c.logger.Debug("Checking availability", zap.String("product_id", req.ProductId))
+	c.logger.Debug("Checking availability", zap.String("location_id", req.LocationId), zap.Int("items_count", len(req.Items)))
 	
 	resp, err := c.client.CheckAvailability(ctx, req)
 	if err != nil {
@@ -171,14 +171,14 @@ func (c *Client) CheckAvailability(ctx context.Context, req *inventoryv1.CheckAv
 	return resp, nil
 }
 
-// AdjustInventory adjusts inventory levels
-func (c *Client) AdjustInventory(ctx context.Context, req *inventoryv1.AdjustInventoryRequest) (*inventoryv1.AdjustInventoryResponse, error) {
-	c.logger.Debug("Adjusting inventory", zap.String("id", req.Id), zap.Int32("quantity", req.Quantity))
+// AdjustInventoryForOrder adjusts inventory based on order operations (called by order service)
+func (c *Client) AdjustInventoryForOrder(ctx context.Context, req *inventoryv1.AdjustInventoryForOrderRequest) (*inventoryv1.AdjustInventoryForOrderResponse, error) {
+	c.logger.Debug("Adjusting inventory for order", zap.String("order_id", req.OrderId))
 	
-	resp, err := c.client.AdjustInventory(ctx, req)
+	resp, err := c.client.AdjustInventoryForOrder(ctx, req)
 	if err != nil {
-		c.logger.Error("Failed to adjust inventory", zap.Error(err))
-		return nil, fmt.Errorf("failed to adjust inventory: %w", err)
+		c.logger.Error("Failed to adjust inventory for order", zap.Error(err))
+		return nil, fmt.Errorf("failed to adjust inventory for order: %w", err)
 	}
 	
 	return resp, nil

@@ -8,9 +8,9 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	productv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/product/v1"
-	userv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/user/v1"
-	orderv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/order/v1"
+	productv1 "github.com/leonvanderhaeghen/stockplatform/services/productSvc/api/gen/go/proto/product/v1"
+	userv1 "github.com/leonvanderhaeghen/stockplatform/services/userSvc/api/gen/go/proto/user/v1"
+	orderv1 "github.com/leonvanderhaeghen/stockplatform/services/orderSvc/api/gen/go/proto/order/v1"
 )
 
 // TestProductService tests basic product service functionality
@@ -30,24 +30,30 @@ func TestProductService(t *testing.T) {
 	client := productv1.NewProductServiceClient(conn)
 
 	// Test creating a product
-	createReq := &productv1.CreateProductRequest{
-		Name:        "Test Product",
-		Description: "A test product for integration testing",
-		Price:       29.99,
-		Category:    "Electronics",
-		Sku:         "TEST-001",
+	productReq := &productv1.CreateProductRequest{
+		Name:         "Test Product",
+		Description:  "A test product",
+		CostPrice:    "10.00",
+		SellingPrice: "15.00",
+		Currency:     "USD",
+		Sku:          "TEST-001",
+		CategoryIds:  []string{"test-category"},
+		SupplierId:   "test-supplier",
+		IsActive:     true,
+		InStock:      true,
+		StockQty:     100,
 	}
 
-	createResp, err := client.CreateProduct(ctx, createReq)
+	productResp, err := client.CreateProduct(ctx, productReq)
 	if err != nil {
 		t.Fatalf("Failed to create product: %v", err)
 	}
 
-	if createResp.Product == nil {
+	if productResp.Product == nil {
 		t.Fatal("Created product is nil")
 	}
 
-	productID := createResp.Product.Id
+	productID := productResp.Product.Id
 	t.Logf("✅ Created product with ID: %s", productID)
 
 	// Test getting the product
@@ -57,16 +63,18 @@ func TestProductService(t *testing.T) {
 		t.Fatalf("Failed to get product: %v", err)
 	}
 
-	if getResp.Product.Name != createReq.Name {
-		t.Errorf("Expected product name %s, got %s", createReq.Name, getResp.Product.Name)
+	if getResp.Product.Name != productReq.Name {
+		t.Errorf("Expected product name %s, got %s", productReq.Name, getResp.Product.Name)
 	}
 
 	t.Logf("✅ Retrieved product: %s", getResp.Product.Name)
 
 	// Test listing products
 	listReq := &productv1.ListProductsRequest{
-		PageSize: 10,
-		Page:     1,
+		Pagination: &productv1.Pagination{
+			Page:     1,
+			PageSize: 10,
+		},
 	}
 
 	listResp, err := client.ListProducts(ctx, listReq)
@@ -98,23 +106,23 @@ func TestUserService(t *testing.T) {
 	client := userv1.NewUserServiceClient(conn)
 
 	// Test creating a user
-	createReq := &userv1.CreateUserRequest{
+	userReq := &userv1.RegisterUserRequest{
 		Email:     "test@example.com",
-		Password:  "testpassword123",
+		Password:  "password123",
 		FirstName: "Test",
 		LastName:  "User",
 	}
 
-	createResp, err := client.CreateUser(ctx, createReq)
+	userResp, err := client.RegisterUser(ctx, userReq)
 	if err != nil {
 		t.Fatalf("Failed to create user: %v", err)
 	}
 
-	if createResp.User == nil {
+	if userResp.User == nil {
 		t.Fatal("Created user is nil")
 	}
 
-	userID := createResp.User.Id
+	userID := userResp.User.Id
 	t.Logf("✅ Created user with ID: %s", userID)
 
 	// Test getting the user
@@ -124,8 +132,8 @@ func TestUserService(t *testing.T) {
 		t.Fatalf("Failed to get user: %v", err)
 	}
 
-	if getResp.User.Email != createReq.Email {
-		t.Errorf("Expected user email %s, got %s", createReq.Email, getResp.User.Email)
+	if getResp.User.Email != userReq.Email {
+		t.Errorf("Expected user email %s, got %s", userReq.Email, getResp.User.Email)
 	}
 
 	t.Logf("✅ Retrieved user: %s", getResp.User.Email)
@@ -148,29 +156,41 @@ func TestOrderService(t *testing.T) {
 	client := orderv1.NewOrderServiceClient(conn)
 
 	// Test creating an order
-	createReq := &orderv1.CreateOrderRequest{
+	orderReq := &orderv1.CreateOrderRequest{
 		UserId: "test-user-id",
 		Items: []*orderv1.OrderItem{
 			{
 				ProductId: "test-product-id",
 				Quantity:  2,
-				Price:     29.99,
+				Price:     "15.00",
 			},
 		},
-		TotalAmount: 59.98,
-		Status:      "pending",
+		ShippingAddress: &orderv1.Address{
+			Street:  "123 Test St",
+			City:    "Test City",
+			State:   "TS",
+			ZipCode: "12345",
+			Country: "US",
+		},
+		BillingAddress: &orderv1.Address{
+			Street:  "123 Test St",
+			City:    "Test City",
+			State:   "TS",
+			ZipCode: "12345",
+			Country: "US",
+		},
 	}
 
-	createResp, err := client.CreateOrder(ctx, createReq)
+	orderResp, err := client.CreateOrder(ctx, orderReq)
 	if err != nil {
 		t.Fatalf("Failed to create order: %v", err)
 	}
 
-	if createResp.Order == nil {
+	if orderResp.Order == nil {
 		t.Fatal("Created order is nil")
 	}
 
-	orderID := createResp.Order.Id
+	orderID := orderResp.Order.Id
 	t.Logf("✅ Created order with ID: %s", orderID)
 
 	// Test getting the order
@@ -180,8 +200,8 @@ func TestOrderService(t *testing.T) {
 		t.Fatalf("Failed to get order: %v", err)
 	}
 
-	if getResp.Order.UserId != createReq.UserId {
-		t.Errorf("Expected order user ID %s, got %s", createReq.UserId, getResp.Order.UserId)
+	if getResp.Order.UserId != orderReq.UserId {
+		t.Errorf("Expected order user ID %s, got %s", orderReq.UserId, getResp.Order.UserId)
 	}
 
 	t.Logf("✅ Retrieved order for user: %s", getResp.Order.UserId)
