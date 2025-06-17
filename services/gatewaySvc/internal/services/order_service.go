@@ -8,19 +8,20 @@ import (
 	"go.uber.org/zap"
 
 	orderv1 "github.com/leonvanderhaeghen/stockplatform/services/orderSvc/api/gen/go/proto/order/v1"
-	"github.com/leonvanderhaeghen/stockplatform/pkg/grpcclient"
+	orderclient "github.com/leonvanderhaeghen/stockplatform/pkg/clients/order"
 )
 
 // OrderServiceImpl implements the OrderService interface
 type OrderServiceImpl struct {
-	client *grpcclient.OrderClient
+	client *orderclient.Client
 	logger *zap.Logger
 }
 
 // NewOrderService creates a new instance of OrderServiceImpl
 func NewOrderService(orderServiceAddr string, logger *zap.Logger) (OrderService, error) {
-	// Create a gRPC client
-	client, err := grpcclient.NewOrderClient(orderServiceAddr)
+	// Create a gRPC client via the new abstraction
+	ordCfg := orderclient.Config{Address: orderServiceAddr}
+	client, err := orderclient.New(ordCfg, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create order client: %w", err)
 	}

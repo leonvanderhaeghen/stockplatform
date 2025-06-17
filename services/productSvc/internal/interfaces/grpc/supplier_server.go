@@ -11,7 +11,7 @@ import (
 
 	"github.com/leonvanderhaeghen/stockplatform/services/productSvc/internal/application"
 	"github.com/leonvanderhaeghen/stockplatform/services/productSvc/internal/domain"
-	supplierv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/supplier/v1"
+	supplierv1 "github.com/leonvanderhaeghen/stockplatform/services/supplierSvc/api/gen/go/proto/supplier/v1"
 )
 
 // SupplierServer handles gRPC requests for the Supplier service

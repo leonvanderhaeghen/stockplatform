@@ -7,19 +7,20 @@ import (
 	"go.uber.org/zap"
 
 	supplierv1 "github.com/leonvanderhaeghen/stockplatform/services/supplierSvc/api/gen/go/proto/supplier/v1"
-	"github.com/leonvanderhaeghen/stockplatform/pkg/grpcclient"
+	supplierclient "github.com/leonvanderhaeghen/stockplatform/pkg/clients/supplier"
 )
 
 // SupplierServiceImpl implements the SupplierService interface
 type SupplierServiceImpl struct {
-	client *grpcclient.SupplierClient
+	client *supplierclient.Client
 	logger *zap.Logger
 }
 
 // NewSupplierService creates a new instance of SupplierServiceImpl
 func NewSupplierService(supplierServiceAddr string, logger *zap.Logger) (SupplierService, error) {
-	// Create a gRPC client
-	client, err := grpcclient.NewSupplierClient(supplierServiceAddr, logger)
+	// Create a gRPC client via new abstraction
+	supCfg := supplierclient.Config{Address: supplierServiceAddr}
+	client, err := supplierclient.New(supCfg, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create supplier client: %w", err)
 	}

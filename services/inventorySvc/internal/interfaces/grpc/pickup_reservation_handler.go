@@ -2,13 +2,14 @@ package grpc
 
 import (
 	"context"
-	"strings"
-	"time"
 
-	inventoryv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/inventory/v1"
+	"github.com/leonvanderhaeghen/stockplatform/services/inventorySvc/internal/domain"
+	inventoryv1 "github.com/leonvanderhaeghen/stockplatform/services/inventorySvc/api/gen/go/proto/inventory/v1"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"strings"
+	"time"
 )
 
 // ReserveForPickup handles reservation requests for in-store pickup

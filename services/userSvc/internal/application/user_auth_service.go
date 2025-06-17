@@ -5,15 +5,15 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/leonvanderhaeghen/stockplatform/pkg/grpcclient"
-	orderpb "github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/order/v1"
+	orderclient "github.com/leonvanderhaeghen/stockplatform/pkg/clients/order"
+	orderpb "github.com/leonvanderhaeghen/stockplatform/services/orderSvc/api/gen/go/proto/order/v1"
 	"github.com/leonvanderhaeghen/stockplatform/services/userSvc/internal/domain"
 	"go.uber.org/zap"
 )
 
 // UserAuthService handles user authentication and authorization
 type UserAuthService struct {
-	orderClient *grpcclient.OrderClient
+	orderClient *orderclient.Client
 	userService *UserService
 	logger      *zap.Logger
 }
@@ -25,7 +25,8 @@ func NewUserAuthService(
 	logger *zap.Logger,
 ) (*UserAuthService, error) {
 	// Initialize the order client
-	orderClient, err := grpcclient.NewOrderClient(orderServiceAddr)
+	ordCfg := orderclient.Config{Address: orderServiceAddr}
+	orderClient, err := orderclient.New(ordCfg, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create order client: %w", err)
 	}

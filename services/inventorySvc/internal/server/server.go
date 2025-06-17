@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"os"
 	"os/signal"
@@ -13,7 +14,7 @@ import (
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 
-	inventoryv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/inventory/v1"
+	inventoryv1 "github.com/leonvanderhaeghen/stockplatform/services/inventorySvc/api/gen/go/proto/inventory/v1"
 	"github.com/leonvanderhaeghen/stockplatform/services/inventorySvc/internal/application"
 	"github.com/leonvanderhaeghen/stockplatform/services/inventorySvc/internal/config"
 	"github.com/leonvanderhaeghen/stockplatform/services/inventorySvc/internal/database"

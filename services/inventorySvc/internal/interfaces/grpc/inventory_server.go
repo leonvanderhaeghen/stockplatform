@@ -4,12 +4,12 @@ import (
 	"context"
 	"time"
 
+	"github.com/leonvanderhaeghen/stockplatform/services/inventorySvc/internal/application"
+	inventoryv1 "github.com/leonvanderhaeghen/stockplatform/services/inventorySvc/api/gen/go/proto/inventory/v1"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	inventoryv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/inventory/v1"
-	"github.com/leonvanderhaeghen/stockplatform/services/inventorySvc/internal/application"
 	"github.com/leonvanderhaeghen/stockplatform/services/inventorySvc/internal/domain"
 )
 

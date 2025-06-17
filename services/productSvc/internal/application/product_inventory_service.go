@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/leonvanderhaeghen/stockplatform/pkg/grpcclient"
-	inventorypb "github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/inventory/v1"
+	inventoryclient "github.com/leonvanderhaeghen/stockplatform/pkg/clients/inventory"
+	inventorypb "github.com/leonvanderhaeghen/stockplatform/services/inventorySvc/api/gen/go/proto/inventory/v1"
 	"github.com/leonvanderhaeghen/stockplatform/services/productSvc/internal/domain"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.uber.org/zap"
@@ -13,7 +13,7 @@ import (
 
 // ProductInventoryService coordinates between product and inventory services
 type ProductInventoryService struct {
-	inventoryClient *grpcclient.InventoryClient
+	inventoryClient *inventoryclient.Client
 	productService  *ProductService
 	logger         *zap.Logger
 }
@@ -25,7 +25,8 @@ func NewProductInventoryService(
 	logger *zap.Logger,
 ) (*ProductInventoryService, error) {
 	// Initialize the inventory client
-	inventoryClient, err := grpcclient.NewInventoryClient(inventoryAddr)
+	invCfg := inventoryclient.Config{Address: inventoryAddr}
+	inventoryClient, err := inventoryclient.New(invCfg, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create inventory client: %w", err)
 	}

@@ -11,7 +11,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/encoding/protojson"
 
-	productv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/product/v1"
+	productv1 "github.com/leonvanderhaeghen/stockplatform/services/productSvc/api/gen/go/proto/product/v1"
 )
 
 func main() {

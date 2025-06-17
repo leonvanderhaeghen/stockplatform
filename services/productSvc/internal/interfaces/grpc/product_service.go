@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/product/v1"
+	productv1 "github.com/leonvanderhaeghen/stockplatform/services/productSvc/api/gen/go/proto/product/v1"
 	"github.com/leonvanderhaeghen/stockplatform/services/productSvc/internal/application"
 	"github.com/leonvanderhaeghen/stockplatform/services/productSvc/internal/domain"
 	"go.uber.org/zap"

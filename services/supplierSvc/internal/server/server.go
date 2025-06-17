@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"os"
 	"os/signal"
@@ -13,7 +14,7 @@ import (
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 
-	supplierv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/supplier/v1"
+	supplierv1 "github.com/leonvanderhaeghen/stockplatform/services/supplierSvc/api/gen/go/proto/supplier/v1"
 	"github.com/leonvanderhaeghen/stockplatform/services/supplierSvc/internal/application"
 	"github.com/leonvanderhaeghen/stockplatform/services/supplierSvc/internal/bootstrap"
 	"github.com/leonvanderhaeghen/stockplatform/services/supplierSvc/internal/config"

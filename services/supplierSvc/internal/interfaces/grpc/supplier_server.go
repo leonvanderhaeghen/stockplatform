@@ -8,7 +8,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	supplierv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/supplier/v1"
+	supplierv1 "github.com/leonvanderhaeghen/stockplatform/services/supplierSvc/api/gen/go/proto/supplier/v1"
 	"github.com/leonvanderhaeghen/stockplatform/services/supplierSvc/internal/application"
 	"github.com/leonvanderhaeghen/stockplatform/services/supplierSvc/internal/domain"
 )

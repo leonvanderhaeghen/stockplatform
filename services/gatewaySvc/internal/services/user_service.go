@@ -7,7 +7,7 @@ import (
 	"go.uber.org/zap"
 
 	userv1 "github.com/leonvanderhaeghen/stockplatform/services/userSvc/api/gen/go/proto/user/v1"
-	"github.com/leonvanderhaeghen/stockplatform/pkg/grpcclient"
+	userclient "github.com/leonvanderhaeghen/stockplatform/pkg/clients/user"
 )
 
 var (
@@ -16,14 +16,15 @@ var (
 
 // UserServiceImpl implements the UserService interface
 type UserServiceImpl struct {
-	client *grpcclient.UserClient
+	client *userclient.Client
 	logger *zap.Logger
 }
 
 // NewUserService creates a new instance of UserServiceImpl
 func NewUserService(userServiceAddr string, logger *zap.Logger) (UserService, error) {
-	// Create a gRPC client
-	client, err := grpcclient.NewUserClient(userServiceAddr)
+	// Create a gRPC client via new abstraction
+	usrCfg := userclient.Config{Address: userServiceAddr}
+	client, err := userclient.New(usrCfg, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user client: %w", err)
 	}

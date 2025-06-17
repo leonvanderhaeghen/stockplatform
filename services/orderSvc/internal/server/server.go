@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"os"
 	"os/signal"
@@ -13,12 +14,12 @@ import (
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 
-	orderv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/order/v1"
+	orderv1 "github.com/leonvanderhaeghen/stockplatform/services/orderSvc/api/gen/go/proto/order/v1"
 	"github.com/leonvanderhaeghen/stockplatform/services/orderSvc/internal/application"
 	"github.com/leonvanderhaeghen/stockplatform/services/orderSvc/internal/config"
 	"github.com/leonvanderhaeghen/stockplatform/services/orderSvc/internal/database"
+	grpcintf "github.com/leonvanderhaeghen/stockplatform/services/orderSvc/internal/interfaces/grpc"
 	"github.com/leonvanderhaeghen/stockplatform/services/orderSvc/internal/domain"
-	grpchandlers "github.com/leonvanderhaeghen/stockplatform/services/orderSvc/internal/interfaces/grpc"
 )
 
 // Server holds the gRPC server and its dependencies
@@ -66,13 +67,13 @@ func (s *Server) Initialize() error {
 	posTransactionService := application.NewPOSTransactionService(orderService, serviceConfig)
 
 	// Initialize gRPC handlers
-	orderServer := grpchandlers.NewOrderServer(orderService, posTransactionService, s.logger)
+	orderServer := grpcintf.NewOrderServer(orderService, posTransactionService, s.logger)
 
 	// Register gRPC services
 	orderv1.RegisterOrderServiceServer(s.grpcServer, orderServer)
 
 	// Register health check service
-	healthServer := grpchandlers.NewHealthServer(s.logger)
+	healthServer := grpcintf.NewHealthServer(s.logger)
 	grpc_health_v1.RegisterHealthServer(s.grpcServer, healthServer)
 
 	// Enable reflection for development

@@ -7,13 +7,13 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/leonvanderhaeghen/stockplatform/pkg/grpcclient"
+	inventoryclient "github.com/leonvanderhaeghen/stockplatform/pkg/clients/inventory"
 	inventoryv1 "github.com/leonvanderhaeghen/stockplatform/services/inventorySvc/api/gen/go/proto/inventory/v1"
 )
 
 // InventoryServiceImpl implements the InventoryService interface
 type InventoryServiceImpl struct {
-	client *grpcclient.InventoryClient
+	client *inventoryclient.Client
 	logger *zap.Logger
 }
 
@@ -21,7 +21,8 @@ type InventoryServiceImpl struct {
 func NewInventoryService(inventoryServiceAddr string, logger *zap.Logger) (InventoryService, error) {
 	// Create a gRPC client
 	// Note: NewInventoryClient doesn't take a logger parameter
-	client, err := grpcclient.NewInventoryClient(inventoryServiceAddr)
+	invCfg := inventoryclient.Config{Address: inventoryServiceAddr}
+	client, err := inventoryclient.New(invCfg, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create inventory client: %w", err)
 	}

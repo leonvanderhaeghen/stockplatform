@@ -5,8 +5,8 @@ import (
 	"time"
 	"math/rand"
 
-	"github.com/leonvanderhaeghen/stockplatform/pkg/grpcclient"
-	inventorypb "github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/inventory/v1"
+	inventoryclient "github.com/leonvanderhaeghen/stockplatform/pkg/clients/inventory"
+	inventorypb "github.com/leonvanderhaeghen/stockplatform/services/inventorySvc/api/gen/go/proto/inventory/v1"
 	"github.com/leonvanderhaeghen/stockplatform/services/orderSvc/internal/domain"
 )
 
@@ -88,7 +88,8 @@ func (s *POSTransactionService) ProcessTransaction(
 	}
 
 	// Call inventory service via gRPC client to adjust stock
-	inventoryClient, err := grpcclient.NewInventoryClient(s.config.InventoryServiceAddr)
+	invCfg := inventoryclient.Config{Address: s.config.InventoryServiceAddr}
+	inventoryClient, err := inventoryclient.New(invCfg, nil)
 	if err != nil {
 		return nil, err
 	}

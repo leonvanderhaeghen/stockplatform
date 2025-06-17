@@ -8,7 +8,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	userv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/user/v1"
+	userv1 "github.com/leonvanderhaeghen/stockplatform/services/userSvc/api/gen/go/proto/user/v1"
 	"github.com/leonvanderhaeghen/stockplatform/services/userSvc/internal/application"
 	"github.com/leonvanderhaeghen/stockplatform/services/userSvc/internal/domain"
 )

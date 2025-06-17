@@ -13,9 +13,9 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	productv1 "github.com/leonvanderhaeghen/stockplatform/services/productSvc/api/gen/go/proto/product/v1"
 	"github.com/leonvanderhaeghen/stockplatform/services/productSvc/internal/application"
 	"github.com/leonvanderhaeghen/stockplatform/services/productSvc/internal/domain"
-	productv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/product/v1"
 )
 
 // convertMetadata converts a map[string]interface{} to map[string]string by converting all values to strings

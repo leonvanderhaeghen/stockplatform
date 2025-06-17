@@ -7,19 +7,20 @@ import (
 	"go.uber.org/zap"
 
 	productv1 "github.com/leonvanderhaeghen/stockplatform/services/productSvc/api/gen/go/proto/product/v1"
-	"github.com/leonvanderhaeghen/stockplatform/pkg/grpcclient"
+	productclient "github.com/leonvanderhaeghen/stockplatform/pkg/clients/product"
 )
 
 // ProductServiceImpl implements the ProductService interface
 type ProductServiceImpl struct {
-	client *grpcclient.ProductClient
+	client *productclient.Client
 	logger *zap.Logger
 }
 
 // NewProductService creates a new instance of ProductServiceImpl
 func NewProductService(productServiceAddr string, logger *zap.Logger) (ProductService, error) {
 	// Create a new gRPC client
-	client, err := grpcclient.NewProductClient(productServiceAddr)
+	prodCfg := productclient.Config{Address: productServiceAddr}
+	client, err := productclient.New(prodCfg, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create product client: %w", err)
 	}

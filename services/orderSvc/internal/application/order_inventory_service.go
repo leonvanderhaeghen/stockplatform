@@ -4,15 +4,15 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/leonvanderhaeghen/stockplatform/pkg/grpcclient"
-	inventorypb "github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/inventory/v1"
+	inventoryclient "github.com/leonvanderhaeghen/stockplatform/pkg/clients/inventory"
+	inventorypb "github.com/leonvanderhaeghen/stockplatform/services/inventorySvc/api/gen/go/proto/inventory/v1"
 	"github.com/leonvanderhaeghen/stockplatform/services/orderSvc/internal/domain"
 	"go.uber.org/zap"
 )
 
 // OrderInventoryService coordinates between order and inventory services
 type OrderInventoryService struct {
-	inventoryClient *grpcclient.InventoryClient
+	inventoryClient *inventoryclient.Client
 	orderService    *OrderService
 	logger          *zap.Logger
 }
@@ -23,8 +23,9 @@ func NewOrderInventoryService(
 	inventoryServiceAddr string,
 	logger *zap.Logger,
 ) (*OrderInventoryService, error) {
-	// Initialize the inventory client
-	inventoryClient, err := grpcclient.NewInventoryClient(inventoryServiceAddr)
+	// Initialize the inventory client using new abstraction
+	invCfg := inventoryclient.Config{Address: inventoryServiceAddr}
+	inventoryClient, err := inventoryclient.New(invCfg, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create inventory client: %w", err)
 	}

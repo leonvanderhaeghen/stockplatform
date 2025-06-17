@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"os"
 	"os/signal"
@@ -13,7 +14,7 @@ import (
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 
-	userv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/user/v1"
+	userv1 "github.com/leonvanderhaeghen/stockplatform/services/userSvc/api/gen/go/proto/user/v1"
 	"github.com/leonvanderhaeghen/stockplatform/services/userSvc/internal/application"
 	"github.com/leonvanderhaeghen/stockplatform/services/userSvc/internal/config"
 	"github.com/leonvanderhaeghen/stockplatform/services/userSvc/internal/database"
