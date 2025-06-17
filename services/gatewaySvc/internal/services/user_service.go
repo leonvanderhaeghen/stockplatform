@@ -6,7 +6,7 @@ import (
 
 	"go.uber.org/zap"
 
-	userv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/user/v1"
+	userv1 "github.com/leonvanderhaeghen/stockplatform/services/userSvc/api/gen/go/proto/user/v1"
 	"github.com/leonvanderhaeghen/stockplatform/pkg/grpcclient"
 )
 

@@ -8,7 +8,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/leonvanderhaeghen/stockplatform/pkg/grpcclient"
-	inventoryv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/inventory/v1"
+	inventoryv1 "github.com/leonvanderhaeghen/stockplatform/services/inventorySvc/api/gen/go/proto/inventory/v1"
 )
 
 // InventoryServiceImpl implements the InventoryService interface

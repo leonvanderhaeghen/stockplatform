@@ -7,7 +7,7 @@ import (
 
 	"go.uber.org/zap"
 
-	orderv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/order/v1"
+	orderv1 "github.com/leonvanderhaeghen/stockplatform/services/orderSvc/api/gen/go/proto/order/v1"
 	"github.com/leonvanderhaeghen/stockplatform/pkg/grpcclient"
 )
 

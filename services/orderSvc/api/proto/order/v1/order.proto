@@ -35,6 +35,12 @@ service OrderService {
   
   // CancelOrder cancels an order
   rpc CancelOrder(CancelOrderRequest) returns (CancelOrderResponse);
+  
+  // GetStoreOrders retrieves orders for a specific store
+  rpc GetStoreOrders(GetStoreOrdersRequest) returns (GetStoreOrdersResponse);
+  
+  // ExportOrders exports orders to CSV format
+  rpc ExportOrders(ExportOrdersRequest) returns (ExportOrdersResponse);
 }
 
 // OrderStatus represents the status of an order
@@ -48,6 +54,14 @@ enum OrderStatus {
   ORDER_STATUS_CANCELLED = 6;
 }
 
+// OrderSource represents where the order originated from
+enum OrderSource {
+  ORDER_SOURCE_UNSPECIFIED = 0;
+  ORDER_SOURCE_ONLINE = 1;
+  ORDER_SOURCE_STORE = 2;
+  ORDER_SOURCE_RESERVATION = 3;
+}
+
 // OrderItem represents an item in an order
 message OrderItem {
   string product_id = 1;
@@ -56,6 +70,7 @@ message OrderItem {
   int32 quantity = 4;
   double price = 5;
   double subtotal = 6;
+  string store_id = 7; // Store where item was sourced from (optional)
 }
 
 // Address represents a shipping or billing address
@@ -91,6 +106,10 @@ message Order {
   string created_at = 11;
   string updated_at = 12;
   string completed_at = 13;
+  OrderSource source = 14; // Where the order came from
+  string store_id = 15; // Store ID if order is from/for a store
+  string sales_user_id = 16; // Employee who processed the sale (for store orders)
+  string reservation_id = 17; // Reservation ID if order is from a reservation
 }
 
 // CreateOrderRequest is the request for creating an order
@@ -99,6 +118,10 @@ message CreateOrderRequest {
   repeated OrderItem items = 2;
   Address shipping_address = 3;
   Address billing_address = 4;
+  OrderSource source = 5; // Source of the order
+  string store_id = 6; // Store ID if order is from/for a store
+  string sales_user_id = 7; // Employee processing the sale (for store orders)
+  string reservation_id = 8; // Reservation ID if order is from a reservation
 }
 
 // CreateOrderResponse is the response for creating an order
@@ -203,4 +226,38 @@ message CancelOrderRequest {
 // CancelOrderResponse is the response for cancelling an order
 message CancelOrderResponse {
   bool success = 1;
+}
+
+// GetStoreOrdersRequest is the request for retrieving orders for a specific store
+message GetStoreOrdersRequest {
+  string store_id = 1;
+  string status = 2; // Optional status filter
+  string from_date = 3; // Optional date range filter
+  string to_date = 4;
+  int32 limit = 5;
+  int32 offset = 6;
+}
+
+// GetStoreOrdersResponse is the response for retrieving store orders
+message GetStoreOrdersResponse {
+  repeated Order orders = 1;
+  int32 total_count = 2;
+  double total_revenue = 3; // Total revenue for the filtered orders
+}
+
+// ExportOrdersRequest is the request for exporting orders to CSV
+message ExportOrdersRequest {
+  string store_id = 1; // Optional: filter by store
+  string user_id = 2; // Optional: filter by user
+  OrderSource source = 3; // Optional: filter by source
+  string from_date = 4; // Optional date range
+  string to_date = 5;
+  string format = 6; // "csv" for now, could support others later
+}
+
+// ExportOrdersResponse is the response for exporting orders
+message ExportOrdersResponse {
+  bytes data = 1; // CSV data
+  string filename = 2;
+  string content_type = 3;
 }

@@ -38,18 +38,18 @@ deps:
 # Generate protobuf code for all services
 generate-proto:
 	@echo "Generating protobuf code for all services..."
-	@for service in productSvc inventorySvc orderSvc userSvc supplierSvc; do \
+	@for service in productSvc inventorySvc orderSvc userSvc supplierSvc storeSvc; do \
 		echo "Generating code for $$service..."; \
-		cd services/$$service && buf generate && cd ../..; \
+		cd services/$$service ; buf generate ; cd ../..; \
 	done
 	@echo "Protobuf code generation complete!"
 
 # Build all services
 build:
 	@echo "Building all services..."
-	@for service in productSvc inventorySvc orderSvc userSvc supplierSvc gatewaySvc; do \
+	@for service in productSvc inventorySvc orderSvc userSvc supplierSvc storeSvc gatewaySvc; do \
 		echo "Building $$service..."; \
-		cd services/$$service && go build -o ../../bin/$$service ./cmd/main.go && cd ../..; \
+		cd services/$$service ; go build -o ../../bin/$$service ./cmd/main.go ; cd ../..; \
 	done
 	@echo "Building client abstractions..."
 	go build ./pkg/clients/...
@@ -70,9 +70,9 @@ lint:
 	@echo "Running linters..."
 	golangci-lint run ./...
 	@echo "Running buf lint on proto files..."
-	@for service in productSvc inventorySvc orderSvc userSvc supplierSvc; do \
+	@for service in productSvc inventorySvc orderSvc userSvc supplierSvc storeSvc; do \
 		echo "Linting $$service proto files..."; \
-		cd services/$$service && buf lint && cd ../..; \
+		cd services/$$service ; buf lint ; cd ../..; \
 	done
 
 # Format code
@@ -80,16 +80,16 @@ format:
 	@echo "Formatting Go code..."
 	go fmt ./...
 	@echo "Formatting proto files..."
-	@for service in productSvc inventorySvc orderSvc userSvc supplierSvc; do \
+	@for service in productSvc inventorySvc orderSvc userSvc supplierSvc storeSvc; do \
 		echo "Formatting $$service proto files..."; \
-		cd services/$$service && buf format -w && cd ../..; \
+		cd services/$$service ; buf format -w ; cd ../..; \
 	done
 
 # Clean build artifacts
 clean:
 	@echo "Cleaning build artifacts..."
 	rm -rf bin/
-	@for service in productSvc inventorySvc orderSvc userSvc supplierSvc; do \
+	@for service in productSvc inventorySvc orderSvc userSvc supplierSvc storeSvc; do \
 		echo "Cleaning generated code for $$service..."; \
 		rm -rf services/$$service/api/gen/; \
 	done
@@ -120,42 +120,47 @@ health-check:
 	@curl -s http://localhost:8080/health || echo "  ❌ Gateway service not responding"
 	@echo ""
 	@echo "gRPC Services:"
-	@for port in 50053 50054 50055 50056 50057; do \
+	@for port in 50053 50054 50055 50056 50057 50058; do \
 		service_name=$$(case $$port in \
 			50053) echo "Product Service" ;; \
 			50054) echo "Inventory Service" ;; \
 			50055) echo "Order Service" ;; \
 			50056) echo "User Service" ;; \
 			50057) echo "Supplier Service" ;; \
+			50058) echo "Store Service" ;; \
 		esac); \
 		echo "  $$service_name ($$port):"; \
-		curl -s http://localhost:$$port/health >/dev/null && echo "    ✅ Healthy" || echo "    ❌ Not responding"; \
+		curl -s http://localhost:$$port/health >/dev/null ; echo "    ✅ Healthy" || echo "    ❌ Not responding"; \
 	done
 
 # Development shortcuts
 dev-product:
 	@echo "Starting Product Service for development..."
-	cd services/productSvc && go run cmd/main.go
+	cd services/productSvc ; go run cmd/main.go
 
 dev-inventory:
 	@echo "Starting Inventory Service for development..."
-	cd services/inventorySvc && go run cmd/main.go
+	cd services/inventorySvc ; go run cmd/main.go
 
 dev-order:
 	@echo "Starting Order Service for development..."
-	cd services/orderSvc && go run cmd/main.go
+	cd services/orderSvc ; go run cmd/main.go
 
 dev-user:
 	@echo "Starting User Service for development..."
-	cd services/userSvc && go run cmd/main.go
+	cd services/userSvc ; go run cmd/main.go
 
 dev-supplier:
 	@echo "Starting Supplier Service for development..."
-	cd services/supplierSvc && go run cmd/main.go
+	cd services/supplierSvc ; go run cmd/main.go
+
+dev-store:
+	@echo "Starting Store Service for development..."
+	cd services/storeSvc ; go run cmd/main.go
 
 dev-gateway:
 	@echo "Starting Gateway Service for development..."
-	cd services/gatewaySvc && go run cmd/main.go
+	cd services/gatewaySvc ; go run cmd/main.go
 
 # Quick setup for new developers
 setup: deps generate-proto
@@ -177,7 +182,7 @@ verify-proto:
 	@echo "✅ Client abstractions compile successfully"
 	@echo ""
 	@echo "Checking service-owned proto structure..."
-	@for service in productSvc inventorySvc orderSvc userSvc supplierSvc; do \
+	@for service in productSvc inventorySvc orderSvc userSvc supplierSvc storeSvc; do \
 		if [ -f "services/$$service/api/proto/*/v1/*.proto" ]; then \
 			echo "  ✅ $$service has service-owned proto files"; \
 		else \

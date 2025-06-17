@@ -1,0 +1,406 @@
+syntax = "proto3";
+
+package store.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/leonvanderhaeghen/stockplatform/services/storeSvc/api/gen/go/proto/store/v1;storev1";
+
+// StoreService provides operations for managing physical stores
+service StoreService {
+  // Store management
+  rpc CreateStore(CreateStoreRequest) returns (CreateStoreResponse);
+  rpc GetStore(GetStoreRequest) returns (GetStoreResponse);
+  rpc ListStores(ListStoresRequest) returns (ListStoresResponse);
+  rpc UpdateStore(UpdateStoreRequest) returns (UpdateStoreResponse);
+  rpc DeleteStore(DeleteStoreRequest) returns (DeleteStoreResponse);
+  
+  // Store inventory management
+  rpc AddProductToStore(AddProductToStoreRequest) returns (AddProductToStoreResponse);
+  rpc UpdateStoreProductStock(UpdateStoreProductStockRequest) returns (UpdateStoreProductStockResponse);
+  rpc RemoveProductFromStore(RemoveProductFromStoreRequest) returns (RemoveProductFromStoreResponse);
+  rpc GetStoreProducts(GetStoreProductsRequest) returns (GetStoreProductsResponse);
+  rpc GetProductStoreLocations(GetProductStoreLocationsRequest) returns (GetProductStoreLocationsResponse);
+  
+  // Product reservations
+  rpc ReserveProduct(ReserveProductRequest) returns (ReserveProductResponse);
+  rpc CancelReservation(CancelReservationRequest) returns (CancelReservationResponse);
+  rpc GetReservations(GetReservationsRequest) returns (GetReservationsResponse);
+  rpc CompleteReservation(CompleteReservationRequest) returns (CompleteReservationResponse);
+  
+  // Store user management
+  rpc AssignUserToStore(AssignUserToStoreRequest) returns (AssignUserToStoreResponse);
+  rpc RemoveUserFromStore(RemoveUserFromStoreRequest) returns (RemoveUserFromStoreResponse);
+  rpc GetStoreUsers(GetStoreUsersRequest) returns (GetStoreUsersResponse);
+  rpc GetUserStores(GetUserStoresRequest) returns (GetUserStoresResponse);
+  
+  // Sales tracking
+  rpc RecordSale(RecordSaleRequest) returns (RecordSaleResponse);
+  rpc GetStoreSales(GetStoreSalesRequest) returns (GetStoreSalesResponse);
+  
+  // Export functionality
+  rpc ExportStoreProducts(ExportStoreProductsRequest) returns (ExportStoreProductsResponse);
+  rpc ExportStoreSales(ExportStoreSalesRequest) returns (ExportStoreSalesResponse);
+}
+
+// Store represents a physical store location
+message Store {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  Address address = 4;
+  string phone = 5;
+  string email = 6;
+  string manager_user_id = 7;
+  bool is_active = 8;
+  StoreHours hours = 9;
+  map<string, string> metadata = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
+
+// Address represents a physical address
+message Address {
+  string street = 1;
+  string city = 2;
+  string state = 3;
+  string postal_code = 4;
+  string country = 5;
+  double latitude = 6;
+  double longitude = 7;
+}
+
+// StoreHours represents operating hours for a store
+message StoreHours {
+  repeated DayHours days = 1;
+}
+
+message DayHours {
+  string day = 1; // Monday, Tuesday, etc.
+  string open_time = 2; // HH:MM format
+  string close_time = 3; // HH:MM format
+  bool is_closed = 4; // True if store is closed on this day
+}
+
+// StoreProduct represents a product available in a specific store
+message StoreProduct {
+  string store_id = 1;
+  string product_id = 2;
+  int32 stock_quantity = 3;
+  int32 reserved_quantity = 4;
+  int32 available_quantity = 5; // stock_quantity - reserved_quantity
+  string store_price = 6; // Store-specific pricing (optional)
+  bool is_available = 7;
+  google.protobuf.Timestamp last_updated = 8;
+}
+
+// ProductReservation represents a reserved product
+message ProductReservation {
+  string id = 1;
+  string store_id = 2;
+  string product_id = 3;
+  string user_id = 4; // Customer who made the reservation
+  int32 quantity = 5;
+  ReservationStatus status = 6;
+  google.protobuf.Timestamp reserved_at = 7;
+  google.protobuf.Timestamp expires_at = 8;
+  google.protobuf.Timestamp completed_at = 9;
+  string notes = 10;
+}
+
+enum ReservationStatus {
+  RESERVATION_STATUS_UNSPECIFIED = 0;
+  RESERVATION_STATUS_ACTIVE = 1;
+  RESERVATION_STATUS_EXPIRED = 2;
+  RESERVATION_STATUS_COMPLETED = 3;
+  RESERVATION_STATUS_CANCELLED = 4;
+}
+
+// StoreUser represents the relationship between a user and a store
+message StoreUser {
+  string store_id = 1;
+  string user_id = 2;
+  StoreUserRole role = 3;
+  google.protobuf.Timestamp assigned_at = 4;
+}
+
+enum StoreUserRole {
+  STORE_USER_ROLE_UNSPECIFIED = 0;
+  STORE_USER_ROLE_EMPLOYEE = 1;
+  STORE_USER_ROLE_MANAGER = 2;
+  STORE_USER_ROLE_ADMIN = 3;
+}
+
+// StoreSale represents a sale made at a physical store
+message StoreSale {
+  string id = 1;
+  string store_id = 2;
+  string order_id = 3; // Link to order service
+  string sales_user_id = 4; // Employee who made the sale
+  string customer_user_id = 5; // Customer (optional)
+  repeated StoreSaleItem items = 6;
+  string total_amount = 7;
+  string currency = 8;
+  SaleType sale_type = 9;
+  google.protobuf.Timestamp sale_date = 10;
+  map<string, string> metadata = 11;
+}
+
+message StoreSaleItem {
+  string product_id = 1;
+  string product_name = 2;
+  string product_sku = 3;
+  int32 quantity = 4;
+  string unit_price = 5;
+  string subtotal = 6;
+}
+
+enum SaleType {
+  SALE_TYPE_UNSPECIFIED = 0;
+  SALE_TYPE_WALK_IN = 1; // Walk-in customer
+  SALE_TYPE_RESERVATION = 2; // From reservation
+  SALE_TYPE_ONLINE_PICKUP = 3; // Online order pickup
+}
+
+// Request/Response messages for Store CRUD operations
+message CreateStoreRequest {
+  string name = 1;
+  string description = 2;
+  Address address = 3;
+  string phone = 4;
+  string email = 5;
+  string manager_user_id = 6;
+  StoreHours hours = 7;
+  map<string, string> metadata = 8;
+}
+
+message CreateStoreResponse {
+  Store store = 1;
+}
+
+message GetStoreRequest {
+  string id = 1;
+}
+
+message GetStoreResponse {
+  Store store = 1;
+}
+
+message ListStoresRequest {
+  string city = 1; // Filter by city
+  string state = 2; // Filter by state
+  bool active_only = 3; // Only return active stores
+  int32 limit = 4;
+  int32 offset = 5;
+}
+
+message ListStoresResponse {
+  repeated Store stores = 1;
+  int32 total_count = 2;
+}
+
+message UpdateStoreRequest {
+  Store store = 1;
+}
+
+message UpdateStoreResponse {
+  bool success = 1;
+}
+
+message DeleteStoreRequest {
+  string id = 1;
+}
+
+message DeleteStoreResponse {
+  bool success = 1;
+}
+
+// Store inventory management requests/responses
+message AddProductToStoreRequest {
+  string store_id = 1;
+  string product_id = 2;
+  int32 initial_stock = 3;
+  string store_price = 4; // Optional store-specific price
+}
+
+message AddProductToStoreResponse {
+  StoreProduct store_product = 1;
+}
+
+message UpdateStoreProductStockRequest {
+  string store_id = 1;
+  string product_id = 2;
+  int32 new_stock_quantity = 3;
+  string reason = 4; // Reason for stock change
+}
+
+message UpdateStoreProductStockResponse {
+  bool success = 1;
+}
+
+message RemoveProductFromStoreRequest {
+  string store_id = 1;
+  string product_id = 2;
+}
+
+message RemoveProductFromStoreResponse {
+  bool success = 1;
+}
+
+message GetStoreProductsRequest {
+  string store_id = 1;
+  bool available_only = 2; // Only return available products
+  int32 limit = 3;
+  int32 offset = 4;
+}
+
+message GetStoreProductsResponse {
+  repeated StoreProduct products = 1;
+  int32 total_count = 2;
+}
+
+message GetProductStoreLocationsRequest {
+  string product_id = 1;
+  bool available_only = 2; // Only return stores with available stock
+}
+
+message GetProductStoreLocationsResponse {
+  repeated StoreProduct locations = 1;
+}
+
+// Reservation requests/responses
+message ReserveProductRequest {
+  string store_id = 1;
+  string product_id = 2;
+  string user_id = 3;
+  int32 quantity = 4;
+  int32 reservation_duration_hours = 5; // How long to hold the reservation
+  string notes = 6;
+}
+
+message ReserveProductResponse {
+  ProductReservation reservation = 1;
+}
+
+message CancelReservationRequest {
+  string reservation_id = 1;
+}
+
+message CancelReservationResponse {
+  bool success = 1;
+}
+
+message GetReservationsRequest {
+  string store_id = 1; // Optional filter by store
+  string user_id = 2; // Optional filter by user
+  ReservationStatus status = 3; // Optional filter by status
+  int32 limit = 4;
+  int32 offset = 5;
+}
+
+message GetReservationsResponse {
+  repeated ProductReservation reservations = 1;
+  int32 total_count = 2;
+}
+
+message CompleteReservationRequest {
+  string reservation_id = 1;
+  string sales_user_id = 2; // Employee completing the sale
+}
+
+message CompleteReservationResponse {
+  bool success = 1;
+  StoreSale sale = 2; // The completed sale record
+}
+
+// Store user management requests/responses
+message AssignUserToStoreRequest {
+  string store_id = 1;
+  string user_id = 2;
+  StoreUserRole role = 3;
+}
+
+message AssignUserToStoreResponse {
+  bool success = 1;
+}
+
+message RemoveUserFromStoreRequest {
+  string store_id = 1;
+  string user_id = 2;
+}
+
+message RemoveUserFromStoreResponse {
+  bool success = 1;
+}
+
+message GetStoreUsersRequest {
+  string store_id = 1;
+  StoreUserRole role = 2; // Optional filter by role
+}
+
+message GetStoreUsersResponse {
+  repeated StoreUser users = 1;
+}
+
+message GetUserStoresRequest {
+  string user_id = 1;
+}
+
+message GetUserStoresResponse {
+  repeated StoreUser stores = 1;
+}
+
+// Sales tracking requests/responses
+message RecordSaleRequest {
+  string store_id = 1;
+  string sales_user_id = 2;
+  string customer_user_id = 3; // Optional
+  repeated StoreSaleItem items = 4;
+  SaleType sale_type = 5;
+  string reservation_id = 6; // Optional, if from reservation
+  map<string, string> metadata = 7;
+}
+
+message RecordSaleResponse {
+  StoreSale sale = 1;
+}
+
+message GetStoreSalesRequest {
+  string store_id = 1;
+  string sales_user_id = 2; // Optional filter by sales person
+  google.protobuf.Timestamp from_date = 3; // Optional date range
+  google.protobuf.Timestamp to_date = 4;
+  int32 limit = 5;
+  int32 offset = 6;
+}
+
+message GetStoreSalesResponse {
+  repeated StoreSale sales = 1;
+  int32 total_count = 2;
+  string total_revenue = 3; // Sum of all sales in the result set
+}
+
+// Export requests/responses
+message ExportStoreProductsRequest {
+  string store_id = 1;
+  string format = 2; // "csv" for now, could support others later
+}
+
+message ExportStoreProductsResponse {
+  bytes data = 1; // CSV data
+  string filename = 2;
+  string content_type = 3;
+}
+
+message ExportStoreSalesRequest {
+  string store_id = 1;
+  google.protobuf.Timestamp from_date = 2; // Optional date range
+  google.protobuf.Timestamp to_date = 3;
+  string format = 4; // "csv" for now
+}
+
+message ExportStoreSalesResponse {
+  bytes data = 1; // CSV data
+  string filename = 2;
+  string content_type = 3;
+}

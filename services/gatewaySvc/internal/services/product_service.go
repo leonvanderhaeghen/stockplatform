@@ -6,7 +6,7 @@ import (
 
 	"go.uber.org/zap"
 
-	productpb "github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/product/v1"
+	productv1 "github.com/leonvanderhaeghen/stockplatform/services/productSvc/api/gen/go/proto/product/v1"
 	"github.com/leonvanderhaeghen/stockplatform/pkg/grpcclient"
 )
 
@@ -64,7 +64,7 @@ func (s *ProductServiceImpl) ListCategories(
 
 	// Call the gRPC service with default parameters
 	// In a real implementation, you might want to get these from query parameters
-	req := &productpb.ListCategoriesRequest{
+	req := &productv1.ListCategoriesRequest{
 		ParentId: "", // Empty string means get root categories
 		Depth:    3,  // Default to 3 levels deep
 	}
@@ -104,33 +104,33 @@ func (s *ProductServiceImpl) ListProducts(
 	)
 
 	// Convert sort field to protobuf enum
-	var sortField productpb.ProductSort_SortField
+	var sortField productv1.ProductSort_SortField
 	switch sortBy {
 	case "name":
-		sortField = productpb.ProductSort_SORT_FIELD_NAME
+		sortField = productv1.ProductSort_SORT_FIELD_NAME
 	case "price":
-		sortField = productpb.ProductSort_SORT_FIELD_PRICE
+		sortField = productv1.ProductSort_SORT_FIELD_PRICE
 	case "created_at":
-		sortField = productpb.ProductSort_SORT_FIELD_CREATED_AT
+		sortField = productv1.ProductSort_SORT_FIELD_CREATED_AT
 	case "updated_at":
-		sortField = productpb.ProductSort_SORT_FIELD_UPDATED_AT
+		sortField = productv1.ProductSort_SORT_FIELD_UPDATED_AT
 	default:
-		sortField = productpb.ProductSort_SORT_FIELD_UNSPECIFIED
+		sortField = productv1.ProductSort_SORT_FIELD_UNSPECIFIED
 	}
 
 	// Convert sort order to protobuf enum
-	sortOrder := productpb.ProductSort_SORT_ORDER_DESC
+	sortOrder := productv1.ProductSort_SORT_ORDER_DESC
 	if ascending {
-		sortOrder = productpb.ProductSort_SORT_ORDER_ASC
+		sortOrder = productv1.ProductSort_SORT_ORDER_ASC
 	}
 
 	// Build the request
-	req := &productpb.ListProductsRequest{
-		Pagination: &productpb.Pagination{
+	req := &productv1.ListProductsRequest{
+		Pagination: &productv1.Pagination{
 			Page:     int32(offset/limit) + 1,
 			PageSize: int32(limit),
 		},
-		Sort: &productpb.ProductSort{
+		Sort: &productv1.ProductSort{
 			Field: sortField,
 			Order: sortOrder,
 		},
@@ -138,7 +138,7 @@ func (s *ProductServiceImpl) ListProducts(
 
 	// Add filters if provided
 	if categoryID != "" || query != "" || active {
-		req.Filter = &productpb.ProductFilter{}
+		req.Filter = &productv1.ProductFilter{}
 
 		if categoryID != "" {
 			req.Filter.CategoryIds = []string{categoryID}
@@ -176,7 +176,7 @@ func (s *ProductServiceImpl) GetProductByID(ctx context.Context, id string) (int
 		zap.String("id", id),
 	)
 
-	req := &productpb.GetProductRequest{
+	req := &productv1.GetProductRequest{
 		Id: id,
 	}
 
@@ -212,7 +212,7 @@ func (s *ProductServiceImpl) CreateProduct(
 	)
 
 	// Convert the request to the gRPC format
-	req := &productpb.CreateProductRequest{
+	req := &productv1.CreateProductRequest{
 		Name:         name,
 		Description:  description,
 		CostPrice:    costPrice,
@@ -288,7 +288,7 @@ func (s *ProductServiceImpl) UpdateProduct(
 	)
 
 	// 1. Get the existing product
-	resp, err := s.client.GetProduct(ctx, &productpb.GetProductRequest{Id: id})
+	resp, err := s.client.GetProduct(ctx, &productv1.GetProductRequest{Id: id})
 	if err != nil {
 		s.logger.Error("Failed to fetch product for update",
 			zap.String("id", id),
@@ -387,7 +387,7 @@ func (s *ProductServiceImpl) DeleteProduct(ctx context.Context, id string) error
 	)
 
 	// 1. Get the existing product
-	resp, err := s.client.GetProduct(ctx, &productpb.GetProductRequest{Id: id})
+	resp, err := s.client.GetProduct(ctx, &productv1.GetProductRequest{Id: id})
 	if err != nil {
 		s.logger.Error("Failed to fetch product for deletion",
 			zap.String("id", id),

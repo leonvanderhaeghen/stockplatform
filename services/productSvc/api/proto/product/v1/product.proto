@@ -84,6 +84,8 @@ message ProductFilter {
   double min_price = 3;                 // Minimum price (inclusive)
   double max_price = 4;                 // Maximum price (inclusive)
   string search_term = 5;               // Search term for name or description
+  string store_id = 6;                  // Filter by store availability
+  bool available_in_store_only = 7;     // Only show products available in stores
 }
 
 // Sorting options for listing products
@@ -96,13 +98,11 @@ message ProductSort {
     SORT_FIELD_UPDATED_AT = 4;
   }
 
-
   enum SortOrder {
     SORT_ORDER_UNSPECIFIED = 0;
     SORT_ORDER_ASC = 1;
     SORT_ORDER_DESC = 2;
   }
-
 
   SortField field = 1;
   SortOrder order = 2;
@@ -119,6 +119,7 @@ message ListProductsRequest {
   ProductFilter filter = 1;      // Optional filter criteria
   ProductSort sort = 2;          // Optional sorting criteria
   Pagination pagination = 3;     // Optional pagination
+  string requesting_user_id = 4; // User making the request (for store-specific access)
 }
 
 // Response containing a list of products with pagination info
@@ -153,6 +154,36 @@ message CreateCategoryResponse {
   Category category = 1;
 }
 
+// ExportProductsRequest is the request for exporting products to CSV
+message ExportProductsRequest {
+  ProductFilter filter = 1; // Optional filter criteria
+  string format = 2; // "csv" for now, could support others later
+  string requesting_user_id = 3; // User making the request (for store-specific access)
+}
+
+// ExportProductsResponse is the response for exporting products
+message ExportProductsResponse {
+  bytes data = 1; // CSV data
+  string filename = 2;
+  string content_type = 3;
+}
+
+// GetStoreAvailableProductsRequest is the request for getting products available in a store
+message GetStoreAvailableProductsRequest {
+  string store_id = 1;
+  ProductFilter filter = 2; // Additional filtering
+  ProductSort sort = 3;
+  Pagination pagination = 4;
+}
+
+// GetStoreAvailableProductsResponse is the response for store available products
+message GetStoreAvailableProductsResponse {
+  repeated Product products = 1;
+  int32 total_count = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
 // Product service definition
 service ProductService {
   // Create a new product
@@ -169,4 +200,10 @@ service ProductService {
   
   // Create a new product category
   rpc CreateCategory(CreateCategoryRequest) returns (CreateCategoryResponse);
+  
+  // Export products to CSV format
+  rpc ExportProducts(ExportProductsRequest) returns (ExportProductsResponse);
+  
+  // Get products available in a specific store
+  rpc GetStoreAvailableProducts(GetStoreAvailableProductsRequest) returns (GetStoreAvailableProductsResponse);
 }

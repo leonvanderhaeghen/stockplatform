@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	supplierv1 "github.com/leonvanderhaeghen/stockplatform/pkg/gen/go/supplier/v1"
+	supplierv1 "github.com/leonvanderhaeghen/stockplatform/services/supplierSvc/api/gen/go/proto/supplier/v1"
 )
 
 // ProductService defines the interface for product operations
