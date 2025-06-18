@@ -1,6 +1,12 @@
 package domain
 
-import "context"
+import (
+	"context"
+	"errors"
+)
+
+// ErrOptimisticLockFailed is returned when an optimistic lock update fails due to version mismatch
+var ErrOptimisticLockFailed = errors.New("optimistic lock failed: order was modified by another process")
 
 // OrderRepository defines the interface for order persistence
 type OrderRepository interface {
@@ -15,6 +21,9 @@ type OrderRepository interface {
 	
 	// Update updates an existing order
 	Update(ctx context.Context, order *Order) error
+	
+	// UpdateWithOptimisticLock updates an order with version checking to prevent concurrent modifications
+	UpdateWithOptimisticLock(ctx context.Context, order *Order, expectedVersion int32) error
 	
 	// Delete removes an order
 	Delete(ctx context.Context, id string) error

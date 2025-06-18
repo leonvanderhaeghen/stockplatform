@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package user.v1;
 
-option go_package = "github.com/leonvanderhaeghen/stockplatform/pkg/gen/user/v1;userv1";
+option go_package = "github.com/leonvanderhaeghen/stockplatform/services/userSvc/api/gen/go/proto/user/v1;userv1";
 
 // UserService provides operations for user management
 service UserService {
@@ -52,12 +52,32 @@ service UserService {
   rpc SetDefaultUserAddress(SetDefaultUserAddressRequest) returns (SetDefaultUserAddressResponse);
 }
 
+// AuthService provides authentication and authorization operations
+service AuthService {
+  // ValidateToken validates a JWT token and returns user information
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+  
+  // CheckPermission checks if a user role has a specific permission
+  rpc CheckPermission(CheckPermissionRequest) returns (CheckPermissionResponse);
+  
+  // Authorize checks if a user has permission to perform an action on a resource
+  rpc Authorize(AuthorizeRequest) returns (AuthorizeResponse);
+}
+
 // Role represents user roles
 enum Role {
   ROLE_UNSPECIFIED = 0;
   ROLE_CUSTOMER = 1;
   ROLE_ADMIN = 2;
   ROLE_STAFF = 3;
+  ROLE_MANAGER = 4;    // Can manage stores/suppliers
+  ROLE_SUPPLIER = 5;   // Supplier user
+}
+
+// ManagedResources represents resources a user can manage
+message ManagedResources {
+  repeated string store_ids = 1;     // Stores this user can manage
+  repeated string supplier_ids = 2;  // Suppliers this user can manage
 }
 
 // User represents a user account
@@ -72,6 +92,7 @@ message User {
   string last_login = 8;
   string created_at = 9;
   string updated_at = 10;
+  ManagedResources managed_resources = 11;  // Resources this user can manage
 }
 
 // Address represents a user address
@@ -266,4 +287,41 @@ message SetDefaultUserAddressRequest {
 // SetDefaultUserAddressResponse is the response for setting a default address
 message SetDefaultUserAddressResponse {
   bool success = 1;
+}
+
+// ValidateTokenRequest is the request for validating a JWT token
+message ValidateTokenRequest {
+  string token = 1;
+}
+
+// ValidateTokenResponse is the response for validating a JWT token
+message ValidateTokenResponse {
+  bool valid = 1;
+  User user = 2;
+  string error = 3;
+}
+
+// AuthorizeRequest is the request for checking user permissions
+message AuthorizeRequest {
+  string user_id = 1;
+  string resource_type = 2;  // e.g., "store", "supplier", "order"
+  string resource_id = 3;    // specific resource ID
+  string action = 4;         // e.g., "read", "write", "delete"
+}
+
+// AuthorizeResponse is the response for checking user permissions
+message AuthorizeResponse {
+  bool authorized = 1;
+  string reason = 2;  // Reason if not authorized
+}
+
+// CheckPermissionRequest is the request for checking user role permissions
+message CheckPermissionRequest {
+  Role role = 1;
+  string permission = 2;
+}
+
+// CheckPermissionResponse is the response for checking user role permissions
+message CheckPermissionResponse {
+  bool allowed = 1;
 }

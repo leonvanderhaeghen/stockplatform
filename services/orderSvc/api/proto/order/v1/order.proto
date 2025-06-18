@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package order.v1;
 
-option go_package = "github.com/leonvanderhaeghen/stockplatform/pkg/gen/order/v1;orderv1";
+option go_package = "github.com/leonvanderhaeghen/stockplatform/services/orderSvc/api/gen/go/proto/order/v1;orderv1";
 
 // OrderService provides operations for managing orders
 service OrderService {
@@ -46,12 +46,13 @@ service OrderService {
 // OrderStatus represents the status of an order
 enum OrderStatus {
   ORDER_STATUS_UNSPECIFIED = 0;
-  ORDER_STATUS_CREATED = 1;
-  ORDER_STATUS_PENDING = 2;
-  ORDER_STATUS_PAID = 3;
-  ORDER_STATUS_SHIPPED = 4;
-  ORDER_STATUS_DELIVERED = 5;
-  ORDER_STATUS_CANCELLED = 6;
+  ORDER_STATUS_CREATED = 1;     // Order created but not yet confirmed
+  ORDER_STATUS_PENDING = 2;     // Order confirmed, awaiting payment
+  ORDER_STATUS_PAID = 3;        // Payment received
+  ORDER_STATUS_SHIPPED = 4;     // Order shipped to customer
+  ORDER_STATUS_DELIVERED = 5;   // Order delivered successfully
+  ORDER_STATUS_CANCELLED = 6;   // Order cancelled
+  ORDER_STATUS_FAILED = 7;      // Order failed (payment failed, etc.)
 }
 
 // OrderSource represents where the order originated from
@@ -110,6 +111,7 @@ message Order {
   string store_id = 15; // Store ID if order is from/for a store
   string sales_user_id = 16; // Employee who processed the sale (for store orders)
   string reservation_id = 17; // Reservation ID if order is from a reservation
+  int32 version = 18; // Version field for optimistic locking
 }
 
 // CreateOrderRequest is the request for creating an order

@@ -160,6 +160,65 @@ func (r *OrderRepository) Update(ctx context.Context, order *domain.Order) error
 	return nil
 }
 
+// UpdateWithOptimisticLock updates an order with version checking to prevent concurrent modifications
+func (r *OrderRepository) UpdateWithOptimisticLock(ctx context.Context, order *domain.Order, expectedVersion int32) error {
+	r.logger.Debug("Updating order with optimistic lock", 
+		zap.String("id", order.ID),
+		zap.String("user_id", order.UserID),
+		zap.Int32("expected_version", expectedVersion),
+		zap.Int32("new_version", order.Version),
+	)
+	
+	// Update the order's timestamp
+	order.UpdatedAt = time.Now()
+	
+	// Use MongoDB's findOneAndReplace with version filter to ensure atomic update
+	filter := bson.M{
+		"_id":     order.ID,
+		"version": expectedVersion,
+	}
+	
+	result, err := r.collection.ReplaceOne(ctx, filter, order)
+	if err != nil {
+		r.logger.Error("Failed to update order with optimistic lock", 
+			zap.Error(err),
+			zap.String("id", order.ID),
+			zap.Int32("expected_version", expectedVersion),
+		)
+		return err
+	}
+	
+	// Check if no documents were matched (either order doesn't exist or version mismatch)
+	if result.MatchedCount == 0 {
+		// Check if order exists to determine the specific error
+		var existingOrder domain.Order
+		err := r.collection.FindOne(ctx, bson.M{"_id": order.ID}).Decode(&existingOrder)
+		if err != nil {
+			if errors.Is(err, mongo.ErrNoDocuments) {
+				r.logger.Warn("Order not found during optimistic lock update", zap.String("id", order.ID))
+				return errors.New("order not found")
+			}
+			r.logger.Error("Failed to check order existence during optimistic lock", zap.Error(err))
+			return err
+		}
+		
+		// Order exists but version mismatch
+		r.logger.Warn("Optimistic lock failed due to version mismatch", 
+			zap.String("id", order.ID),
+			zap.Int32("expected_version", expectedVersion),
+			zap.Int32("actual_version", existingOrder.Version),
+		)
+		return domain.ErrOptimisticLockFailed
+	}
+	
+	r.logger.Debug("Successfully updated order with optimistic lock", 
+		zap.String("id", order.ID),
+		zap.Int32("new_version", order.Version),
+	)
+	
+	return nil
+}
+
 // Delete removes an order
 func (r *OrderRepository) Delete(ctx context.Context, id string) error {
 	r.logger.Debug("Deleting order", zap.String("id", id))

@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.6
 // 	protoc        (unknown)
-// source: proto/supplier/v1/supplier.proto
+// source: supplier/v1/supplier.proto
 
 package supplierv1
 
@@ -52,7 +52,7 @@ type Supplier struct {
 
 func (x *Supplier) Reset() {
 	*x = Supplier{}
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[0]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -64,7 +64,7 @@ func (x *Supplier) String() string {
 func (*Supplier) ProtoMessage() {}
 
 func (x *Supplier) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[0]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -77,7 +77,7 @@ func (x *Supplier) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Supplier.ProtoReflect.Descriptor instead.
 func (*Supplier) Descriptor() ([]byte, []int) {
-	return file_proto_supplier_v1_supplier_proto_rawDescGZIP(), []int{0}
+	return file_supplier_v1_supplier_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *Supplier) GetId() string {
@@ -230,7 +230,7 @@ type CreateSupplierRequest struct {
 
 func (x *CreateSupplierRequest) Reset() {
 	*x = CreateSupplierRequest{}
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[1]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -242,7 +242,7 @@ func (x *CreateSupplierRequest) String() string {
 func (*CreateSupplierRequest) ProtoMessage() {}
 
 func (x *CreateSupplierRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[1]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -255,7 +255,7 @@ func (x *CreateSupplierRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateSupplierRequest.ProtoReflect.Descriptor instead.
 func (*CreateSupplierRequest) Descriptor() ([]byte, []int) {
-	return file_proto_supplier_v1_supplier_proto_rawDescGZIP(), []int{1}
+	return file_supplier_v1_supplier_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *CreateSupplierRequest) GetName() string {
@@ -373,7 +373,7 @@ type CreateSupplierResponse struct {
 
 func (x *CreateSupplierResponse) Reset() {
 	*x = CreateSupplierResponse{}
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[2]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -385,7 +385,7 @@ func (x *CreateSupplierResponse) String() string {
 func (*CreateSupplierResponse) ProtoMessage() {}
 
 func (x *CreateSupplierResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[2]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -398,7 +398,7 @@ func (x *CreateSupplierResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateSupplierResponse.ProtoReflect.Descriptor instead.
 func (*CreateSupplierResponse) Descriptor() ([]byte, []int) {
-	return file_proto_supplier_v1_supplier_proto_rawDescGZIP(), []int{2}
+	return file_supplier_v1_supplier_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *CreateSupplierResponse) GetSupplier() *Supplier {
@@ -418,7 +418,7 @@ type GetSupplierRequest struct {
 
 func (x *GetSupplierRequest) Reset() {
 	*x = GetSupplierRequest{}
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[3]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -430,7 +430,7 @@ func (x *GetSupplierRequest) String() string {
 func (*GetSupplierRequest) ProtoMessage() {}
 
 func (x *GetSupplierRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[3]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -443,7 +443,7 @@ func (x *GetSupplierRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSupplierRequest.ProtoReflect.Descriptor instead.
 func (*GetSupplierRequest) Descriptor() ([]byte, []int) {
-	return file_proto_supplier_v1_supplier_proto_rawDescGZIP(), []int{3}
+	return file_supplier_v1_supplier_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *GetSupplierRequest) GetId() string {
@@ -463,7 +463,7 @@ type GetSupplierResponse struct {
 
 func (x *GetSupplierResponse) Reset() {
 	*x = GetSupplierResponse{}
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[4]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -475,7 +475,7 @@ func (x *GetSupplierResponse) String() string {
 func (*GetSupplierResponse) ProtoMessage() {}
 
 func (x *GetSupplierResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[4]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -488,7 +488,7 @@ func (x *GetSupplierResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSupplierResponse.ProtoReflect.Descriptor instead.
 func (*GetSupplierResponse) Descriptor() ([]byte, []int) {
-	return file_proto_supplier_v1_supplier_proto_rawDescGZIP(), []int{4}
+	return file_supplier_v1_supplier_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *GetSupplierResponse) GetSupplier() *Supplier {
@@ -523,7 +523,7 @@ type UpdateSupplierRequest struct {
 
 func (x *UpdateSupplierRequest) Reset() {
 	*x = UpdateSupplierRequest{}
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[5]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -535,7 +535,7 @@ func (x *UpdateSupplierRequest) String() string {
 func (*UpdateSupplierRequest) ProtoMessage() {}
 
 func (x *UpdateSupplierRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[5]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -548,7 +548,7 @@ func (x *UpdateSupplierRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateSupplierRequest.ProtoReflect.Descriptor instead.
 func (*UpdateSupplierRequest) Descriptor() ([]byte, []int) {
-	return file_proto_supplier_v1_supplier_proto_rawDescGZIP(), []int{5}
+	return file_supplier_v1_supplier_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *UpdateSupplierRequest) GetId() string {
@@ -673,7 +673,7 @@ type UpdateSupplierResponse struct {
 
 func (x *UpdateSupplierResponse) Reset() {
 	*x = UpdateSupplierResponse{}
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[6]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -685,7 +685,7 @@ func (x *UpdateSupplierResponse) String() string {
 func (*UpdateSupplierResponse) ProtoMessage() {}
 
 func (x *UpdateSupplierResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[6]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -698,7 +698,7 @@ func (x *UpdateSupplierResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateSupplierResponse.ProtoReflect.Descriptor instead.
 func (*UpdateSupplierResponse) Descriptor() ([]byte, []int) {
-	return file_proto_supplier_v1_supplier_proto_rawDescGZIP(), []int{6}
+	return file_supplier_v1_supplier_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *UpdateSupplierResponse) GetSupplier() *Supplier {
@@ -718,7 +718,7 @@ type DeleteSupplierRequest struct {
 
 func (x *DeleteSupplierRequest) Reset() {
 	*x = DeleteSupplierRequest{}
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[7]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -730,7 +730,7 @@ func (x *DeleteSupplierRequest) String() string {
 func (*DeleteSupplierRequest) ProtoMessage() {}
 
 func (x *DeleteSupplierRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[7]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -743,7 +743,7 @@ func (x *DeleteSupplierRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteSupplierRequest.ProtoReflect.Descriptor instead.
 func (*DeleteSupplierRequest) Descriptor() ([]byte, []int) {
-	return file_proto_supplier_v1_supplier_proto_rawDescGZIP(), []int{7}
+	return file_supplier_v1_supplier_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *DeleteSupplierRequest) GetId() string {
@@ -763,7 +763,7 @@ type DeleteSupplierResponse struct {
 
 func (x *DeleteSupplierResponse) Reset() {
 	*x = DeleteSupplierResponse{}
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[8]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -775,7 +775,7 @@ func (x *DeleteSupplierResponse) String() string {
 func (*DeleteSupplierResponse) ProtoMessage() {}
 
 func (x *DeleteSupplierResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[8]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -788,7 +788,7 @@ func (x *DeleteSupplierResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteSupplierResponse.ProtoReflect.Descriptor instead.
 func (*DeleteSupplierResponse) Descriptor() ([]byte, []int) {
-	return file_proto_supplier_v1_supplier_proto_rawDescGZIP(), []int{8}
+	return file_supplier_v1_supplier_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *DeleteSupplierResponse) GetSuccess() bool {
@@ -810,7 +810,7 @@ type ListSuppliersRequest struct {
 
 func (x *ListSuppliersRequest) Reset() {
 	*x = ListSuppliersRequest{}
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[9]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -822,7 +822,7 @@ func (x *ListSuppliersRequest) String() string {
 func (*ListSuppliersRequest) ProtoMessage() {}
 
 func (x *ListSuppliersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[9]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -835,7 +835,7 @@ func (x *ListSuppliersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSuppliersRequest.ProtoReflect.Descriptor instead.
 func (*ListSuppliersRequest) Descriptor() ([]byte, []int) {
-	return file_proto_supplier_v1_supplier_proto_rawDescGZIP(), []int{9}
+	return file_supplier_v1_supplier_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ListSuppliersRequest) GetPage() int32 {
@@ -872,7 +872,7 @@ type ListSuppliersResponse struct {
 
 func (x *ListSuppliersResponse) Reset() {
 	*x = ListSuppliersResponse{}
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[10]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -884,7 +884,7 @@ func (x *ListSuppliersResponse) String() string {
 func (*ListSuppliersResponse) ProtoMessage() {}
 
 func (x *ListSuppliersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[10]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -897,7 +897,7 @@ func (x *ListSuppliersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSuppliersResponse.ProtoReflect.Descriptor instead.
 func (*ListSuppliersResponse) Descriptor() ([]byte, []int) {
-	return file_proto_supplier_v1_supplier_proto_rawDescGZIP(), []int{10}
+	return file_supplier_v1_supplier_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ListSuppliersResponse) GetSuppliers() []*Supplier {
@@ -938,7 +938,7 @@ type AdapterCapabilities struct {
 
 func (x *AdapterCapabilities) Reset() {
 	*x = AdapterCapabilities{}
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[11]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -950,7 +950,7 @@ func (x *AdapterCapabilities) String() string {
 func (*AdapterCapabilities) ProtoMessage() {}
 
 func (x *AdapterCapabilities) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[11]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -963,7 +963,7 @@ func (x *AdapterCapabilities) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdapterCapabilities.ProtoReflect.Descriptor instead.
 func (*AdapterCapabilities) Descriptor() ([]byte, []int) {
-	return file_proto_supplier_v1_supplier_proto_rawDescGZIP(), []int{11}
+	return file_supplier_v1_supplier_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *AdapterCapabilities) GetCapabilities() map[string]bool {
@@ -985,7 +985,7 @@ type SupplierAdapter struct {
 
 func (x *SupplierAdapter) Reset() {
 	*x = SupplierAdapter{}
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[12]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -997,7 +997,7 @@ func (x *SupplierAdapter) String() string {
 func (*SupplierAdapter) ProtoMessage() {}
 
 func (x *SupplierAdapter) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[12]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1010,7 +1010,7 @@ func (x *SupplierAdapter) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SupplierAdapter.ProtoReflect.Descriptor instead.
 func (*SupplierAdapter) Descriptor() ([]byte, []int) {
-	return file_proto_supplier_v1_supplier_proto_rawDescGZIP(), []int{12}
+	return file_supplier_v1_supplier_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *SupplierAdapter) GetName() string {
@@ -1047,7 +1047,7 @@ type SyncOptions struct {
 
 func (x *SyncOptions) Reset() {
 	*x = SyncOptions{}
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[13]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1059,7 +1059,7 @@ func (x *SyncOptions) String() string {
 func (*SyncOptions) ProtoMessage() {}
 
 func (x *SyncOptions) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[13]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1072,7 +1072,7 @@ func (x *SyncOptions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SyncOptions.ProtoReflect.Descriptor instead.
 func (*SyncOptions) Descriptor() ([]byte, []int) {
-	return file_proto_supplier_v1_supplier_proto_rawDescGZIP(), []int{13}
+	return file_supplier_v1_supplier_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *SyncOptions) GetFullSync() bool {
@@ -1112,7 +1112,7 @@ type ListAdaptersRequest struct {
 
 func (x *ListAdaptersRequest) Reset() {
 	*x = ListAdaptersRequest{}
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[14]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1124,7 +1124,7 @@ func (x *ListAdaptersRequest) String() string {
 func (*ListAdaptersRequest) ProtoMessage() {}
 
 func (x *ListAdaptersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[14]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1137,7 +1137,7 @@ func (x *ListAdaptersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAdaptersRequest.ProtoReflect.Descriptor instead.
 func (*ListAdaptersRequest) Descriptor() ([]byte, []int) {
-	return file_proto_supplier_v1_supplier_proto_rawDescGZIP(), []int{14}
+	return file_supplier_v1_supplier_proto_rawDescGZIP(), []int{14}
 }
 
 // Response containing supplier adapters
@@ -1150,7 +1150,7 @@ type ListAdaptersResponse struct {
 
 func (x *ListAdaptersResponse) Reset() {
 	*x = ListAdaptersResponse{}
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[15]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1162,7 +1162,7 @@ func (x *ListAdaptersResponse) String() string {
 func (*ListAdaptersResponse) ProtoMessage() {}
 
 func (x *ListAdaptersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[15]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1175,7 +1175,7 @@ func (x *ListAdaptersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAdaptersResponse.ProtoReflect.Descriptor instead.
 func (*ListAdaptersResponse) Descriptor() ([]byte, []int) {
-	return file_proto_supplier_v1_supplier_proto_rawDescGZIP(), []int{15}
+	return file_supplier_v1_supplier_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ListAdaptersResponse) GetAdapters() []*SupplierAdapter {
@@ -1195,7 +1195,7 @@ type GetAdapterCapabilitiesRequest struct {
 
 func (x *GetAdapterCapabilitiesRequest) Reset() {
 	*x = GetAdapterCapabilitiesRequest{}
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[16]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1207,7 +1207,7 @@ func (x *GetAdapterCapabilitiesRequest) String() string {
 func (*GetAdapterCapabilitiesRequest) ProtoMessage() {}
 
 func (x *GetAdapterCapabilitiesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[16]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1220,7 +1220,7 @@ func (x *GetAdapterCapabilitiesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAdapterCapabilitiesRequest.ProtoReflect.Descriptor instead.
 func (*GetAdapterCapabilitiesRequest) Descriptor() ([]byte, []int) {
-	return file_proto_supplier_v1_supplier_proto_rawDescGZIP(), []int{16}
+	return file_supplier_v1_supplier_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *GetAdapterCapabilitiesRequest) GetAdapterName() string {
@@ -1240,7 +1240,7 @@ type GetAdapterCapabilitiesResponse struct {
 
 func (x *GetAdapterCapabilitiesResponse) Reset() {
 	*x = GetAdapterCapabilitiesResponse{}
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[17]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1252,7 +1252,7 @@ func (x *GetAdapterCapabilitiesResponse) String() string {
 func (*GetAdapterCapabilitiesResponse) ProtoMessage() {}
 
 func (x *GetAdapterCapabilitiesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[17]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1265,7 +1265,7 @@ func (x *GetAdapterCapabilitiesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAdapterCapabilitiesResponse.ProtoReflect.Descriptor instead.
 func (*GetAdapterCapabilitiesResponse) Descriptor() ([]byte, []int) {
-	return file_proto_supplier_v1_supplier_proto_rawDescGZIP(), []int{17}
+	return file_supplier_v1_supplier_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *GetAdapterCapabilitiesResponse) GetCapabilities() *AdapterCapabilities {
@@ -1286,7 +1286,7 @@ type TestAdapterConnectionRequest struct {
 
 func (x *TestAdapterConnectionRequest) Reset() {
 	*x = TestAdapterConnectionRequest{}
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[18]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1298,7 +1298,7 @@ func (x *TestAdapterConnectionRequest) String() string {
 func (*TestAdapterConnectionRequest) ProtoMessage() {}
 
 func (x *TestAdapterConnectionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[18]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1311,7 +1311,7 @@ func (x *TestAdapterConnectionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TestAdapterConnectionRequest.ProtoReflect.Descriptor instead.
 func (*TestAdapterConnectionRequest) Descriptor() ([]byte, []int) {
-	return file_proto_supplier_v1_supplier_proto_rawDescGZIP(), []int{18}
+	return file_supplier_v1_supplier_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *TestAdapterConnectionRequest) GetAdapterName() string {
@@ -1339,7 +1339,7 @@ type TestAdapterConnectionResponse struct {
 
 func (x *TestAdapterConnectionResponse) Reset() {
 	*x = TestAdapterConnectionResponse{}
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[19]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1351,7 +1351,7 @@ func (x *TestAdapterConnectionResponse) String() string {
 func (*TestAdapterConnectionResponse) ProtoMessage() {}
 
 func (x *TestAdapterConnectionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[19]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1364,7 +1364,7 @@ func (x *TestAdapterConnectionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TestAdapterConnectionResponse.ProtoReflect.Descriptor instead.
 func (*TestAdapterConnectionResponse) Descriptor() ([]byte, []int) {
-	return file_proto_supplier_v1_supplier_proto_rawDescGZIP(), []int{19}
+	return file_supplier_v1_supplier_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *TestAdapterConnectionResponse) GetSuccess() bool {
@@ -1392,7 +1392,7 @@ type SyncProductsRequest struct {
 
 func (x *SyncProductsRequest) Reset() {
 	*x = SyncProductsRequest{}
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[20]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1404,7 +1404,7 @@ func (x *SyncProductsRequest) String() string {
 func (*SyncProductsRequest) ProtoMessage() {}
 
 func (x *SyncProductsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[20]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1417,7 +1417,7 @@ func (x *SyncProductsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SyncProductsRequest.ProtoReflect.Descriptor instead.
 func (*SyncProductsRequest) Descriptor() ([]byte, []int) {
-	return file_proto_supplier_v1_supplier_proto_rawDescGZIP(), []int{20}
+	return file_supplier_v1_supplier_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *SyncProductsRequest) GetSupplierId() string {
@@ -1445,7 +1445,7 @@ type SyncProductsResponse struct {
 
 func (x *SyncProductsResponse) Reset() {
 	*x = SyncProductsResponse{}
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[21]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1457,7 +1457,7 @@ func (x *SyncProductsResponse) String() string {
 func (*SyncProductsResponse) ProtoMessage() {}
 
 func (x *SyncProductsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[21]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1470,7 +1470,7 @@ func (x *SyncProductsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SyncProductsResponse.ProtoReflect.Descriptor instead.
 func (*SyncProductsResponse) Descriptor() ([]byte, []int) {
-	return file_proto_supplier_v1_supplier_proto_rawDescGZIP(), []int{21}
+	return file_supplier_v1_supplier_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *SyncProductsResponse) GetJobId() string {
@@ -1498,7 +1498,7 @@ type SyncInventoryRequest struct {
 
 func (x *SyncInventoryRequest) Reset() {
 	*x = SyncInventoryRequest{}
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[22]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1510,7 +1510,7 @@ func (x *SyncInventoryRequest) String() string {
 func (*SyncInventoryRequest) ProtoMessage() {}
 
 func (x *SyncInventoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[22]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1523,7 +1523,7 @@ func (x *SyncInventoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SyncInventoryRequest.ProtoReflect.Descriptor instead.
 func (*SyncInventoryRequest) Descriptor() ([]byte, []int) {
-	return file_proto_supplier_v1_supplier_proto_rawDescGZIP(), []int{22}
+	return file_supplier_v1_supplier_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *SyncInventoryRequest) GetSupplierId() string {
@@ -1551,7 +1551,7 @@ type SyncInventoryResponse struct {
 
 func (x *SyncInventoryResponse) Reset() {
 	*x = SyncInventoryResponse{}
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[23]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1563,7 +1563,7 @@ func (x *SyncInventoryResponse) String() string {
 func (*SyncInventoryResponse) ProtoMessage() {}
 
 func (x *SyncInventoryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_supplier_v1_supplier_proto_msgTypes[23]
+	mi := &file_supplier_v1_supplier_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1576,7 +1576,7 @@ func (x *SyncInventoryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SyncInventoryResponse.ProtoReflect.Descriptor instead.
 func (*SyncInventoryResponse) Descriptor() ([]byte, []int) {
-	return file_proto_supplier_v1_supplier_proto_rawDescGZIP(), []int{23}
+	return file_supplier_v1_supplier_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *SyncInventoryResponse) GetJobId() string {
@@ -1593,11 +1593,11 @@ func (x *SyncInventoryResponse) GetMessage() string {
 	return ""
 }
 
-var File_proto_supplier_v1_supplier_proto protoreflect.FileDescriptor
+var File_supplier_v1_supplier_proto protoreflect.FileDescriptor
 
-const file_proto_supplier_v1_supplier_proto_rawDesc = "" +
+const file_supplier_v1_supplier_proto_rawDesc = "" +
 	"\n" +
-	" proto/supplier/v1/supplier.proto\x12\vsupplier.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bgoogle/protobuf/empty.proto\"\x8c\x05\n" +
+	"\x1asupplier/v1/supplier.proto\x12\vsupplier.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bgoogle/protobuf/empty.proto\"\x8c\x05\n" +
 	"\bSupplier\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12%\n" +
@@ -1743,22 +1743,22 @@ const file_proto_supplier_v1_supplier_proto_rawDesc = "" +
 	"\x16GetAdapterCapabilities\x12*.supplier.v1.GetAdapterCapabilitiesRequest\x1a+.supplier.v1.GetAdapterCapabilitiesResponse\"\x00\x12p\n" +
 	"\x15TestAdapterConnection\x12).supplier.v1.TestAdapterConnectionRequest\x1a*.supplier.v1.TestAdapterConnectionResponse\"\x00\x12U\n" +
 	"\fSyncProducts\x12 .supplier.v1.SyncProductsRequest\x1a!.supplier.v1.SyncProductsResponse\"\x00\x12X\n" +
-	"\rSyncInventory\x12!.supplier.v1.SyncInventoryRequest\x1a\".supplier.v1.SyncInventoryResponse\"\x00BJZHgithub.com/leonvanderhaeghen/stockplatform/gen/go/supplier/v1;supplierv1b\x06proto3"
+	"\rSyncInventory\x12!.supplier.v1.SyncInventoryRequest\x1a\".supplier.v1.SyncInventoryResponse\"\x00BiZggithub.com/leonvanderhaeghen/stockplatform/services/supplierSvc/api/gen/go/proto/supplier/v1;supplierv1b\x06proto3"
 
 var (
-	file_proto_supplier_v1_supplier_proto_rawDescOnce sync.Once
-	file_proto_supplier_v1_supplier_proto_rawDescData []byte
+	file_supplier_v1_supplier_proto_rawDescOnce sync.Once
+	file_supplier_v1_supplier_proto_rawDescData []byte
 )
 
-func file_proto_supplier_v1_supplier_proto_rawDescGZIP() []byte {
-	file_proto_supplier_v1_supplier_proto_rawDescOnce.Do(func() {
-		file_proto_supplier_v1_supplier_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_proto_supplier_v1_supplier_proto_rawDesc), len(file_proto_supplier_v1_supplier_proto_rawDesc)))
+func file_supplier_v1_supplier_proto_rawDescGZIP() []byte {
+	file_supplier_v1_supplier_proto_rawDescOnce.Do(func() {
+		file_supplier_v1_supplier_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_supplier_v1_supplier_proto_rawDesc), len(file_supplier_v1_supplier_proto_rawDesc)))
 	})
-	return file_proto_supplier_v1_supplier_proto_rawDescData
+	return file_supplier_v1_supplier_proto_rawDescData
 }
 
-var file_proto_supplier_v1_supplier_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
-var file_proto_supplier_v1_supplier_proto_goTypes = []any{
+var file_supplier_v1_supplier_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
+var file_supplier_v1_supplier_proto_goTypes = []any{
 	(*Supplier)(nil),                       // 0: supplier.v1.Supplier
 	(*CreateSupplierRequest)(nil),          // 1: supplier.v1.CreateSupplierRequest
 	(*CreateSupplierResponse)(nil),         // 2: supplier.v1.CreateSupplierResponse
@@ -1790,7 +1790,7 @@ var file_proto_supplier_v1_supplier_proto_goTypes = []any{
 	nil,                                    // 28: supplier.v1.TestAdapterConnectionRequest.ConfigEntry
 	(*timestamppb.Timestamp)(nil),          // 29: google.protobuf.Timestamp
 }
-var file_proto_supplier_v1_supplier_proto_depIdxs = []int32{
+var file_supplier_v1_supplier_proto_depIdxs = []int32{
 	24, // 0: supplier.v1.Supplier.metadata:type_name -> supplier.v1.Supplier.MetadataEntry
 	29, // 1: supplier.v1.Supplier.created_at:type_name -> google.protobuf.Timestamp
 	29, // 2: supplier.v1.Supplier.updated_at:type_name -> google.protobuf.Timestamp
@@ -1835,26 +1835,26 @@ var file_proto_supplier_v1_supplier_proto_depIdxs = []int32{
 	0,  // [0:17] is the sub-list for field type_name
 }
 
-func init() { file_proto_supplier_v1_supplier_proto_init() }
-func file_proto_supplier_v1_supplier_proto_init() {
-	if File_proto_supplier_v1_supplier_proto != nil {
+func init() { file_supplier_v1_supplier_proto_init() }
+func file_supplier_v1_supplier_proto_init() {
+	if File_supplier_v1_supplier_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_supplier_v1_supplier_proto_rawDesc), len(file_proto_supplier_v1_supplier_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_supplier_v1_supplier_proto_rawDesc), len(file_supplier_v1_supplier_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   29,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_proto_supplier_v1_supplier_proto_goTypes,
-		DependencyIndexes: file_proto_supplier_v1_supplier_proto_depIdxs,
-		MessageInfos:      file_proto_supplier_v1_supplier_proto_msgTypes,
+		GoTypes:           file_supplier_v1_supplier_proto_goTypes,
+		DependencyIndexes: file_supplier_v1_supplier_proto_depIdxs,
+		MessageInfos:      file_supplier_v1_supplier_proto_msgTypes,
 	}.Build()
-	File_proto_supplier_v1_supplier_proto = out.File
-	file_proto_supplier_v1_supplier_proto_goTypes = nil
-	file_proto_supplier_v1_supplier_proto_depIdxs = nil
+	File_supplier_v1_supplier_proto = out.File
+	file_supplier_v1_supplier_proto_goTypes = nil
+	file_supplier_v1_supplier_proto_depIdxs = nil
 }

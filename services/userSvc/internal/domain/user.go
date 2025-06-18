@@ -32,6 +32,28 @@ type User struct {
 	LastLogin    time.Time `bson:"last_login,omitempty"`
 	CreatedAt    time.Time `bson:"created_at"`
 	UpdatedAt    time.Time `bson:"updated_at"`
+	
+	// User-centric resource management
+	ManagedStores    []UserStore    `bson:"managed_stores,omitempty"`    // Stores this user can manage
+	ManagedSuppliers []UserSupplier `bson:"managed_suppliers,omitempty"` // Suppliers this user can manage
+}
+
+// UserStore represents a store that a user can manage
+type UserStore struct {
+	StoreID     string    `bson:"store_id"`
+	StoreName   string    `bson:"store_name"`   // Cached for performance
+	AccessLevel string    `bson:"access_level"` // READ, WRITE, ADMIN
+	AssignedAt  time.Time `bson:"assigned_at"`
+	AssignedBy  string    `bson:"assigned_by"`  // User ID who granted access
+}
+
+// UserSupplier represents a supplier that a user can manage
+type UserSupplier struct {
+	SupplierID  string    `bson:"supplier_id"`
+	SupplierName string   `bson:"supplier_name"` // Cached for performance
+	AccessLevel string    `bson:"access_level"`  // READ, WRITE, ADMIN
+	AssignedAt  time.Time `bson:"assigned_at"`
+	AssignedBy  string    `bson:"assigned_by"`   // User ID who granted access
 }
 
 // NewUser creates a new user
@@ -103,6 +125,7 @@ func (u *User) Activate() {
 // RecordLogin records a login event
 func (u *User) RecordLogin() {
 	u.LastLogin = time.Now()
+	u.UpdatedAt = time.Now()
 }
 
 // IsAdmin checks if the user has admin role
@@ -166,4 +189,142 @@ func (a *Address) Update(name, street, city, state, postalCode, country, phone s
 func (a *Address) SetDefault(isDefault bool) {
 	a.IsDefault = isDefault
 	a.UpdatedAt = time.Now()
+}
+
+// Store and Supplier Management Methods
+
+// AddManagedStore adds a store to the user's managed stores list
+func (u *User) AddManagedStore(storeID, storeName, accessLevel, assignedBy string) {
+	// Check if store already exists
+	for i, store := range u.ManagedStores {
+		if store.StoreID == storeID {
+			// Update existing store access
+			u.ManagedStores[i].AccessLevel = accessLevel
+			u.ManagedStores[i].AssignedBy = assignedBy
+			u.ManagedStores[i].AssignedAt = time.Now()
+			u.UpdatedAt = time.Now()
+			return
+		}
+	}
+	
+	// Add new store
+	u.ManagedStores = append(u.ManagedStores, UserStore{
+		StoreID:     storeID,
+		StoreName:   storeName,
+		AccessLevel: accessLevel,
+		AssignedAt:  time.Now(),
+		AssignedBy:  assignedBy,
+	})
+	u.UpdatedAt = time.Now()
+}
+
+// RemoveManagedStore removes a store from the user's managed stores list
+func (u *User) RemoveManagedStore(storeID string) {
+	for i, store := range u.ManagedStores {
+		if store.StoreID == storeID {
+			u.ManagedStores = append(u.ManagedStores[:i], u.ManagedStores[i+1:]...)
+			u.UpdatedAt = time.Now()
+			return
+		}
+	}
+}
+
+// HasStoreAccess checks if user has access to a specific store with given access level
+func (u *User) HasStoreAccess(storeID, accessLevel string) bool {
+	// Admin has access to all stores
+	if u.Role == RoleAdmin {
+		return true
+	}
+	
+	for _, store := range u.ManagedStores {
+		if store.StoreID == storeID {
+			// Check access level hierarchy: ADMIN > WRITE > READ
+			switch accessLevel {
+			case "READ":
+				return store.AccessLevel == "READ" || store.AccessLevel == "WRITE" || store.AccessLevel == "ADMIN"
+			case "WRITE":
+				return store.AccessLevel == "WRITE" || store.AccessLevel == "ADMIN"
+			case "ADMIN":
+				return store.AccessLevel == "ADMIN"
+			}
+		}
+	}
+	return false
+}
+
+// GetManagedStoreIDs returns a list of store IDs the user can manage
+func (u *User) GetManagedStoreIDs() []string {
+	storeIDs := make([]string, len(u.ManagedStores))
+	for i, store := range u.ManagedStores {
+		storeIDs[i] = store.StoreID
+	}
+	return storeIDs
+}
+
+// AddManagedSupplier adds a supplier to the user's managed suppliers list
+func (u *User) AddManagedSupplier(supplierID, supplierName, accessLevel, assignedBy string) {
+	// Check if supplier already exists
+	for i, supplier := range u.ManagedSuppliers {
+		if supplier.SupplierID == supplierID {
+			// Update existing supplier access
+			u.ManagedSuppliers[i].AccessLevel = accessLevel
+			u.ManagedSuppliers[i].AssignedBy = assignedBy
+			u.ManagedSuppliers[i].AssignedAt = time.Now()
+			u.UpdatedAt = time.Now()
+			return
+		}
+	}
+	
+	// Add new supplier
+	u.ManagedSuppliers = append(u.ManagedSuppliers, UserSupplier{
+		SupplierID:   supplierID,
+		SupplierName: supplierName,
+		AccessLevel:  accessLevel,
+		AssignedAt:   time.Now(),
+		AssignedBy:   assignedBy,
+	})
+	u.UpdatedAt = time.Now()
+}
+
+// RemoveManagedSupplier removes a supplier from the user's managed suppliers list
+func (u *User) RemoveManagedSupplier(supplierID string) {
+	for i, supplier := range u.ManagedSuppliers {
+		if supplier.SupplierID == supplierID {
+			u.ManagedSuppliers = append(u.ManagedSuppliers[:i], u.ManagedSuppliers[i+1:]...)
+			u.UpdatedAt = time.Now()
+			return
+		}
+	}
+}
+
+// HasSupplierAccess checks if user has access to a specific supplier with given access level
+func (u *User) HasSupplierAccess(supplierID, accessLevel string) bool {
+	// Admin has access to all suppliers
+	if u.Role == RoleAdmin {
+		return true
+	}
+	
+	for _, supplier := range u.ManagedSuppliers {
+		if supplier.SupplierID == supplierID {
+			// Check access level hierarchy: ADMIN > WRITE > READ
+			switch accessLevel {
+			case "READ":
+				return supplier.AccessLevel == "READ" || supplier.AccessLevel == "WRITE" || supplier.AccessLevel == "ADMIN"
+			case "WRITE":
+				return supplier.AccessLevel == "WRITE" || supplier.AccessLevel == "ADMIN"
+			case "ADMIN":
+				return supplier.AccessLevel == "ADMIN"
+			}
+		}
+	}
+	return false
+}
+
+// GetManagedSupplierIDs returns a list of supplier IDs the user can manage
+func (u *User) GetManagedSupplierIDs() []string {
+	supplierIDs := make([]string, len(u.ManagedSuppliers))
+	for i, supplier := range u.ManagedSuppliers {
+		supplierIDs[i] = supplier.SupplierID
+	}
+	return supplierIDs
 }

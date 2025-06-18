@@ -137,7 +137,7 @@ func (r *permissionRepository) HasPermission(ctx context.Context, userID string,
 		return false, err
 	}
 
-	return perm.HasPermission(permission), nil
+	return perm.HasPermission(string(permission)), nil
 }
 
 func (r *permissionRepository) GetUserResources(ctx context.Context, userID string, resourceType domain.ResourceType) ([]*domain.UserResource, error) {

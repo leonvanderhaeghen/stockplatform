@@ -190,12 +190,11 @@ type Store struct {
 	Address       *Address               `protobuf:"bytes,4,opt,name=address,proto3" json:"address,omitempty"`
 	Phone         string                 `protobuf:"bytes,5,opt,name=phone,proto3" json:"phone,omitempty"`
 	Email         string                 `protobuf:"bytes,6,opt,name=email,proto3" json:"email,omitempty"`
-	ManagerUserId string                 `protobuf:"bytes,7,opt,name=manager_user_id,json=managerUserId,proto3" json:"manager_user_id,omitempty"`
-	IsActive      bool                   `protobuf:"varint,8,opt,name=is_active,json=isActive,proto3" json:"is_active,omitempty"`
-	Hours         *StoreHours            `protobuf:"bytes,9,opt,name=hours,proto3" json:"hours,omitempty"`
-	Metadata      map[string]string      `protobuf:"bytes,10,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	IsActive      bool                   `protobuf:"varint,7,opt,name=is_active,json=isActive,proto3" json:"is_active,omitempty"`
+	Hours         *StoreHours            `protobuf:"bytes,8,opt,name=hours,proto3" json:"hours,omitempty"`
+	Metadata      map[string]string      `protobuf:"bytes,9,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -268,13 +267,6 @@ func (x *Store) GetPhone() string {
 func (x *Store) GetEmail() string {
 	if x != nil {
 		return x.Email
-	}
-	return ""
-}
-
-func (x *Store) GetManagerUserId() string {
-	if x != nil {
-		return x.ManagerUserId
 	}
 	return ""
 }
@@ -1024,9 +1016,8 @@ type CreateStoreRequest struct {
 	Address       *Address               `protobuf:"bytes,3,opt,name=address,proto3" json:"address,omitempty"`
 	Phone         string                 `protobuf:"bytes,4,opt,name=phone,proto3" json:"phone,omitempty"`
 	Email         string                 `protobuf:"bytes,5,opt,name=email,proto3" json:"email,omitempty"`
-	ManagerUserId string                 `protobuf:"bytes,6,opt,name=manager_user_id,json=managerUserId,proto3" json:"manager_user_id,omitempty"`
-	Hours         *StoreHours            `protobuf:"bytes,7,opt,name=hours,proto3" json:"hours,omitempty"`
-	Metadata      map[string]string      `protobuf:"bytes,8,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Hours         *StoreHours            `protobuf:"bytes,6,opt,name=hours,proto3" json:"hours,omitempty"`
+	Metadata      map[string]string      `protobuf:"bytes,7,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1092,13 +1083,6 @@ func (x *CreateStoreRequest) GetPhone() string {
 func (x *CreateStoreRequest) GetEmail() string {
 	if x != nil {
 		return x.Email
-	}
-	return ""
-}
-
-func (x *CreateStoreRequest) GetManagerUserId() string {
-	if x != nil {
-		return x.ManagerUserId
 	}
 	return ""
 }
@@ -3450,23 +3434,22 @@ var File_store_v1_store_proto protoreflect.FileDescriptor
 
 const file_store_v1_store_proto_rawDesc = "" +
 	"\n" +
-	"\x14store/v1/store.proto\x12\bstore.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x85\x04\n" +
+	"\x14store/v1/store.proto\x12\bstore.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xdd\x03\n" +
 	"\x05Store\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
 	"\vdescription\x18\x03 \x01(\tR\vdescription\x12+\n" +
 	"\aaddress\x18\x04 \x01(\v2\x11.store.v1.AddressR\aaddress\x12\x14\n" +
 	"\x05phone\x18\x05 \x01(\tR\x05phone\x12\x14\n" +
-	"\x05email\x18\x06 \x01(\tR\x05email\x12&\n" +
-	"\x0fmanager_user_id\x18\a \x01(\tR\rmanagerUserId\x12\x1b\n" +
-	"\tis_active\x18\b \x01(\bR\bisActive\x12*\n" +
-	"\x05hours\x18\t \x01(\v2\x14.store.v1.StoreHoursR\x05hours\x129\n" +
-	"\bmetadata\x18\n" +
-	" \x03(\v2\x1d.store.v1.Store.MetadataEntryR\bmetadata\x129\n" +
+	"\x05email\x18\x06 \x01(\tR\x05email\x12\x1b\n" +
+	"\tis_active\x18\a \x01(\bR\bisActive\x12*\n" +
+	"\x05hours\x18\b \x01(\v2\x14.store.v1.StoreHoursR\x05hours\x129\n" +
+	"\bmetadata\x18\t \x03(\v2\x1d.store.v1.Store.MetadataEntryR\bmetadata\x129\n" +
 	"\n" +
-	"created_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"created_at\x18\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x1a;\n" +
+	"updated_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xc0\x01\n" +
@@ -3545,16 +3528,15 @@ const file_store_v1_store_proto_rawDesc = "" +
 	"\bquantity\x18\x04 \x01(\x05R\bquantity\x12\x1d\n" +
 	"\n" +
 	"unit_price\x18\x05 \x01(\tR\tunitPrice\x12\x1a\n" +
-	"\bsubtotal\x18\x06 \x01(\tR\bsubtotal\"\xfc\x02\n" +
+	"\bsubtotal\x18\x06 \x01(\tR\bsubtotal\"\xd4\x02\n" +
 	"\x12CreateStoreRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12 \n" +
 	"\vdescription\x18\x02 \x01(\tR\vdescription\x12+\n" +
 	"\aaddress\x18\x03 \x01(\v2\x11.store.v1.AddressR\aaddress\x12\x14\n" +
 	"\x05phone\x18\x04 \x01(\tR\x05phone\x12\x14\n" +
-	"\x05email\x18\x05 \x01(\tR\x05email\x12&\n" +
-	"\x0fmanager_user_id\x18\x06 \x01(\tR\rmanagerUserId\x12*\n" +
-	"\x05hours\x18\a \x01(\v2\x14.store.v1.StoreHoursR\x05hours\x12F\n" +
-	"\bmetadata\x18\b \x03(\v2*.store.v1.CreateStoreRequest.MetadataEntryR\bmetadata\x1a;\n" +
+	"\x05email\x18\x05 \x01(\tR\x05email\x12*\n" +
+	"\x05hours\x18\x06 \x01(\v2\x14.store.v1.StoreHoursR\x05hours\x12F\n" +
+	"\bmetadata\x18\a \x03(\v2*.store.v1.CreateStoreRequest.MetadataEntryR\bmetadata\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"<\n" +

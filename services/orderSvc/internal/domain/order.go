@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -36,7 +37,41 @@ const (
 	StatusDelivered OrderStatus = "DELIVERED"
 	// StatusCancelled represents an order that has been cancelled
 	StatusCancelled OrderStatus = "CANCELLED"
+	// StatusFailed represents an order that has failed processing
+	StatusFailed OrderStatus = "FAILED"
 )
+
+// ValidateStatusTransition checks if a status transition is valid
+func ValidateStatusTransition(current, new OrderStatus) error {
+	// Define valid status transitions
+	validTransitions := map[OrderStatus][]OrderStatus{
+		StatusCreated:   {StatusPending, StatusPaid, StatusCancelled, StatusFailed},
+		StatusPending:   {StatusPaid, StatusCancelled, StatusFailed},
+		StatusPaid:      {StatusShipped, StatusCancelled},
+		StatusShipped:   {StatusDelivered, StatusFailed},
+		StatusDelivered: {}, // Terminal state
+		StatusCancelled: {}, // Terminal state
+		StatusFailed:    {StatusPending}, // Can retry failed orders
+	}
+
+	allowed, exists := validTransitions[current]
+	if !exists {
+		return errors.New("invalid current status")
+	}
+
+	for _, allowedStatus := range allowed {
+		if allowedStatus == new {
+			return nil
+		}
+	}
+
+	return errors.New("invalid status transition from " + string(current) + " to " + string(new))
+}
+
+// IsTerminalStatus returns true if the status is a terminal state
+func IsTerminalStatus(status OrderStatus) bool {
+	return status == StatusDelivered || status == StatusCancelled
+}
 
 // OrderItem represents a product in an order
 type OrderItem struct {
@@ -79,6 +114,7 @@ type Order struct {
 	Payment       Payment         `bson:"payment,omitempty"`
 	TrackingCode  string          `bson:"tracking_code,omitempty"`
 	Notes         string          `bson:"notes,omitempty"`
+	Version       int32           `bson:"version"`           // For optimistic locking
 	CreatedAt     time.Time       `bson:"created_at"`
 	UpdatedAt     time.Time       `bson:"updated_at"`
 	CompletedAt   time.Time       `bson:"completed_at,omitempty"`
@@ -110,6 +146,7 @@ func NewOrderWithSource(
 		Source:       source,
 		ShippingAddr: shippingAddr,
 		BillingAddr:  billingAddr,
+		Version:      1, // Initialize version for optimistic locking
 		CreatedAt:    now,
 		UpdatedAt:    now,
 		LocationID:   locationID,
@@ -127,17 +164,30 @@ func calculateTotal(items []OrderItem) float64 {
 	return total
 }
 
-// UpdateStatus updates the order status
-func (o *Order) UpdateStatus(status OrderStatus) {
-	o.Status = status
+// IncrementVersion increments the version for optimistic locking
+func (o *Order) IncrementVersion() {
+	o.Version++
 	o.UpdatedAt = time.Now()
+}
+
+// UpdateStatus updates the order status
+func (o *Order) UpdateStatus(status OrderStatus) error {
+	if err := ValidateStatusTransition(o.Status, status); err != nil {
+		return err
+	}
+	o.Status = status
+	o.IncrementVersion()
 	if status == StatusDelivered {
 		o.CompletedAt = time.Now()
 	}
+	return nil
 }
 
 // AddPayment adds payment information to the order
-func (o *Order) AddPayment(method string, transactionID string, amount float64) {
+func (o *Order) AddPayment(method string, transactionID string, amount float64) error {
+	if err := ValidateStatusTransition(o.Status, StatusPaid); err != nil {
+		return err
+	}
 	o.Payment = Payment{
 		Method:        method,
 		TransactionID: transactionID,
@@ -145,7 +195,10 @@ func (o *Order) AddPayment(method string, transactionID string, amount float64) 
 		Status:        "COMPLETED",
 		Timestamp:     time.Now(),
 	}
-	o.UpdateStatus(StatusPaid)
+	if err := o.UpdateStatus(StatusPaid); err != nil {
+		return err
+	}
+	return nil
 }
 
 // IsPOSOrder returns true if this is a Point of Sale order
@@ -158,23 +211,36 @@ func (o *Order) SetPOSInfo(locationID, staffID string) {
 	o.Source = SourcePOS
 	o.LocationID = locationID
 	o.StaffID = staffID
-	o.UpdatedAt = time.Now()
+	o.IncrementVersion()
 }
 
 // AddTrackingCode adds a tracking code to the order
-func (o *Order) AddTrackingCode(code string) {
+func (o *Order) AddTrackingCode(code string) error {
+	if err := ValidateStatusTransition(o.Status, StatusShipped); err != nil {
+		return err
+	}
 	o.TrackingCode = code
-	o.UpdateStatus(StatusShipped)
+	if err := o.UpdateStatus(StatusShipped); err != nil {
+		return err
+	}
+	return nil
 }
 
 // Cancel cancels the order
-func (o *Order) Cancel() {
-	o.UpdateStatus(StatusCancelled)
+func (o *Order) Cancel() error {
+	if err := ValidateStatusTransition(o.Status, StatusCancelled); err != nil {
+		return err
+	}
+	if err := o.UpdateStatus(StatusCancelled); err != nil {
+		return err
+	}
+	return nil
 }
 
 // Recalculate recalculates the order total
 func (o *Order) Recalculate() {
 	o.TotalAmount = calculateTotal(o.Items)
+	o.IncrementVersion()
 }
 
 // AddNote adds a note to the order
@@ -183,5 +249,5 @@ func (o *Order) AddNote(note string) {
 		o.Notes += "\n"
 	}
 	o.Notes += note
-	o.UpdatedAt = time.Now()
+	o.IncrementVersion()
 }

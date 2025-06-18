@@ -18,6 +18,7 @@ import (
 	"github.com/leonvanderhaeghen/stockplatform/services/userSvc/internal/application"
 	"github.com/leonvanderhaeghen/stockplatform/services/userSvc/internal/config"
 	"github.com/leonvanderhaeghen/stockplatform/services/userSvc/internal/database"
+	"github.com/leonvanderhaeghen/stockplatform/services/userSvc/internal/handlers"
 	grpchandlers "github.com/leonvanderhaeghen/stockplatform/services/userSvc/internal/interfaces/grpc"
 )
 
@@ -52,6 +53,17 @@ func (s *Server) Initialize() error {
 	)
 	_ = application.NewPermissionService(s.database.PermissionRepo) // Initialize but don't use directly
 
+	// Initialize AuthService
+	authConfig := &application.AuthConfig{
+		JWTSecret:       []byte(s.config.JWTSecret),
+		TokenDuration:   24 * time.Hour,
+		RefreshDuration: 7 * 24 * time.Hour,
+	}
+	authService, err := application.NewAuthService(s.database.UserRepo, authConfig, s.logger)
+	if err != nil {
+		return fmt.Errorf("failed to initialize auth service: %w", err)
+	}
+
 	// Initialize user auth service
 	userAuthService, err := application.NewUserAuthService(
 		userService,
@@ -65,9 +77,11 @@ func (s *Server) Initialize() error {
 
 	// Initialize gRPC handlers
 	userServer := grpchandlers.NewUserServer(userService, s.logger)
+	authHandler := handlers.NewAuthHandler(authService, s.logger)
 
 	// Register gRPC services
 	userv1.RegisterUserServiceServer(s.grpcServer, userServer)
+	userv1.RegisterAuthServiceServer(s.grpcServer, authHandler)
 
 	// Register health check service
 	healthServer := grpchandlers.NewHealthServer(s.logger)

@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"os"
 	"os/signal"
@@ -44,8 +43,13 @@ func (s *Server) Initialize() error {
 	// Create gRPC server
 	s.grpcServer = grpc.NewServer()
 
-	// Initialize services
-	orderService := application.NewOrderService(s.database.OrderRepo, s.logger)
+	// Initialize event publisher (could be Kafka or in-memory; nil for now)
+	var publisher domain.EventPublisher
+	// Create event service
+	eventService := application.NewEventService(publisher, s.logger)
+
+	// Initialize order service
+	orderService := application.NewOrderService(s.database.OrderRepo, eventService, s.logger)
 
 	// Create service config for POS transactions
 	serviceConfig := &domain.ServiceConfig{

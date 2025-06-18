@@ -3,7 +3,6 @@ package application
 import (
 	"context"
 	"errors"
-	"time"
 
 	"go.uber.org/zap"
 
@@ -12,15 +11,17 @@ import (
 
 // OrderService handles business logic for order operations
 type OrderService struct {
-	repo   domain.OrderRepository
-	logger *zap.Logger
+	repo         domain.OrderRepository
+	eventService *EventService
+	logger       *zap.Logger
 }
 
 // NewOrderService creates a new order service
-func NewOrderService(repo domain.OrderRepository, logger *zap.Logger) *OrderService {
+func NewOrderService(repo domain.OrderRepository, eventService *EventService, logger *zap.Logger) *OrderService {
 	return &OrderService{
-		repo:   repo,
-		logger: logger.Named("order_service"),
+		repo:         repo,
+		eventService: eventService,
+		logger:       logger.Named("order_service"),
 	}
 }
 
@@ -41,6 +42,19 @@ func (s *OrderService) CreateOrder(ctx context.Context, userID string, items []d
 	order := domain.NewOrder(userID, items, shippingAddr, billingAddr)
 	if err := s.repo.Create(ctx, order); err != nil {
 		return nil, err
+	}
+
+	// Publish order created event
+	if s.eventService != nil {
+		if err := s.eventService.PublishOrderCreated(ctx, order); err != nil {
+			s.logger.Warn("Failed to publish order created event", zap.Error(err))
+			// Don't fail the operation, just log the warning
+		}
+
+		// Publish inventory reservation event
+		if err := s.eventService.PublishInventoryReserved(ctx, order); err != nil {
+			s.logger.Warn("Failed to publish inventory reserved event", zap.Error(err))
+		}
 	}
 
 	return order, nil
@@ -69,6 +83,18 @@ func (s *OrderService) CreatePOSOrder(ctx context.Context, userID string, items 
 	order := domain.NewOrderWithSource(userID, items, shippingAddr, billingAddr, domain.SourcePOS, locationID, staffID)
 	if err := s.repo.Create(ctx, order); err != nil {
 		return nil, err
+	}
+
+	// Publish order created event
+	if s.eventService != nil {
+		if err := s.eventService.PublishOrderCreated(ctx, order); err != nil {
+			s.logger.Warn("Failed to publish order created event", zap.Error(err))
+		}
+
+		// Publish inventory reservation event
+		if err := s.eventService.PublishInventoryReserved(ctx, order); err != nil {
+			s.logger.Warn("Failed to publish inventory reserved event", zap.Error(err))
+		}
 	}
 
 	return order, nil
@@ -154,10 +180,12 @@ func (s *OrderService) UpdateOrder(ctx context.Context, order *domain.Order) err
 		return errors.New("order ID is required")
 	}
 	
-	// Ensure updated timestamp is set
-	order.UpdatedAt = time.Now()
+	// Ensure updated timestamp is set and increment version
+	order.IncrementVersion()
 	
-	return s.repo.Update(ctx, order)
+	// Use optimistic locking for concurrent updates
+	expectedVersion := order.Version - 1 // Version was incremented by IncrementVersion
+	return s.repo.UpdateWithOptimisticLock(ctx, order, expectedVersion)
 }
 
 // DeleteOrder removes an order
@@ -207,8 +235,27 @@ func (s *OrderService) UpdateOrderStatus(ctx context.Context, orderID string, st
 		return errors.New("order not found")
 	}
 	
-	order.UpdateStatus(status)
-	return s.repo.Update(ctx, order)
+	previousStatus := order.Status
+	err = order.UpdateStatus(status)
+	if err != nil {
+		return err
+	}
+	
+	// Use optimistic locking for concurrent updates
+	expectedVersion := order.Version - 1 // Version was incremented by UpdateStatus
+	err = s.repo.UpdateWithOptimisticLock(ctx, order, expectedVersion)
+	if err != nil {
+		return err
+	}
+	
+	// Publish status change event
+	if s.eventService != nil {
+		if err := s.eventService.PublishOrderStatusChanged(ctx, order, previousStatus); err != nil {
+			s.logger.Warn("Failed to publish order status changed event", zap.Error(err))
+		}
+	}
+	
+	return nil
 }
 
 // AddPaymentToOrder adds payment information to an order
@@ -229,8 +276,26 @@ func (s *OrderService) AddPaymentToOrder(ctx context.Context, orderID, method, t
 		return errors.New("order not found")
 	}
 	
-	order.AddPayment(method, transactionID, amount)
-	return s.repo.Update(ctx, order)
+	err = order.AddPayment(method, transactionID, amount)
+	if err != nil {
+		return err
+	}
+	
+	// Use optimistic locking for concurrent updates
+	expectedVersion := order.Version - 1 // Version was incremented by AddPayment
+	err = s.repo.UpdateWithOptimisticLock(ctx, order, expectedVersion)
+	if err != nil {
+		return err
+	}
+	
+	// Publish payment processed event
+	if s.eventService != nil {
+		if err := s.eventService.PublishPaymentProcessed(ctx, order); err != nil {
+			s.logger.Warn("Failed to publish payment processed event", zap.Error(err))
+		}
+	}
+	
+	return nil
 }
 
 // AddTrackingCodeToOrder adds a tracking code to an order
@@ -249,8 +314,26 @@ func (s *OrderService) AddTrackingCodeToOrder(ctx context.Context, orderID, trac
 		return errors.New("order not found")
 	}
 	
-	order.AddTrackingCode(trackingCode)
-	return s.repo.Update(ctx, order)
+	err = order.AddTrackingCode(trackingCode)
+	if err != nil {
+		return err
+	}
+	
+	// Use optimistic locking for concurrent updates
+	expectedVersion := order.Version - 1 // Version was incremented by AddTrackingCode
+	err = s.repo.UpdateWithOptimisticLock(ctx, order, expectedVersion)
+	if err != nil {
+		return err
+	}
+	
+	// Publish tracking code added event
+	if s.eventService != nil {
+		if err := s.eventService.PublishOrderStatusChanged(ctx, order, order.Status); err != nil {
+			s.logger.Warn("Failed to publish order status changed event", zap.Error(err))
+		}
+	}
+	
+	return nil
 }
 
 // CancelOrder cancels an order
@@ -266,8 +349,33 @@ func (s *OrderService) CancelOrder(ctx context.Context, orderID string) error {
 		return errors.New("order not found")
 	}
 	
-	order.Cancel()
-	return s.repo.Update(ctx, order)
+	previousStatus := order.Status
+	err = order.Cancel()
+	if err != nil {
+		return err
+	}
+	
+	// Use optimistic locking for concurrent updates
+	expectedVersion := order.Version - 1 // Version was incremented by Cancel
+	err = s.repo.UpdateWithOptimisticLock(ctx, order, expectedVersion)
+	if err != nil {
+		return err
+	}
+	
+	// Publish order cancellation events
+	if s.eventService != nil {
+		// Publish status changed event
+		if err := s.eventService.PublishOrderStatusChanged(ctx, order, previousStatus); err != nil {
+			s.logger.Warn("Failed to publish order status changed event", zap.Error(err))
+		}
+		
+		// Publish inventory release event
+		if err := s.eventService.PublishInventoryReleased(ctx, order); err != nil {
+			s.logger.Warn("Failed to publish inventory released event", zap.Error(err))
+		}
+	}
+	
+	return nil
 }
 
 // CountOrdersByStatus counts orders with a specific status

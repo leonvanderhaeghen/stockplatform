@@ -1,19 +1,5 @@
 package domain
 
-// Permission represents a user's permission on a resource
-type Permission string
-
-const (
-	// PermissionView allows viewing a resource
-	PermissionView Permission = "VIEW"
-	// PermissionEdit allows editing a resource
-	PermissionEdit Permission = "EDIT"
-	// PermissionDelete allows deleting a resource
-	PermissionDelete Permission = "DELETE"
-	// PermissionAdmin gives full admin rights on a resource
-	PermissionAdmin Permission = "ADMIN"
-)
-
 // ResourceType represents the type of resource a permission applies to
 type ResourceType string
 
@@ -30,22 +16,22 @@ type UserPermission struct {
 	UserID       string       `bson:"user_id"`
 	ResourceType ResourceType `bson:"resource_type"`
 	ResourceID   string       `bson:"resource_id"`
-	Permission   Permission   `bson:"permission"`
+	Permission   string       `bson:"permission"`
 }
 
 // HasPermission checks if the permission includes the required permission level
-func (p *UserPermission) HasPermission(required Permission) bool {
+func (p *UserPermission) HasPermission(required string) bool {
 	// If the user has ADMIN permission, they have all permissions
-	if p.Permission == PermissionAdmin {
+	if p.Permission == "ADMIN" {
 		return true
 	}
 
 	switch required {
-	case PermissionView:
-		return p.Permission == PermissionView || 
-		       p.Permission == PermissionEdit || 
-		       p.Permission == PermissionDelete
-	case PermissionEdit, PermissionDelete:
+	case "VIEW":
+		return p.Permission == "VIEW" || 
+		       p.Permission == "EDIT" || 
+		       p.Permission == "DELETE"
+	case "EDIT", "DELETE":
 		return p.Permission == required
 	default:
 		return false
@@ -58,11 +44,11 @@ type UserResource struct {
 	UserID       string       `bson:"user_id"`
 	ResourceType ResourceType `bson:"resource_type"`
 	ResourceID   string       `bson:"resource_id"`
-	Permission   Permission   `bson:"permission"`
+	Permission   string       `bson:"permission"`
 }
 
 // ResourceAccess represents a resource with the user's permission level
 type ResourceAccess struct {
 	ResourceID string     `json:"resource_id"`
-	Permission Permission `json:"permission"`
+	Permission string     `json:"permission"`
 }
