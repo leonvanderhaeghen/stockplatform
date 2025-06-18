@@ -9,16 +9,16 @@ require (
 	github.com/gin-gonic/gin v1.9.1
 	github.com/golang-jwt/jwt/v5 v5.0.0
 	github.com/leonvanderhaeghen/stockplatform v0.1.0
-	github.com/leonvanderhaeghen/stockplatform/services/inventorySvc v0.0.0-20250617223128-bab3545ad006
-	github.com/leonvanderhaeghen/stockplatform/services/orderSvc v0.0.0-20250617223128-bab3545ad006
-	github.com/leonvanderhaeghen/stockplatform/services/productSvc v0.0.0-20250617223128-bab3545ad006
-	github.com/leonvanderhaeghen/stockplatform/services/supplierSvc v0.0.0-20250617223128-bab3545ad006
-	github.com/leonvanderhaeghen/stockplatform/services/userSvc v0.0.0-20250617223128-bab3545ad006
+	github.com/leonvanderhaeghen/stockplatform/services/inventorySvc v0.0.0-20250617235535-5a86d542f1f1
+	github.com/leonvanderhaeghen/stockplatform/services/orderSvc v0.0.0-20250617235535-5a86d542f1f1
+	github.com/leonvanderhaeghen/stockplatform/services/productSvc v0.0.0-20250617235535-5a86d542f1f1
+	github.com/leonvanderhaeghen/stockplatform/services/supplierSvc v0.0.0-20250617235535-5a86d542f1f1
+	github.com/leonvanderhaeghen/stockplatform/services/userSvc v0.0.0-20250617235535-5a86d542f1f1
 	github.com/spf13/viper v1.20.1
 	github.com/swaggo/files v1.0.1
 	github.com/swaggo/gin-swagger v1.6.0
 	go.uber.org/zap v1.27.0
-	google.golang.org/grpc v1.72.0
+	google.golang.org/grpc v1.73.0
 )
 
 replace github.com/leonvanderhaeghen/stockplatform => ../..
@@ -59,7 +59,6 @@ require (
 	github.com/swaggo/swag v1.16.2 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.11 // indirect
-	go.opentelemetry.io/otel/sdk v1.35.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/arch v0.6.0 // indirect
 	golang.org/x/crypto v0.38.0 // indirect

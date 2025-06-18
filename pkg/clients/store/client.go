@@ -7,7 +7,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	storev1 "github.com/leonvanderhaeghen/stockplatform/services/storeSvc/api/gen/go/proto/store/v1"
+	storev1 "github.com/leonvanderhaeghen/stockplatform/services/storeSvc/api/gen/go/api/proto/store/v1"
 )
 
 // Client provides an abstraction for the store service

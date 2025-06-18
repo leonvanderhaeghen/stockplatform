@@ -1,12 +1,12 @@
 module github.com/leonvanderhaeghen/stockplatform/services/storeSvc
 
-go 1.21
+go 1.23
 
 require (
 	github.com/gin-gonic/gin v1.9.1
 	github.com/golang/protobuf v1.5.3
-	github.com/google/uuid v1.3.0
-	go.mongodb.org/mongo-driver v1.12.1
+	github.com/google/uuid v1.6.0
+	go.mongodb.org/mongo-driver v1.17.4
 	google.golang.org/grpc v1.58.3
 	google.golang.org/protobuf v1.31.0
 )
@@ -32,7 +32,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.0.8 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.11 // indirect
-	github.com/xdg-go/bson v1.1.0 // indirect
+
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.1.2 // indirect
 	github.com/xdg-go/stringprep v1.0.4 // indirect
@@ -45,3 +45,5 @@ require (
 	golang.org/x/text v0.9.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230711160842-782d3b101e98 // indirect
 )
+
+

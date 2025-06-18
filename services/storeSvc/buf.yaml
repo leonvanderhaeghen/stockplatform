@@ -1,4 +1,7 @@
-version: v1
+version: v1beta1
+build:
+  roots:
+    - api/proto
 deps:
   - buf.build/googleapis/googleapis
 breaking:
