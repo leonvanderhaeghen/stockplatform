@@ -17,35 +17,41 @@ const api = axios.create({
 // Request interceptor to add auth token to requests
 api.interceptors.request.use(
   (config) => {
-    const token = getAuthToken();
+    const token = getAuthToken() || localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    console.log('API Request:', config.method?.toUpperCase(), config.url);
     return config;
   },
   (error) => {
+    console.error('Request interceptor error:', error);
     return Promise.reject(error);
   }
 );
 
 // Response interceptor to handle common errors
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log('API Response:', response.config.url, response.status);
+    return response;
+  },
   (error) => {
     const { response } = error;
+    
+    console.error('API Error:', error.config?.url, response?.status, error.message);
     
     // Handle common error cases
     if (response) {
       // Handle specific HTTP status codes
       switch (response.status) {
         case 401: // Unauthorized
-          // Clear auth data and redirect to login
+          console.warn('Unauthorized access - clearing auth data');
           localStorage.removeItem('token');
           localStorage.removeItem('user');
-          window.location.href = '/login';
+          // Don't redirect automatically to avoid infinite loops
           break;
         case 403: // Forbidden
-          // Handle forbidden access
           console.error('Access forbidden');
           break;
         case 404: // Not Found
@@ -65,48 +71,6 @@ api.interceptors.response.use(
       console.error('Request error:', error.message);
     }
     
-    return Promise.reject(error);
-  }
-);
-
-// Add request interceptor for logging
-api.interceptors.request.use(request => {
-  console.log('Starting Request', JSON.stringify(request, null, 2));
-  return request;
-});
-
-// Add response interceptor for logging
-api.interceptors.response.use(response => {
-  console.log('Response:', response.config.url, response.status);
-  return response;
-}, error => {
-  console.error('Error:', error.config?.url, error.response?.status, error.message);
-  return Promise.reject(error);
-});
-
-// Request interceptor for adding auth token
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
-
-// Response interceptor for handling errors
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Handle unauthorized access
-      localStorage.removeItem('token');
-      window.location.href = '/login';
-    }
     return Promise.reject(error);
   }
 );

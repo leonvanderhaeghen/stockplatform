@@ -68,6 +68,635 @@ security:
   - bearerAuth: []
 
 paths:
+  # Authentication
+  /auth/register:
+    post:
+      tags: [Authentication]
+      summary: Register a new user
+      description: Create a new user account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+                - firstName
+                - lastName
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: user@example.com
+                password:
+                  type: string
+                  minLength: 8
+                  example: password123
+                firstName:
+                  type: string
+                  example: John
+                lastName:
+                  type: string
+                  example: Doe
+                phone:
+                  type: string
+                  example: "+1234567890"
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  token:
+                    type: string
+                    example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: User already exists
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: User with this email already exists
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: User login
+      description: Authenticate user and return JWT token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: user@example.com
+                password:
+                  type: string
+                  example: password123
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  token:
+                    type: string
+                    example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Invalid email or password
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # Health Check
+  /health:
+    get:
+      tags: [System]
+      summary: Health check
+      description: Check the health status of the gateway service
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  time:
+                    type: string
+                    format: date-time
+                  service:
+                    type: string
+                    example: gateway
+                  version:
+                    type: string
+                    example: 1.0.0
+                  services:
+                    type: object
+                    additionalProperties:
+                      type: string
+                    example:
+                      product: ok
+                      inventory: ok
+                      order: ok
+                      user: ok
+                      supplier: ok
+
+  # User Management
+  /users:
+    get:
+      tags: [Users]
+      summary: List all users (Admin only)
+      description: Retrieve a list of all users with pagination
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search term for filtering users
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  limit:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /users/me:
+    get:
+      tags: [Users]
+      summary: Get current user profile
+      description: Get the profile of the currently authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current user profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    put:
+      tags: [Users]
+      summary: Update current user profile
+      description: Update the profile of the currently authenticated user
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                firstName:
+                  type: string
+                  example: John
+                lastName:
+                  type: string
+                  example: Doe
+                phone:
+                  type: string
+                  example: "+1234567890"
+      responses:
+        '200':
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /users/me/password:
+    put:
+      tags: [Users]
+      summary: Change user password
+      description: Change the password of the currently authenticated user
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - currentPassword
+                - newPassword
+              properties:
+                currentPassword:
+                  type: string
+                  example: oldpassword123
+                newPassword:
+                  type: string
+                  minLength: 8
+                  example: newpassword123
+      responses:
+        '200':
+          description: Password changed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Password changed successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /users/me/addresses:
+    get:
+      tags: [Users]
+      summary: Get user addresses
+      description: Get all addresses for the currently authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of user addresses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Address'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      tags: [Users]
+      summary: Create user address
+      description: Create a new address for the currently authenticated user
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAddressRequest'
+      responses:
+        '201':
+          description: Address created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Address'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /users/me/addresses/default:
+    get:
+      tags: [Users]
+      summary: Get default user address
+      description: Get the default address for the currently authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Default user address
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Address'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /users/me/addresses/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Address ID
+    put:
+      tags: [Users]
+      summary: Update user address
+      description: Update an existing address for the currently authenticated user
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAddressRequest'
+      responses:
+        '200':
+          description: Address updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Address'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      tags: [Users]
+      summary: Delete user address
+      description: Delete an address for the currently authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Address deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /users/me/addresses/{id}/default:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Address ID
+    put:
+      tags: [Users]
+      summary: Set default user address
+      description: Set an address as the default for the currently authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Default address set successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Default address set successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /users/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: User ID
+    get:
+      tags: [Users]
+      summary: Get user by ID (Admin only)
+      description: Get a specific user by their ID
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # Admin User Management
+  /admin/users:
+    get:
+      tags: [Users]
+      summary: List all users (Admin)
+      description: Admin endpoint to list all users with advanced filtering
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, inactive, all]
+            default: all
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  limit:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /admin/users/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: User ID
+    get:
+      tags: [Users]
+      summary: Get user by ID (Admin)
+      description: Admin endpoint to get user details by ID
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /admin/users/{id}/activate:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: User ID
+    put:
+      tags: [Users]
+      summary: Activate user (Admin only)
+      description: Activate a user account
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User activated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: User activated successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /admin/users/{id}/deactivate:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: User ID
+    put:
+      tags: [Users]
+      summary: Deactivate user (Admin only)
+      description: Deactivate a user account
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User deactivated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: User deactivated successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
   # Suppliers
   /suppliers:
     get:
@@ -622,761 +1251,33 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-# 1. Inventory Stock Adjustment Endpoints
-  /inventory/{id}/stock/add:
-    parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-        description: Inventory ID
-    post:
-      tags: [Inventory]
-      summary: Add stock to inventory
-      description: Increase the quantity of a specific inventory item
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - quantity
-              properties:
-                quantity:
-                  type: integer
-                  minimum: 1
-                  example: 10
-                reason:
-                  type: string
-                  example: "Restocking"
-      responses:
-        '200':
-          description: Stock added successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/InventoryItem'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /inventory/{id}/stock/remove:
-    parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-        description: Inventory ID
-    post:
-      tags: [Inventory]
-      summary: Remove stock from inventory
-      description: Decrease the quantity of a specific inventory item
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - quantity
-              properties:
-                quantity:
-                  type: integer
-                  minimum: 1
-                  example: 5
-                reason:
-                  type: string
-                  example: "Stock correction"
-      responses:
-        '200':
-          description: Stock removed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/InventoryItem'
-        '400':
-          description: Bad request or insufficient stock
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-              example:
-                error: "Insufficient stock"
-                code: 400
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-# 2. User Address Management Endpoints
-  /users/me/addresses:
-    get:
-      tags: [Users]
-      summary: Get current user's addresses
-      description: Retrieve all addresses for the authenticated user
-      responses:
-        '200':
-          description: List of user addresses
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Address'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-    
-    post:
-      tags: [Users]
-      summary: Add a new address for current user
-      description: Add a new shipping/billing address for the authenticated user
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AddressRequest'
-      responses:
-        '201':
-          description: Address created successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Address'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /users/me/addresses/{id}:
-    parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-        description: Address ID
-    get:
-      tags: [Users]
-      summary: Get address by ID
-      description: Get a specific address for the authenticated user
-      responses:
-        '200':
-          description: Address details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Address'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-          
-    put:
-      tags: [Users]
-      summary: Update address
-      description: Update an existing address for the authenticated user
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AddressRequest'
-      responses:
-        '200':
-          description: Address updated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Address'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-          
-    delete:
-      tags: [Users]
-      summary: Delete address
-      description: Delete an address for the authenticated user
-      responses:
-        '204':
-          description: Address deleted successfully
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-# 3. Order Payment, Tracking and Cancellation Endpoints
-  /orders/{id}/payment:
-    parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-        description: Order ID
-    post:
-      tags: [Orders]
-      summary: Add payment to order
-      description: Add payment information to an existing order
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - amount
-                - paymentMethod
-              properties:
-                amount:
-                  type: number
-                  format: float
-                  example: 125.99
-                paymentMethod:
-                  type: string
-                  example: "CREDIT_CARD"
-                transactionId:
-                  type: string
-                  example: "tx_123456789"
-                paymentDetails:
-                  type: object
-                  additionalProperties: true
-      responses:
-        '200':
-          description: Payment added successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Order'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /orders/{id}/tracking:
-    parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-        description: Order ID
-    post:
-      tags: [Orders]
-      summary: Add tracking information
-      description: Add shipping tracking information to an order
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - trackingNumber
-                - carrier
-              properties:
-                trackingNumber:
-                  type: string
-                  example: "1Z999AA10123456784"
-                carrier:
-                  type: string
-                  example: "UPS"
-                estimatedDelivery:
-                  type: string
-                  format: date-time
-      responses:
-        '200':
-          description: Tracking information added successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Order'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /orders/{id}/cancel:
-    parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-        description: Order ID
-    post:
-      tags: [Orders]
-      summary: Cancel an order
-      description: Cancel an existing order if it hasn't been shipped
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                reason:
-                  type: string
-                  example: "Changed my mind"
-      responses:
-        '200':
-          description: Order cancelled successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Order'
-        '400':
-          description: Cannot cancel order due to its status
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-              example:
-                error: "Cannot cancel order that has already been shipped"
-                code: 400
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-
-  # System
-  /health:
-    get:
-      tags: [System]
-      summary: Health check endpoint
-      security: []
-      responses:
-        '200':
-          description: Service is healthy
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: ok
-                  timestamp:
-                    type: string
-                    format: date-time
-                  version:
-                    type: string
-                    example: 1.0.0
-
-  # Authentication
-  /auth/register:
-    post:
-      tags: [Authentication]
-      summary: Register a new user
-      requestBody:
-        $ref: '#/components/requestBodies/RegisterRequest'
-      responses:
-        '201':
-          description: User registered successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AuthResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '409':
-          description: Email already in use
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-              example:
-                error: "Email already in use"
-                code: 409
-
-  /auth/login:
-    post:
-      tags: [Authentication]
-      summary: Authenticate user and get JWT token
-      requestBody:
-        $ref: '#/components/requestBodies/LoginRequest'
-      responses:
-        '200':
-          description: Authentication successful
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AuthResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          description: Invalid credentials
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-              example:
-                error: "Invalid email or password"
-                code: 401
-
-  # Users
-  /users/me:
-    get:
-      tags: [Users]
-      summary: Get current user profile
-      responses:
-        '200':
-          description: User profile retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-    put:
-      tags: [Users]
-      summary: Update current user profile
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                firstName:
-                  type: string
-                lastName:
-                  type: string
-                phone:
-                  type: string
-      responses:
-        '200':
-          description: Profile updated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /users/me/password:
-    put:
-      tags: [Users]
-      summary: Change current user password
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - currentPassword
-                - newPassword
-              properties:
-                currentPassword:
-                  type: string
-                  format: password
-                newPassword:
-                  type: string
-                  format: password
-                  minLength: 8
-      responses:
-        '200':
-          description: Password changed successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: "Password updated successfully"
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  # Products
-  /products:
-    get:
-      tags: [Products]
-      summary: List all products
-      parameters:
-        - $ref: '#/components/parameters/limitQueryParam'
-        - $ref: '#/components/parameters/offsetQueryParam'
-        - $ref: '#/components/parameters/sortQueryParam'
-        - $ref: '#/components/parameters/orderQueryParam'
-        - name: category
-          in: query
-          description: Filter by category ID
-          schema:
-            type: string
-            format: uuid
-        - name: inStock
-          in: query
-          description: Filter by in-stock status
-          schema:
-            type: boolean
-        - name: search
-          in: query
-          description: Search term for product name or description
-          schema:
-            type: string
-      responses:
-        '200':
-          description: List of products
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  items:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Product'
-                  total:
-                    type: integer
-                    example: 1
-                  limit:
-                    type: integer
-                    example: 20
-                  offset:
-                    type: integer
-                    example: 0
-
-    post:
-      tags: [Products]
-      summary: Create a new product
-      requestBody:
-        $ref: '#/components/requestBodies/ProductRequest'
-      responses:
-        '201':
-          description: Product created successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Product'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-
-  /products/{id}:
-    get:
-      tags: [Products]
-      summary: Get a product by ID
-      parameters:
-        - $ref: '#/components/parameters/idPathParam'
-      responses:
-        '200':
-          description: Product details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Product'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-    put:
-      tags: [Products]
-      summary: Update a product
-      parameters:
-        - $ref: '#/components/parameters/idPathParam'
-      requestBody:
-        $ref: '#/components/requestBodies/ProductRequest'
-      responses:
-        '200':
-          description: Product updated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Product'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-    delete:
-      tags: [Products]
-      summary: Delete a product
-      parameters:
-        - $ref: '#/components/parameters/idPathParam'
-      responses:
-        '204':
-          description: Product deleted successfully
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  # Categories
-  /products/categories:
-    get:
-      tags: [Categories]
-      summary: List all categories
-      parameters:
-        - $ref: '#/components/parameters/limitQueryParam'
-        - $ref: '#/components/parameters/offsetQueryParam'
-      responses:
-        '200':
-          description: List of categories
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  items:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Category'
-                  total:
-                    type: integer
-                    example: 1
-
-    post:
-      tags: [Categories]
-      summary: Create a new category
-      requestBody:
-        $ref: '#/components/requestBodies/CategoryRequest'
-      responses:
-        '201':
-          description: Category created successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Category'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-
-  /products/categories/{id}:
-    get:
-      tags: [Categories]
-      summary: Get a category by ID
-      parameters:
-        - $ref: '#/components/parameters/idPathParam'
-      responses:
-        '200':
-          description: Category details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Category'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-    put:
-      tags: [Categories]
-      summary: Update a category
-      parameters:
-        - $ref: '#/components/parameters/idPathParam'
-      requestBody:
-        $ref: '#/components/requestBodies/CategoryRequest'
-      responses:
-        '200':
-          description: Category updated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Category'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-    delete:
-      tags: [Categories]
-      summary: Delete a category
-      parameters:
-        - $ref: '#/components/parameters/idPathParam'
-      responses:
-        '204':
-          description: Category deleted successfully
-        '400':
-          description: Cannot delete category with products
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-              example:
-                error: "Cannot delete category with associated products"
-                code: 400
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
   # Orders
   /orders:
     get:
       tags: [Orders]
-      summary: List all orders (admin) or user's orders
+      summary: List orders for current user
+      description: Retrieve a list of orders for the currently authenticated user
+      security:
+        - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/limitQueryParam'
-        - $ref: '#/components/parameters/offsetQueryParam'
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+          description: Page number for pagination
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+          description: Number of items per page
         - name: status
           in: query
+          schema:
+            type: string
+            enum: [CREATED, PENDING, PAID, PROCESSING, SHIPPED, DELIVERED, CANCELLED, REFUNDED]
           description: Filter by order status
-          schema:
-            type: string
-            enum: [PENDING, PROCESSING, SHIPPED, DELIVERED, CANCELLED]
-        - name: userId
-          in: query
-          description: Filter by user ID (admin only)
-          schema:
-            type: string
-            format: uuid
       responses:
         '200':
           description: List of orders
@@ -1385,24 +1286,32 @@ paths:
               schema:
                 type: object
                 properties:
-                  items:
+                  orders:
                     type: array
                     items:
                       $ref: '#/components/schemas/Order'
                   total:
                     type: integer
-                  limit:
+                  page:
                     type: integer
-                  offset:
+                  limit:
                     type: integer
         '401':
           $ref: '#/components/responses/Unauthorized'
-
+        '500':
+          $ref: '#/components/responses/InternalServerError'
     post:
       tags: [Orders]
-      summary: Create a new order
+      summary: Create order
+      description: Create a new order for the currently authenticated user
+      security:
+        - bearerAuth: []
       requestBody:
-        $ref: '#/components/requestBodies/OrderRequest'
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
       responses:
         '201':
           description: Order created successfully
@@ -1414,22 +1323,24 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '404':
-          description: Product not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-              example:
-                error: "One or more products not found"
-                code: 404
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
   /orders/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Order ID
     get:
       tags: [Orders]
       summary: Get order by ID
-      parameters:
-        - $ref: '#/components/parameters/idPathParam'
+      description: Retrieve a specific order by its ID (user can only access their own orders)
+      security:
+        - bearerAuth: []
       responses:
         '200':
           description: Order details
@@ -1443,27 +1354,20 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-
+        '500':
+          $ref: '#/components/responses/InternalServerError'
     put:
       tags: [Orders]
-      summary: Update order status (admin only)
-      parameters:
-        - $ref: '#/components/parameters/idPathParam'
+      summary: Update order
+      description: Update an existing order (limited fields for customers)
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required:
-                - status
-              properties:
-                status:
-                  type: string
-                  enum: [PROCESSING, SHIPPED, DELIVERED, CANCELLED]
-                trackingNumber:
-                  type: string
-                  description: Required when status is SHIPPED
+              $ref: '#/components/schemas/UpdateOrderRequest'
       responses:
         '200':
           description: Order updated successfully
@@ -1479,26 +1383,360 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /orders/{id}/cancel:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Order ID
+    put:
+      tags: [Orders]
+      summary: Cancel order
+      description: Cancel an existing order (only if not yet shipped)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Order cancelled successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Order cancelled successfully
+        '400':
+          description: Order cannot be cancelled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Order cannot be cancelled as it has already been shipped
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /orders/{id}/payment:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Order ID
+    post:
+      tags: [Orders]
+      summary: Add payment to order
+      description: Add a payment record to an existing order
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddPaymentRequest'
+      responses:
+        '200':
+          description: Payment added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # Admin Order Management
+  /admin/orders:
+    get:
+      tags: [Orders]
+      summary: List all orders (Admin)
+      description: Admin endpoint to list all orders with advanced filtering
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [CREATED, PENDING, PAID, PROCESSING, SHIPPED, DELIVERED, CANCELLED, REFUNDED]
+        - name: userId
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by user ID
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Filter orders from this date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Filter orders until this date
+      responses:
+        '200':
+          description: List of orders
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  orders:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Order'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  limit:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /admin/orders/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Order ID
+    get:
+      tags: [Orders]
+      summary: Get order by ID (Admin)
+      description: Admin endpoint to get order details by ID
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Order details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    put:
+      tags: [Orders]
+      summary: Update order (Admin)
+      description: Admin endpoint to update order with full privileges
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminUpdateOrderRequest'
+      responses:
+        '200':
+          description: Order updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /admin/orders/{id}/status:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Order ID
+    put:
+      tags: [Orders]
+      summary: Update order status (Admin)
+      description: Admin endpoint to update order status
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum: [CREATED, PENDING, PAID, PROCESSING, SHIPPED, DELIVERED, CANCELLED, REFUNDED]
+                trackingNumber:
+                  type: string
+                  description: Required when status is SHIPPED
+                notes:
+                  type: string
+                  description: Optional notes about the status change
+      responses:
+        '200':
+          description: Order status updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /admin/orders/{id}/tracking:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Order ID
+    put:
+      tags: [Orders]
+      summary: Add tracking code to order (Admin)
+      description: Admin endpoint to add tracking code to an order
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - trackingCode
+              properties:
+                trackingCode:
+                  type: string
+                  example: "1Z999AA1234567890"
+                carrier:
+                  type: string
+                  example: "UPS"
+                notes:
+                  type: string
+                  example: "Package shipped via UPS Ground"
+      responses:
+        '200':
+          description: Tracking code added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
   # Inventory
   /inventory:
     get:
       tags: [Inventory]
       summary: List inventory items
+      description: Retrieve a list of inventory items with optional filtering
+      security:
+        - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/limitQueryParam'
-        - $ref: '#/components/parameters/offsetQueryParam'
-        - name: lowStock
+        - name: page
           in: query
-          description: Filter low stock items
           schema:
-            type: boolean
+            type: integer
+            default: 1
+          description: Page number for pagination
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+          description: Number of items per page
         - name: productId
           in: query
-          description: Filter by product ID
           schema:
             type: string
             format: uuid
+          description: Filter by product ID
+        - name: storeId
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by store ID
+        - name: lowStock
+          in: query
+          schema:
+            type: boolean
+          description: Filter items with low stock
       responses:
         '200':
           description: List of inventory items
@@ -1513,26 +1751,32 @@ paths:
                       $ref: '#/components/schemas/InventoryItem'
                   total:
                     type: integer
-                  limit:
+                  page:
                     type: integer
-                  offset:
+                  limit:
                     type: integer
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
-  /inventory/{productId}:
+  /inventory/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Inventory item ID
     get:
       tags: [Inventory]
-      summary: Get inventory for a specific product
-      parameters:
-        - name: productId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
+      summary: Get inventory item by ID
+      description: Retrieve a specific inventory item by its ID
+      security:
+        - bearerAuth: []
       responses:
         '200':
           description: Inventory item details
@@ -1546,17 +1790,24 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
-    put:
+  /inventory/{id}/reserve:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Inventory item ID
+    post:
       tags: [Inventory]
-      summary: Update inventory for a product
-      parameters:
-        - name: productId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
+      summary: Reserve inventory
+      description: Reserve a quantity of inventory for an order
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -1565,20 +1816,88 @@ paths:
               type: object
               required:
                 - quantity
+                - orderId
               properties:
                 quantity:
                   type: integer
-                  minimum: 0
-                lowStockAt:
-                  type: integer
-                  minimum: 0
+                  minimum: 1
+                  example: 5
+                orderId:
+                  type: string
+                  format: uuid
+                  example: "550e8400-e29b-41d4-a716-446655440000"
       responses:
         '200':
-          description: Inventory updated successfully
+          description: Inventory reserved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/InventoryItem'
+                type: object
+                properties:
+                  reservationId:
+                    type: string
+                    format: uuid
+                  message:
+                    type: string
+                    example: "5 units reserved successfully"
+        '400':
+          description: Insufficient inventory
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Insufficient inventory. Available: 3, Requested: 5"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /inventory/{id}/release:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Inventory item ID
+    post:
+      tags: [Inventory]
+      summary: Release inventory reservation
+      description: Release a previously reserved quantity of inventory
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - reservationId
+              properties:
+                reservationId:
+                  type: string
+                  format: uuid
+                  example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: Inventory reservation released successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Reservation released successfully"
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -1587,6 +1906,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
 components:
   securitySchemes:
@@ -2033,7 +2354,6 @@ Address:
           items:
             type: string
             format: uri
-          example: ["https://example.com/videos/widget.mp4"]
         metadata:
           type: object
           additionalProperties:
@@ -2205,7 +2525,7 @@ Address:
           example: "+1234567890"
         address:
           type: string
-          example: 123 Business St, Industry City
+          example: "123 Business St, Industry City"
         contactPerson:
           type: string
           example: John Doe
@@ -2228,6 +2548,15 @@ Address:
           type: integer
           format: int32
           description: HTTP status code
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
 
     User:
       type: object
@@ -2491,6 +2820,339 @@ Address:
         updatedAt:
           type: string
           format: date-time
+    # Request Schemas
+    CreateAddressRequest:
+      type: object
+      required:
+        - street
+        - city
+        - state
+        - zipCode
+        - country
+      properties:
+        street:
+          type: string
+          example: "123 Main St"
+        city:
+          type: string
+          example: "New York"
+        state:
+          type: string
+          example: "NY"
+        zipCode:
+          type: string
+          example: "10001"
+        country:
+          type: string
+          example: "USA"
+        isDefault:
+          type: boolean
+          default: false
+
+    UpdateAddressRequest:
+      type: object
+      properties:
+        street:
+          type: string
+          example: "123 Main St"
+        city:
+          type: string
+          example: "New York"
+        state:
+          type: string
+          example: "NY"
+        zipCode:
+          type: string
+          example: "10001"
+        country:
+          type: string
+          example: "USA"
+        isDefault:
+          type: boolean
+
+    CreateProductRequest:
+      type: object
+      required:
+        - name
+        - description
+        - price
+        - categoryId
+      properties:
+        name:
+          type: string
+          example: "Wireless Headphones"
+        description:
+          type: string
+          example: "High-quality wireless headphones with noise cancellation"
+        price:
+          type: number
+          format: float
+          example: 199.99
+        categoryId:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        sku:
+          type: string
+          example: "WH-001"
+        brand:
+          type: string
+          example: "TechBrand"
+        specifications:
+          type: object
+          additionalProperties: true
+
+    UpdateProductRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "Wireless Headphones"
+        description:
+          type: string
+          example: "High-quality wireless headphones with noise cancellation"
+        price:
+          type: number
+          format: float
+          example: 199.99
+        categoryId:
+          type: string
+          format: uuid
+        sku:
+          type: string
+          example: "WH-001"
+        brand:
+          type: string
+          example: "TechBrand"
+        specifications:
+          type: object
+          additionalProperties: true
+
+    CreateCategoryRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          example: "Electronics"
+        description:
+          type: string
+          example: "Electronic devices and accessories"
+        parentId:
+          type: string
+          format: uuid
+          description: "Parent category ID for subcategories"
+
+    CreateOrderRequest:
+      type: object
+      required:
+        - items
+        - shippingAddress
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required:
+              - productId
+              - quantity
+            properties:
+              productId:
+                type: string
+                format: uuid
+              quantity:
+                type: integer
+                minimum: 1
+              price:
+                type: number
+                format: float
+                description: "Override price if different from product price"
+        shippingAddress:
+          $ref: '#/components/schemas/Address'
+        billingAddress:
+          $ref: '#/components/schemas/Address'
+        notes:
+          type: string
+          example: "Please deliver after 5 PM"
+
+    UpdateOrderRequest:
+      type: object
+      properties:
+        shippingAddress:
+          $ref: '#/components/schemas/Address'
+        billingAddress:
+          $ref: '#/components/schemas/Address'
+        notes:
+          type: string
+
+    AdminUpdateOrderRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [CREATED, PENDING, PAID, PROCESSING, SHIPPED, DELIVERED, CANCELLED, REFUNDED]
+        shippingAddress:
+          $ref: '#/components/schemas/Address'
+        billingAddress:
+          $ref: '#/components/schemas/Address'
+        notes:
+          type: string
+        trackingNumber:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              productId:
+                type: string
+                format: uuid
+              quantity:
+                type: integer
+                minimum: 1
+              price:
+                type: number
+                format: float
+
+    AddPaymentRequest:
+      type: object
+      required:
+        - amount
+        - paymentMethod
+      properties:
+        amount:
+          type: number
+          format: float
+          example: 199.99
+        paymentMethod:
+          type: string
+          enum: [CREDIT_CARD, DEBIT_CARD, PAYPAL, BANK_TRANSFER, CASH]
+          example: "CREDIT_CARD"
+        transactionId:
+          type: string
+          example: "tx_123456789"
+        paymentDetails:
+          type: object
+          additionalProperties: true
+          description: "Additional payment-specific details"
+
+    POSOrderRequest:
+      type: object
+      required:
+        - items
+        - storeId
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required:
+              - productId
+              - quantity
+            properties:
+              productId:
+                type: string
+                format: uuid
+              quantity:
+                type: integer
+                minimum: 1
+              price:
+                type: number
+                format: float
+        storeId:
+          type: string
+          format: uuid
+        customerId:
+          type: string
+          format: uuid
+          description: "Optional customer ID for registered customers"
+        paymentMethod:
+          type: string
+          enum: [CASH, CREDIT_CARD, DEBIT_CARD]
+        notes:
+          type: string
+
+    POSQuickTransactionRequest:
+      type: object
+      required:
+        - items
+        - storeId
+        - paymentMethod
+        - totalAmount
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required:
+              - productId
+              - quantity
+              - price
+            properties:
+              productId:
+                type: string
+                format: uuid
+              quantity:
+                type: integer
+                minimum: 1
+              price:
+                type: number
+                format: float
+        storeId:
+          type: string
+          format: uuid
+        paymentMethod:
+          type: string
+          enum: [CASH, CREDIT_CARD, DEBIT_CARD]
+        totalAmount:
+          type: number
+          format: float
+        customerId:
+          type: string
+          format: uuid
+          description: "Optional customer ID"
+        notes:
+          type: string
+
+    POSPickupCompletionRequest:
+      type: object
+      required:
+        - orderId
+      properties:
+        orderId:
+          type: string
+          format: uuid
+        notes:
+          type: string
+          example: "Customer picked up order successfully"
+        completedBy:
+          type: string
+          description: "Staff member who completed the pickup"
+
+    POSDirectSaleRequest:
+      type: object
+      required:
+        - productId
+        - quantity
+        - storeId
+      properties:
+        productId:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          minimum: 1
+        storeId:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          example: "Direct POS sale"
+        staffId:
+          type: string
+          format: uuid
+          description: "Staff member processing the sale"
 
   parameters:
     pageParam:
@@ -2944,13 +3606,12 @@ paths:
                       $ref: '#/components/schemas/Product'
                   total:
                     type: integer
-                    example: 1
                   limit:
                     type: integer
-                    example: 20
                   offset:
                     type: integer
-                    example: 0
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
     post:
       tags: [Products]
@@ -3161,13 +3822,13 @@ paths:
         '204':
           description: Category deleted successfully
         '400':
-          description: Cannot delete category with subcategories or products
+          description: Cannot delete category with products
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
               example:
-                error: "Cannot delete category with subcategories or products"
+                error: "Cannot delete category with associated products"
                 code: 400
         '401':
           $ref: '#/components/responses/Unauthorized'
@@ -3213,13 +3874,10 @@ paths:
                       $ref: '#/components/schemas/Order'
                   total:
                     type: integer
-                    example: 1
                   limit:
                     type: integer
-                    example: 20
                   offset:
                     type: integer
-                    example: 0
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -3483,4 +4141,3 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-

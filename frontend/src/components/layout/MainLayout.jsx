@@ -30,6 +30,9 @@ import {
   People as PeopleIcon,
   Group as GroupIcon,
   BarChart as ReportsIcon,
+  Store as SuppliersIcon,
+  PointOfSale as POSIcon,
+  AdminPanelSettings as AdminIcon,
 } from '@mui/icons-material';
 import Header from './Header';
 import { AuthContext } from '../../App';
@@ -52,6 +55,7 @@ const menuItems = [
     icon: <InventoryIcon />, 
     path: '/inventory',
     children: [
+      { text: 'Overview', path: '/inventory' },
       { text: 'Stock Levels', path: '/inventory/levels' },
       { text: 'Stock Transfers', path: '/inventory/transfers' },
       { text: 'Stock Adjustments', path: '/inventory/adjustments' },
@@ -68,6 +72,18 @@ const menuItems = [
     ]
   },
   { 
+    text: 'Suppliers', 
+    icon: <SuppliersIcon />, 
+    path: '/suppliers',
+    managerOnly: true
+  },
+  { 
+    text: 'Point of Sale', 
+    icon: <POSIcon />, 
+    path: '/pos',
+    managerOnly: true
+  },
+  { 
     text: 'Customers', 
     icon: <PeopleIcon />, 
     path: '/customers'
@@ -76,6 +92,12 @@ const menuItems = [
     text: 'Users', 
     icon: <GroupIcon />, 
     path: '/users',
+    adminOnly: true
+  },
+  { 
+    text: 'Admin Panel', 
+    icon: <AdminIcon />, 
+    path: '/admin',
     adminOnly: true
   },
   { 
@@ -111,7 +133,10 @@ const Sidebar = ({ drawerWidth, mobileOpen, onClose, isMobile }) => {
   // Filter menu items based on user role
   const filteredMenuItems = useMemo(() => {
     return menuItems.filter(item => {
-      if (item.adminOnly && user?.role !== 'admin') {
+      if (item.adminOnly && user?.role !== 'ADMIN') {
+        return false;
+      }
+      if (item.managerOnly && !['ADMIN', 'MANAGER'].includes(user?.role)) {
         return false;
       }
       return true;

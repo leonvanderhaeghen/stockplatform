@@ -21,6 +21,7 @@ import MainLayout from './components/layout/MainLayout';
 // Pages
 import DashboardPage from './pages/DashboardPage';
 import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
 import UnauthorizedPage from './pages/UnauthorizedPage';
 import NotFoundPage from './pages/NotFoundPage';
 
@@ -29,18 +30,28 @@ import ProductsPage from './components/products/ProductsCRUD';
 import CategoriesPage from './pages/CategoriesPage';
 
 // Inventory Pages
+import InventoryPage from './pages/InventoryPage';
 import InventoryLevelsPage from './pages/inventory/InventoryLevelsPage';
 import StockTransfersPage from './pages/inventory/StockTransfersPage';
 import StockAdjustmentsPage from './pages/inventory/StockAdjustmentsPage';
 
 // Order Pages
-import OrdersPage from './components/orders/OrdersCRUD';
+import OrdersPage from './pages/OrdersPage';
 import CreateOrderPage from './pages/CreateOrderPage';
 import ReturnsPage from './pages/ReturnsPage';
 
 // User & Customer Pages
 import UsersPage from './components/users/UsersCRUD';
 import CustomersPage from './pages/CustomersPage';
+
+// Supplier Pages
+import SuppliersPage from './pages/SuppliersPage';
+
+// POS Pages
+import POSPage from './pages/POSPage';
+
+// Admin Pages
+import AdminPage from './pages/AdminPage';
 
 // Report Pages
 import ReportsPage from './pages/ReportsPage';
@@ -212,6 +223,14 @@ const AppRoutes = () => {
           </PublicRoute>
         } 
       />
+      <Route 
+        path="/register" 
+        element={
+          <PublicRoute>
+            <RegisterPage />
+          </PublicRoute>
+        } 
+      />
       
       {/* Protected routes */}
       <Route element={
@@ -233,6 +252,7 @@ const AppRoutes = () => {
             />
           }>
             <Route path="users" element={<UsersPage />} />
+            <Route path="admin" element={<AdminPage />} />
           </Route>
           
           {/* Manager and Admin routes */}
@@ -250,7 +270,7 @@ const AppRoutes = () => {
 
             {/* Inventory Routes */}
             <Route path="inventory">
-              <Route index element={<InventoryLevelsPage />} />
+              <Route index element={<InventoryPage />} />
               <Route path="levels" element={<InventoryLevelsPage />} />
               <Route path="transfers" element={<StockTransfersPage />} />
               <Route path="adjustments" element={<StockAdjustmentsPage />} />
@@ -258,6 +278,12 @@ const AppRoutes = () => {
 
             {/* Customer Routes */}
             <Route path="customers" element={<CustomersPage />} />
+
+            {/* Supplier Routes */}
+            <Route path="suppliers" element={<SuppliersPage />} />
+
+            {/* POS Routes */}
+            <Route path="pos" element={<POSPage />} />
 
             {/* Report Routes */}
             <Route path="reports">

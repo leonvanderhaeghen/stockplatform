@@ -31,7 +31,6 @@ import {
   ExpandLess as ExpandLessIcon,
   Image as ImageIcon,
   Videocam as VideoIcon,
-  Link as LinkIcon,
 } from '@mui/icons-material';
 
 // Currency options for the currency selector
@@ -260,6 +259,19 @@ const ProductForm = ({
   categories = [],
   suppliers = [],
 }) => {
+  // Debug: log the suppliers data to verify it's being passed correctly
+  console.log('ProductForm received suppliers:', suppliers);
+  
+  // Defensive extraction for suppliers
+  const safeSuppliers = Array.isArray(suppliers)
+    ? suppliers
+    : Array.isArray(suppliers?.suppliers)
+      ? suppliers.suppliers
+      : [];
+  
+  // Debug: log the extracted suppliers
+  console.log('ProductForm safe suppliers:', safeSuppliers);
+
   const [expandedSections, setExpandedSections] = React.useState({
     basic: true,
     pricing: true,
@@ -366,6 +378,21 @@ const ProductForm = ({
                     onBlur={formik.handleBlur}
                     error={formik.touched.sku && Boolean(formik.errors.sku)}
                     helperText={formik.touched.sku && formik.errors.sku}
+                    margin="normal"
+                    disabled={loading}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    id="barcode"
+                    name="barcode"
+                    label="Barcode"
+                    value={formik.values.barcode}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                    error={formik.touched.barcode && Boolean(formik.errors.barcode)}
+                    helperText={formik.touched.barcode && formik.errors.barcode}
                     margin="normal"
                     disabled={loading}
                   />
@@ -590,7 +617,7 @@ const ProductForm = ({
                   label="Supplier"
                   disabled={loading}
                 >
-                  {suppliers.map((supplier) => (
+                  {safeSuppliers.map((supplier) => (
                     <MenuItem key={supplier.id} value={supplier.id}>
                       {supplier.name}
                     </MenuItem>

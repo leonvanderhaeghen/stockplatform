@@ -42,24 +42,7 @@ RUN \
     done && \
     echo "Dependencies downloaded successfully"
 
-# Generate protobuf code for all services
-RUN echo "Generating protobuf code..." && \
-    # Create directories
-    mkdir -p ../../pkg/gen/go/product/v1 && \
-    mkdir -p ../../pkg/gen/go/user/v1 && \
-    mkdir -p ../../pkg/gen/go/order/v1 && \
-    mkdir -p ../../pkg/gen/go/inventory/v1 && \
-    # Generate code for each service
-    protoc -I=../../proto \
-      --go_out=../../pkg/gen \
-      --go_opt=paths=source_relative \
-      --go-grpc_out=../../pkg/gen \
-      --go-grpc_opt=paths=source_relative \
-      product/v1/product.proto \
-      user/v1/user.proto \
-      order/v1/order.proto \
-      inventory/v1/inventory.proto && \
-    echo "Protobuf code generated successfully"
+
 
 # Build the application with retries
 RUN \

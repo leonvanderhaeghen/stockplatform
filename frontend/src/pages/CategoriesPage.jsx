@@ -32,6 +32,13 @@ import categoryService from '../services/categoryService';
 const CategoriesPage = () => {
   const { enqueueSnackbar } = useSnackbar();
   const [categories, setCategories] = useState([]);
+  // Extract categories from different possible API response shapes
+  const safeCategories = Array.isArray(categories)
+    ? categories
+    : Array.isArray(categories?.categories)
+      ? categories.categories
+      : [];
+
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [openForm, setOpenForm] = useState(false);
@@ -104,7 +111,7 @@ const CategoriesPage = () => {
     if (!categoryToDelete) return;
     
     try {
-      await categoryService.deleteCategory(categoryToDelete._id);
+      await categoryService.deleteCategory(categoryToDelete.id);
       enqueueSnackbar('Category deleted successfully', { variant: 'success' });
       fetchCategories();
     } catch (error) {
@@ -128,44 +135,68 @@ const CategoriesPage = () => {
       field: 'name', 
       headerName: 'Name', 
       flex: 2,
-      renderCell: (params) => (
-        <Box display="flex" alignItems="center">
-          <CategoryIcon color="action" sx={{ mr: 1 }} />
-          <Typography variant="body1">{params.value}</Typography>
-        </Box>
-      )
+      renderCell: (params) => {
+        // Add defensive check
+        if (!params) return null;
+        
+        return (
+          <Box display="flex" alignItems="center">
+            <CategoryIcon color="action" sx={{ mr: 1 }} />
+            <Typography variant="body1">{params.value}</Typography>
+          </Box>
+        );
+      }
     },
     { 
       field: 'description', 
       headerName: 'Description', 
       flex: 3,
-      renderCell: (params) => (
-        <Typography variant="body2" color="textSecondary" noWrap>
-          {params.value || 'No description'}
-        </Typography>
-      )
+      renderCell: (params) => {
+        // Add defensive check
+        if (!params) return null;
+        
+        return (
+          <Typography variant="body2" color="textSecondary" noWrap>
+            {params.value || 'No description'}
+          </Typography>
+        );
+      }
     },
     { 
       field: 'parent', 
       headerName: 'Parent Category', 
       flex: 2,
       valueGetter: (params) => {
-        if (!params.row.parentId) return '—';
-        const parent = categories.find(cat => cat._id === params.row.parentId);
-        return parent ? parent.name : 'Unknown';
+        try {
+          // Add stronger defensive check to prevent error when params.row is undefined
+          if (!params) return '—';
+          if (!params.row) return '—';
+          if (!params.row.parentId) return '—';
+          
+          const parent = safeCategories.find(cat => cat.id === params.row.parentId || cat._id === params.row.parentId);
+          return parent ? parent.name : 'Unknown';
+        } catch (error) {
+          console.error('Error in parent valueGetter:', error);
+          return '—';
+        }
       },
-      renderCell: (params) => (
-        <Chip 
-          label={params.value} 
-          size="small" 
-          variant="outlined"
-          sx={{ 
-            backgroundColor: params.value !== '—' ? 'action.hover' : 'transparent',
-            borderColor: 'divider',
-            color: 'text.secondary'
-          }}
-        />
-      )
+      renderCell: (params) => {
+        // Add defensive check
+        if (!params) return null;
+        
+        return (
+          <Chip 
+            label={params.value} 
+            size="small" 
+            variant="outlined"
+            sx={{ 
+              backgroundColor: params.value !== '—' ? 'action.hover' : 'transparent',
+              borderColor: 'divider',
+              color: 'text.secondary'
+            }}
+          />
+        );
+      }
     },
     { 
       field: 'productCount', 
@@ -173,68 +204,97 @@ const CategoriesPage = () => {
       flex: 1,
       align: 'center',
       headerAlign: 'center',
-      renderCell: (params) => (
-        <Chip 
-          label={params.value || 0} 
-          size="small"
-          variant="outlined"
-          color="primary"
-        />
-      )
+      renderCell: (params) => {
+        // Add defensive check
+        if (!params) return null;
+        
+        return (
+          <Chip 
+            label={params.value || 0} 
+            size="small"
+            variant="outlined"
+            color="primary"
+          />
+        );
+      }
     },
     { 
       field: 'status', 
       headerName: 'Status', 
       flex: 1,
-      renderCell: (params) => (
-        <Chip 
-          label={params.row.isActive ? 'Active' : 'Inactive'} 
-          color={params.row.isActive ? 'success' : 'default'}
-          size="small"
-          variant="outlined"
-        />
-      )
+      renderCell: (params) => {
+        // Add defensive check
+        if (!params || !params.row) return;
+        
+        return (
+          <Chip 
+            label={params.row.isActive ? 'Active' : 'Inactive'} 
+            color={params.row.isActive ? 'success' : 'default'}
+            size="small"
+            variant="outlined"
+          />
+        );
+      }
     },
     { 
-      field: 'createdAt', 
+      field: 'created_at', 
       headerName: 'Created', 
       flex: 1.5,
-      valueFormatter: (params) => 
-        params.value ? format(new Date(params.value), 'PPpp') : '—',
+      valueFormatter: (params) => {
+        try {
+          // Add defensive check
+          if (!params) return '—';
+          
+          // params.value is { seconds, nanos }
+          if (params.value && typeof params.value.seconds === 'number') {
+            const date = new Date(params.value.seconds * 1000 + Math.floor(params.value.nanos / 1e6));
+            return format(date, 'PPpp');
+          }
+          return '—';
+        } catch (error) {
+          console.error('Error in date valueFormatter:', error);
+          return '—';
+        }
+      },
     },
     {
       field: 'actions',
       headerName: 'Actions',
       sortable: false,
       flex: 1,
-      renderCell: (params) => (
-        <Box>
-          <Tooltip title="Edit">
-            <IconButton 
-              size="small" 
-              onClick={(e) => {
-                e.stopPropagation();
-                handleEditCategory(params.row);
-              }}
-              color="primary"
-            >
-              <EditIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Delete">
-            <IconButton 
-              size="small" 
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDeleteClick(params.row);
-              }}
-              color="error"
-            >
-              <DeleteIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        </Box>
-      ),
+      renderCell: (params) => {
+        // Add defensive check
+        if (!params || !params.row) return null;
+        
+        return (
+          <Box>
+            <Tooltip title="Edit">
+              <IconButton 
+                size="small" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleEditCategory(params.row);
+                }}
+                color="primary"
+              >
+                <EditIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Delete">
+              <IconButton 
+                size="small" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteClick(params.row);
+                }}
+                color="error"
+              >
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        );
+      },
     },
   ];
 
@@ -272,10 +332,10 @@ const CategoriesPage = () => {
       
       <Paper elevation={3} sx={{ height: 600, width: '100%' }}>
         <DataGrid
-          rows={categories}
+          rows={safeCategories}
           columns={columns}
           loading={loading}
-          getRowId={(row) => row._id}
+          getRowId={(row) => row.id}
           pageSizeOptions={[5, 10, 25, 50]}
           paginationMode="server"
           paginationModel={paginationModel}

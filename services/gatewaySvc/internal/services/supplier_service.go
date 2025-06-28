@@ -37,7 +37,11 @@ func (s *SupplierServiceImpl) CreateSupplier(ctx context.Context, req *supplierv
 		zap.String("name", req.GetName()),
 	)
 	
-	supplier, err := s.client.CreateSupplier(ctx, req)
+	resp, err := s.client.CreateSupplier(ctx, req)
+	if err != nil {
+		// error handled below
+	}
+	supplier := resp.GetSupplier()
 	if err != nil {
 		s.logger.Error("Failed to create supplier",
 			zap.String("name", req.GetName()),
@@ -54,7 +58,8 @@ func (s *SupplierServiceImpl) GetSupplier(ctx context.Context, id string) (*supp
 		zap.String("id", id),
 	)
 	
-	supplier, err := s.client.GetSupplier(ctx, id)
+	resp, err := s.client.GetSupplier(ctx, &supplierv1.GetSupplierRequest{Id: id})
+	supplier := resp.GetSupplier()
 	if err != nil {
 		s.logger.Error("Failed to get supplier",
 			zap.String("id", id),
@@ -72,7 +77,8 @@ func (s *SupplierServiceImpl) UpdateSupplier(ctx context.Context, req *supplierv
 		zap.String("name", req.GetName()),
 	)
 	
-	supplier, err := s.client.UpdateSupplier(ctx, req)
+	resp, err := s.client.UpdateSupplier(ctx, req)
+	supplier := resp.GetSupplier()
 	if err != nil {
 		s.logger.Error("Failed to update supplier",
 			zap.String("id", req.GetId()),
@@ -89,7 +95,7 @@ func (s *SupplierServiceImpl) DeleteSupplier(ctx context.Context, id string) err
 		zap.String("id", id),
 	)
 	
-	success, err := s.client.DeleteSupplier(ctx, id)
+	_, err := s.client.DeleteSupplier(ctx, &supplierv1.DeleteSupplierRequest{Id: id})
 	if err != nil {
 		s.logger.Error("Failed to delete supplier",
 			zap.String("id", id),
@@ -98,9 +104,7 @@ func (s *SupplierServiceImpl) DeleteSupplier(ctx context.Context, id string) err
 		return fmt.Errorf("failed to delete supplier: %w", err)
 	}
 	
-	if !success {
-		return fmt.Errorf("supplier deletion failed")
-	}
+	
 	return nil
 }
 
@@ -112,7 +116,13 @@ func (s *SupplierServiceImpl) ListSuppliers(ctx context.Context, page, pageSize 
 		zap.String("search", search),
 	)
 	
-	suppliers, total, err := s.client.ListSuppliers(ctx, page, pageSize, search)
+	resp, err := s.client.ListSuppliers(ctx, &supplierv1.ListSuppliersRequest{
+		Page: page,
+		PageSize: pageSize,
+		Search: search,
+	})
+	suppliers := resp.GetSuppliers()
+	total := resp.GetTotal()
 	if err != nil {
 		s.logger.Error("Failed to list suppliers",
 			zap.Error(err),
@@ -132,7 +142,9 @@ func (s *SupplierServiceImpl) Close() error {
 func (s *SupplierServiceImpl) ListAdapters(ctx context.Context) ([]*supplierv1.SupplierAdapter, error) {
 	s.logger.Debug("ListAdapters")
 	
-	adapters, err := s.client.ListAdapters(ctx)
+	req := &supplierv1.ListAdaptersRequest{}
+	adaptersResp, err := s.client.ListAdapters(ctx, req)
+	adapters := adaptersResp.GetAdapters()
 	if err != nil {
 		s.logger.Error("Failed to list adapters",
 			zap.Error(err),
@@ -148,7 +160,9 @@ func (s *SupplierServiceImpl) GetAdapterCapabilities(ctx context.Context, adapte
 		zap.String("adapterName", adapterName),
 	)
 	
-	capabilities, err := s.client.GetAdapterCapabilities(ctx, adapterName)
+	req := &supplierv1.GetAdapterCapabilitiesRequest{AdapterName: adapterName}
+	capResp, err := s.client.GetAdapterCapabilities(ctx, req)
+	capabilities := capResp.GetCapabilities()
 	if err != nil {
 		s.logger.Error("Failed to get adapter capabilities",
 			zap.String("adapterName", adapterName),
@@ -165,7 +179,8 @@ func (s *SupplierServiceImpl) TestAdapterConnection(ctx context.Context, adapter
 		zap.String("adapterName", adapterName),
 	)
 	
-	err := s.client.TestAdapterConnection(ctx, adapterName, config)
+	req := &supplierv1.TestAdapterConnectionRequest{AdapterName: adapterName, Config: config}
+	_, err := s.client.TestAdapterConnection(ctx, req)
 	if err != nil {
 		s.logger.Error("Failed to test adapter connection",
 			zap.String("adapterName", adapterName),
@@ -182,7 +197,9 @@ func (s *SupplierServiceImpl) SyncProducts(ctx context.Context, supplierID strin
 		zap.String("supplierID", supplierID),
 	)
 	
-	jobID, err := s.client.SyncProducts(ctx, supplierID, options)
+	req := &supplierv1.SyncProductsRequest{SupplierId: supplierID, Options: options}
+	prodResp, err := s.client.SyncProducts(ctx, req)
+	jobID := prodResp.GetJobId()
 	if err != nil {
 		s.logger.Error("Failed to sync products",
 			zap.String("supplierID", supplierID),
@@ -199,7 +216,9 @@ func (s *SupplierServiceImpl) SyncInventory(ctx context.Context, supplierID stri
 		zap.String("supplierID", supplierID),
 	)
 	
-	jobID, err := s.client.SyncInventory(ctx, supplierID, options)
+	req := &supplierv1.SyncInventoryRequest{SupplierId: supplierID, Options: options}
+	invResp, err := s.client.SyncInventory(ctx, req)
+	jobID := invResp.GetJobId()
 	if err != nil {
 		s.logger.Error("Failed to sync inventory",
 			zap.String("supplierID", supplierID),

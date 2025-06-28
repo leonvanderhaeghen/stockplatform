@@ -7,10 +7,10 @@ import (
 
 	"google.golang.org/grpc"
 
+	storev1 "github.com/leonvanderhaeghen/stockplatform/services/storeSvc/api/gen/go/proto/store/v1"
 	"github.com/leonvanderhaeghen/stockplatform/services/storeSvc/internal/config"
 	"github.com/leonvanderhaeghen/stockplatform/services/storeSvc/internal/database"
 	"github.com/leonvanderhaeghen/stockplatform/services/storeSvc/internal/service"
-	storev1 "github.com/leonvanderhaeghen/stockplatform/services/storeSvc/api/gen/go/proto/store/v1"
 )
 
 // Server represents the gRPC server

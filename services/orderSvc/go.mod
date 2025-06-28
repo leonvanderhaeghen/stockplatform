@@ -12,7 +12,7 @@ require (
 	github.com/IBM/sarama v1.43.2
 	github.com/google/uuid v1.6.0
 	github.com/leonvanderhaeghen/stockplatform/services/inventorySvc v0.0.0-20250617235535-5a86d542f1f1
-	github.com/leonvanderhaeghen/stockplatform/services/userSvc v0.0.0-00010101000000-000000000000
+	github.com/leonvanderhaeghen/stockplatform/services/userSvc v0.0.0-20250617235535-5a86d542f1f1
 	go.mongodb.org/mongo-driver v1.17.4
 	go.uber.org/zap v1.27.0
 	google.golang.org/grpc v1.73.0

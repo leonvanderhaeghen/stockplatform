@@ -43,7 +43,13 @@ func (s *ProductServiceImpl) CreateCategory(
 		zap.Bool("isActive", isActive),
 	)
 
-	resp, err := s.client.CreateCategory(ctx, name, description, parentID, isActive)
+
+	resp, err := s.client.CreateCategory(ctx, &productv1.CreateCategoryRequest{
+		Name:        name,
+		Description: description,
+		ParentId:    parentID,
+		IsActive:    isActive,
+	})
 	if err != nil {
 		s.logger.Error("Failed to create category",
 			zap.String("name", name),
@@ -240,24 +246,7 @@ func (s *ProductServiceImpl) CreateProduct(
 	}
 
 	// Call the gRPC service
-	resp, err := s.client.CreateProduct(ctx, 
-		req.Name,
-		req.Description,
-		req.CostPrice,
-		req.SellingPrice,
-		req.Currency,
-		req.Sku,
-		req.Barcode,
-		req.SupplierId,
-		req.CategoryIds,
-		req.IsActive,
-		req.InStock,
-		req.StockQty,
-		req.LowStockAt,
-		req.ImageUrls,
-		req.VideoUrls,
-		req.Metadata,
-	)
+	resp, err := s.client.CreateProduct(ctx, req)
 	if err != nil {
 		s.logger.Error("Failed to create product",
 			zap.Error(err),
@@ -343,24 +332,26 @@ func (s *ProductServiceImpl) UpdateProduct(
 	}
 
 	// 3. Create a new product with the updated fields
-	_, err = s.client.CreateProduct(ctx, 
-		existing.Name,
-		existing.Description,
-		existing.CostPrice,
-		existing.SellingPrice,
-		existing.Currency,
-		existing.Sku,
-		existing.Barcode,
-		existing.SupplierId,
-		existing.CategoryIds,
-		existing.IsActive,
-		existing.InStock,
-		existing.StockQty,
-		existing.LowStockAt,
-		existing.ImageUrls,
-		existing.VideoUrls,
-		nil, // metadata is not used in the client method
-	)
+	newReq := &productv1.CreateProductRequest{
+		Name:         existing.Name,
+		Description:  existing.Description,
+		CostPrice:    existing.CostPrice,
+		SellingPrice: existing.SellingPrice,
+		Currency:     existing.Currency,
+		Sku:          existing.Sku,
+		Barcode:      existing.Barcode,
+		SupplierId:   existing.SupplierId,
+		CategoryIds:  existing.CategoryIds,
+		IsActive:     existing.IsActive,
+		InStock:      existing.InStock,
+		StockQty:     existing.StockQty,
+		LowStockAt:   existing.LowStockAt,
+		ImageUrls:    existing.ImageUrls,
+		VideoUrls:    existing.VideoUrls,
+		Metadata:     existing.Metadata,
+	}
+
+	_, err = s.client.CreateProduct(ctx, newReq)
 	if err != nil {
 		s.logger.Error("Failed to create updated product",
 			zap.String("id", id),
@@ -406,24 +397,26 @@ func (s *ProductServiceImpl) DeleteProduct(ctx context.Context, id string) error
 	existing.IsActive = false
 
 	// 3. Create a new version of the product with IsActive = false
-	_, err = s.client.CreateProduct(ctx, 
-		existing.Name,
-		existing.Description,
-		existing.CostPrice,
-		existing.SellingPrice,
-		existing.Currency,
-		existing.Sku,
-		existing.Barcode,
-		existing.SupplierId,
-		existing.CategoryIds,
-		false, // Mark as inactive
-		existing.InStock,
-		existing.StockQty,
-		existing.LowStockAt,
-		existing.ImageUrls,
-		existing.VideoUrls,
-		nil, // metadata is not used in the client method
-	)
+	newReq := &productv1.CreateProductRequest{
+		Name:         existing.Name,
+		Description:  existing.Description,
+		CostPrice:    existing.CostPrice,
+		SellingPrice: existing.SellingPrice,
+		Currency:     existing.Currency,
+		Sku:          existing.Sku,
+		Barcode:      existing.Barcode,
+		SupplierId:   existing.SupplierId,
+		CategoryIds:  existing.CategoryIds,
+		IsActive:     false,
+		InStock:      existing.InStock,
+		StockQty:     existing.StockQty,
+		LowStockAt:   existing.LowStockAt,
+		ImageUrls:    existing.ImageUrls,
+		VideoUrls:    existing.VideoUrls,
+		Metadata:     existing.Metadata,
+	}
+
+	_, err = s.client.CreateProduct(ctx, newReq)
 	if err != nil {
 		s.logger.Error("Failed to deactivate product",
 			zap.String("id", id),

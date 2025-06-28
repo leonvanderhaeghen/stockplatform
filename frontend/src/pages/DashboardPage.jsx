@@ -6,8 +6,6 @@ import {
   Paper,
   Typography,
   Button,
-  Divider,
-  useTheme,
   useMediaQuery,
 } from '@mui/material';
 import {
@@ -20,20 +18,12 @@ import {
 import { DataGrid } from '@mui/x-data-grid';
 import { useQuery } from '@tanstack/react-query';
 import productService from '../services/productService';
+import orderService from '../services/orderService';
+import categoryService from '../services/categoryService';
 import { formatCurrency } from '../utils/formatters';
 
-// Mock data for recent orders
-const recentOrders = [
-  { id: 1, orderId: 'ORD-001', customer: 'John Doe', amount: 125.99, status: 'Completed', date: '2023-06-15' },
-  { id: 2, orderId: 'ORD-002', customer: 'Jane Smith', amount: 89.50, status: 'Processing', date: '2023-06-14' },
-  { id: 3, orderId: 'ORD-003', customer: 'Acme Corp', amount: 245.75, status: 'Shipped', date: '2023-06-14' },
-  { id: 4, orderId: 'ORD-004', customer: 'Tech Solutions', amount: 179.99, status: 'Pending', date: '2023-06-13' },
-  { id: 5, orderId: 'ORD-005', customer: 'Retail Plus', amount: 320.00, status: 'Completed', date: '2023-06-12' },
-];
-
-const StatCard = ({ title, value, icon: Icon, color, onClick }) => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+const StatCard = ({ title, value, icon: Icon, color, onClick, loading = false }) => {
+  const isMobile = useMediaQuery('sm');
 
   return (
     <Paper 
@@ -45,7 +35,7 @@ const StatCard = ({ title, value, icon: Icon, color, onClick }) => {
         transition: 'transform 0.2s, box-shadow 0.2s',
         '&:hover': {
           transform: 'translateY(-4px)',
-          boxShadow: theme.shadows[8],
+          boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.2)',
         },
         cursor: 'pointer',
       }}
@@ -57,7 +47,7 @@ const StatCard = ({ title, value, icon: Icon, color, onClick }) => {
             {title}
           </Typography>
           <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
-            {value}
+            {loading ? '...' : value}
           </Typography>
         </Box>
         <Box
@@ -88,73 +78,112 @@ const StatCard = ({ title, value, icon: Icon, color, onClick }) => {
 
 const DashboardPage = () => {
   const navigate = useNavigate();
-  const theme = useTheme();
 
-  // Mock products data to use when API is not available
-  const mockProducts = [
-    { id: 1, name: 'Sample Product 1', category: { name: 'Electronics' }, stock: 42, price: 99.99 },
-    { id: 2, name: 'Sample Product 2', category: { name: 'Clothing' }, stock: 15, price: 29.99 },
-    { id: 3, name: 'Sample Product 3', category: { name: 'Home' }, stock: 7, price: 149.99 },
-    { id: 4, name: 'Sample Product 4', category: { name: 'Electronics' }, stock: 23, price: 199.99 },
-    { id: 5, name: 'Sample Product 5', category: { name: 'Books' }, stock: 31, price: 14.99 },
-  ];
-
-  // Fetch products data with fallback to mock data
-  const { data: products = [], isLoading } = useQuery({
+  // Fetch dashboard statistics
+  const { data: productsData, isLoading: productsLoading } = useQuery({
     queryKey: ['dashboard-products'],
     queryFn: async () => {
       try {
-        const data = await productService.getProducts({ limit: 5 });
-        return data;
+        return await productService.getProducts({ limit: 5 });
       } catch (error) {
-        console.warn('Using mock data due to API error:', error);
-        return mockProducts;
+        console.error('Error fetching products:', error);
+        return [];
       }
     },
-    initialData: mockProducts, // Use mock data initially
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  // Calculate statistics
-  const totalProducts = 142;
-  const totalOrders = 89;
-  const revenue = 12543.75;
-  const growth = 12.5;
+  const { data: ordersData, isLoading: ordersLoading } = useQuery({
+    queryKey: ['dashboard-orders'],
+    queryFn: async () => {
+      try {
+        return await orderService.getOrders({ limit: 5 });
+      } catch (error) {
+        console.error('Error fetching orders:', error);
+        return [];
+      }
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: categoriesData, isLoading: categoriesLoading } = useQuery({
+    queryKey: ['dashboard-categories'],
+    queryFn: async () => {
+      try {
+        return await categoryService.getCategories({ limit: 100 });
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+        return [];
+      }
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: statsData, isLoading: statsLoading } = useQuery({
+    queryKey: ['dashboard-stats'],
+    queryFn: async () => {
+      try {
+        // Fetch basic statistics
+        const [products, orders] = await Promise.all([
+          productService.getProducts({ limit: 1000 }),
+          orderService.getOrders({ limit: 1000 })
+        ]);
+
+        // Calculate revenue from orders
+        const revenue = Array.isArray(orders) 
+          ? orders.reduce((sum, order) => sum + (order.total || order.amount || 0), 0)
+          : 0;
+
+        // Calculate growth (mock for now - would need historical data)
+        const growth = 12.5;
+
+        return {
+          totalProducts: Array.isArray(products) ? products.length : 0,
+          totalOrders: Array.isArray(orders) ? orders.length : 0,
+          revenue,
+          growth
+        };
+      } catch (error) {
+        console.error('Error fetching stats:', error);
+        return {
+          totalProducts: 0,
+          totalOrders: 0,
+          revenue: 0,
+          growth: 0
+        };
+      }
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
   const handleAddProduct = () => {
     navigate('/products/new');
   };
 
-  const columns = [
+  const productColumns = [
     { 
       field: 'name', 
-      headerName: 'Product', 
+      headerName: 'Product Name', 
       flex: 1,
       minWidth: 200,
     },
     { 
       field: 'category', 
       headerName: 'Category', 
-      width: 150,
-      renderCell: (params) => (
-        <Typography variant="body2" color="text.secondary">
-          {params.row.category?.name || 'N/A'}
-        </Typography>
-      ),
+      flex: 1,
+      valueGetter: (params) => params.row.category?.name || 'N/A',
     },
     { 
       field: 'stock', 
       headerName: 'Stock', 
-      width: 120,
-      align: 'right',
-      headerAlign: 'right',
+      width: 100,
+      type: 'number',
     },
     { 
       field: 'price', 
       headerName: 'Price', 
       width: 120,
-      align: 'right',
-      headerAlign: 'right',
-      valueFormatter: (params) => formatCurrency(params.value),
+      valueFormatter: (params) => formatCurrency(params.value || 0),
     },
   ];
 
@@ -162,26 +191,20 @@ const DashboardPage = () => {
     { 
       field: 'orderId', 
       headerName: 'Order ID', 
-      width: 130,
+      width: 120,
+      valueGetter: (params) => params.row.orderId || params.row._id || params.row.id,
     },
     { 
       field: 'customer', 
       headerName: 'Customer', 
       flex: 1,
-      minWidth: 150,
-    },
-    { 
-      field: 'date', 
-      headerName: 'Date', 
-      width: 120,
+      valueGetter: (params) => params.row.customer?.name || params.row.customerName || 'N/A',
     },
     { 
       field: 'amount', 
       headerName: 'Amount', 
       width: 120,
-      align: 'right',
-      headerAlign: 'right',
-      valueFormatter: (params) => formatCurrency(params.value),
+      valueFormatter: (params) => formatCurrency(params.row.total || params.row.amount || 0),
     },
     { 
       field: 'status', 
@@ -191,13 +214,13 @@ const DashboardPage = () => {
         <Box
           sx={{
             backgroundColor: 
-              params.value === 'Completed' ? 'success.light' :
-              params.value === 'Processing' ? 'info.light' :
-              params.value === 'Shipped' ? 'primary.light' : 'warning.light',
+              params.value === 'Completed' || params.value === 'completed' ? 'success.light' :
+              params.value === 'Processing' || params.value === 'processing' ? 'info.light' :
+              params.value === 'Shipped' || params.value === 'shipped' ? 'primary.light' : 'warning.light',
             color: 
-              params.value === 'Completed' ? 'success.dark' :
-              params.value === 'Processing' ? 'info.dark' :
-              params.value === 'Shipped' ? 'primary.dark' : 'warning.dark',
+              params.value === 'Completed' || params.value === 'completed' ? 'success.dark' :
+              params.value === 'Processing' || params.value === 'processing' ? 'info.dark' :
+              params.value === 'Shipped' || params.value === 'shipped' ? 'primary.dark' : 'warning.dark',
             px: 1.5,
             py: 0.5,
             borderRadius: 4,
@@ -206,11 +229,15 @@ const DashboardPage = () => {
             textTransform: 'capitalize',
           }}
         >
-          {params.value}
+          {params.value || 'pending'}
         </Box>
       ),
     },
   ];
+
+  const stats = statsData || { totalProducts: 0, totalOrders: 0, revenue: 0, growth: 0 };
+  const products = Array.isArray(productsData) ? productsData : [];
+  const orders = Array.isArray(ordersData) ? ordersData : [];
 
   return (
     <Box sx={{ p: 3 }}>
@@ -233,35 +260,40 @@ const DashboardPage = () => {
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
             title="Total Products"
-            value={totalProducts.toLocaleString()}
+            value={stats.totalProducts.toLocaleString()}
             icon={InventoryIcon}
             color="primary"
             onClick={() => navigate('/products')}
+            loading={statsLoading}
           />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
             title="Total Orders"
-            value={totalOrders.toLocaleString()}
+            value={stats.totalOrders.toLocaleString()}
             icon={OrdersIcon}
             color="secondary"
             onClick={() => navigate('/orders')}
+            loading={statsLoading}
           />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
             title="Revenue"
-            value={formatCurrency(revenue)}
+            value={formatCurrency(stats.revenue)}
             icon={TrendingIcon}
             color="success"
+            loading={statsLoading}
           />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
-            title="Growth"
-            value={`${growth}%`}
+            title="Categories"
+            value={Array.isArray(categoriesData) ? categoriesData.length : 0}
             icon={CategoryIcon}
             color="info"
+            onClick={() => navigate('/categories')}
+            loading={categoriesLoading}
           />
         </Grid>
       </Grid>
@@ -284,11 +316,12 @@ const DashboardPage = () => {
         <Box sx={{ height: 400, width: '100%' }}>
           <DataGrid
             rows={products}
-            columns={columns}
+            columns={productColumns}
             pageSize={5}
             rowsPerPageOptions={[5]}
             disableSelectionOnClick
-            loading={isLoading}
+            loading={productsLoading}
+            getRowId={(row) => row._id || row.id}
           />
         </Box>
       </Paper>
@@ -310,11 +343,13 @@ const DashboardPage = () => {
         </Box>
         <Box sx={{ height: 400, width: '100%' }}>
           <DataGrid
-            rows={recentOrders}
+            rows={orders}
             columns={orderColumns}
             pageSize={5}
             rowsPerPageOptions={[5]}
             disableSelectionOnClick
+            loading={ordersLoading}
+            getRowId={(row) => row._id || row.id}
           />
         </Box>
       </Paper>

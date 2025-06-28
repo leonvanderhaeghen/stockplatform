@@ -7,14 +7,6 @@ import { ArrowBack as ArrowBackIcon, Save as SaveIcon } from '@mui/icons-materia
 import ProductForm from '../components/products/ProductForm';
 import productService from '../services/productService';
 
-// Mock categories - in a real app, this would come from an API
-const mockCategories = [
-  { id: '1', name: 'Electronics' },
-  { id: '2', name: 'Clothing' },
-  { id: '3', name: 'Books' },
-  { id: '4', name: 'Home & Kitchen' },
-  { id: '5', name: 'Sports & Outdoors' },
-];
 
 const ProductFormPage = ({ isEdit = false }) => {
   const { id } = useParams();
@@ -30,6 +22,33 @@ const ProductFormPage = ({ isEdit = false }) => {
     onError: (error) => {
       toast.error(error.response?.data?.message || 'Failed to load product');
       navigate('/products');
+    },
+  });
+
+  // Fetch categories from API
+  const { data: categoriesData, isLoading: isLoadingCategories, error: categoriesError } = useQuery({
+    queryKey: ['categories'],
+    queryFn: async () => {
+      const res = await productService.getCategories();
+      // Defensive: API may return { data: { categories: [...] } } or { categories: [...] } or [...]
+      if (Array.isArray(res)) return res;
+      if (Array.isArray(res?.data?.categories)) return res.data.categories;
+      if (Array.isArray(res?.categories)) return res.categories;
+      return [];
+    },
+  });
+
+  // Fetch suppliers from API
+  const { data: suppliersData, isLoading: isLoadingSuppliers, error: suppliersError } = useQuery({
+    queryKey: ['suppliers'],
+    queryFn: async () => {
+      const { supplierService } = await import('../services');
+      const res = await supplierService.getSuppliers();
+      // Defensive: API may return { suppliers: [...] } or { data: { suppliers: [...] } } or [...]
+      if (Array.isArray(res)) return res;
+      if (Array.isArray(res?.suppliers)) return res.suppliers;
+      if (Array.isArray(res?.data?.suppliers)) return res.data.suppliers;
+      return [];
     },
   });
 
@@ -94,12 +113,19 @@ const ProductFormPage = ({ isEdit = false }) => {
     mutation.mutate(values);
   };
 
-  if (isLoadingProduct || initialValues === null) {
+  if (isLoadingProduct || initialValues === null || isLoadingCategories || isLoadingSuppliers) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
         <CircularProgress />
       </Box>
     );
+  }
+
+  if (categoriesError) {
+    return <Box color="error.main">Failed to load categories: {categoriesError.message}</Box>;
+  }
+  if (suppliersError) {
+    return <Box color="error.main">Failed to load suppliers: {suppliersError.message}</Box>;
   }
 
   return (
@@ -138,7 +164,8 @@ const ProductFormPage = ({ isEdit = false }) => {
             onSubmit={handleSubmit}
             loading={mutation.isLoading}
             isEdit={isEdit}
-            categories={mockCategories}
+            categories={categoriesData}
+            suppliers={suppliersData}
           />
         </Paper>
       </Box>

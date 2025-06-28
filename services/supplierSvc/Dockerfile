@@ -28,18 +28,18 @@ RUN \
     done
 
 # Create necessary directories for generated code
-RUN mkdir -p /app/pkg/gen/go/supplier/v1
+RUN mkdir -p api/gen/go/supplier/v1
 
 # Generate protobuf code
-RUN protoc -I=/app/proto \
-    --go_out=/app/pkg/gen/go/supplier/v1 \
+RUN protoc -I=api/proto \
+    --go_out=api/gen/go/supplier/v1 \
     --go_opt=paths=source_relative \
-    --go-grpc_out=/app/pkg/gen/go/supplier/v1 \
+    --go-grpc_out=api/gen/go/supplier/v1 \
     --go-grpc_opt=paths=source_relative \
-    /app/proto/supplier/v1/supplier.proto
+    api/proto/supplier/v1/supplier.proto
 
 # Verify the generated files
-RUN ls -la /app/pkg/gen/go/supplier/v1/
+RUN ls -la api/gen/go/supplier/v1/
 
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build -o /supplierSvc ./cmd/main.go

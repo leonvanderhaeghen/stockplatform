@@ -190,6 +190,15 @@ func (s *Server) SetupRoutes() {
 		suppliers.GET("/:id", supplierHandler.GetSupplier)
 		suppliers.PUT("/:id", supplierHandler.UpdateSupplier)
 		suppliers.DELETE("/:id", supplierHandler.DeleteSupplier)
+		
+		// Adapter routes
+		suppliers.GET("/adapters", supplierHandler.ListAdapters)
+		suppliers.GET("/adapters/:name/capabilities", supplierHandler.GetAdapterCapabilities)
+		suppliers.POST("/:id/test-connection", supplierHandler.TestAdapterConnection)
+		
+		// Sync routes
+		suppliers.POST("/:id/sync/products", supplierHandler.SyncProducts)
+		suppliers.POST("/:id/sync/inventory", supplierHandler.SyncInventory)
 	}
 	
 	// POS (Point of Sale) routes (admin/staff only)

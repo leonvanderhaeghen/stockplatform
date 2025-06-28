@@ -366,12 +366,17 @@ func (s *UserServiceImpl) ListUsers(
 	active *bool,
 	limit, offset int,
 ) (interface{}, error) {
-	s.logger.Debug("ListUsers",
+	logFields := []zap.Field{
 		zap.String("role", role),
-		zap.Bool("active", *active),
 		zap.Int("limit", limit),
 		zap.Int("offset", offset),
-	)
+	}
+	
+	if active != nil {
+		logFields = append(logFields, zap.Bool("active", *active))
+	}
+	
+	s.logger.Debug("ListUsers", logFields...)
 
 	req := &userv1.ListUsersRequest{
 		Role:   role,

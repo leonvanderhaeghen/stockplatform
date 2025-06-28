@@ -1,8 +1,6 @@
 package server
 
 import (
-	"context"
-	"fmt"
 	"net"
 	"os"
 	"os/signal"
@@ -11,10 +9,11 @@ import (
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 
-	"github.com/leonvanderhaeghen/stockplatform/services/productSvc/api/gen/go/proto/product/v1"
+	productv1 "github.com/leonvanderhaeghen/stockplatform/services/productSvc/api/gen/go/proto/product/v1"
 	"github.com/leonvanderhaeghen/stockplatform/services/productSvc/internal/application"
 	"github.com/leonvanderhaeghen/stockplatform/services/productSvc/internal/config"
 	"github.com/leonvanderhaeghen/stockplatform/services/productSvc/internal/database"

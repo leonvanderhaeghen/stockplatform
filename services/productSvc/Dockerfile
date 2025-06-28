@@ -28,18 +28,18 @@ RUN \
     done
 
 # Create necessary directories for generated code
-RUN mkdir -p /app/pkg/gen/go/product/v1
+RUN mkdir -p api/gen/go/product/v1
 
 # Generate protobuf code
-RUN protoc -I=/app/proto \
-    --go_out=/app/pkg/gen/go/product/v1 \
+RUN protoc -I=api/proto \
+    --go_out=api/gen/go/product/v1 \
     --go_opt=paths=source_relative \
-    --go-grpc_out=/app/pkg/gen/go/product/v1 \
+    --go-grpc_out=api/gen/go/product/v1 \
     --go-grpc_opt=paths=source_relative \
-    /app/proto/product/v1/product.proto
+    api/proto/product/v1/product.proto
 
 # Verify the generated files
-RUN ls -la /app/pkg/gen/go/product/v1/
+RUN ls -la api/gen/go/product/v1/
 
 # Download all dependencies including github.com/gorilla/mux and github.com/gorilla/handlers
 RUN go mod download all
@@ -63,7 +63,7 @@ ENV TZ=UTC \
 COPY --from=builder /productSvc .
 
 # Copy the generated protobuf code
-COPY --from=builder /app/pkg/gen /app/pkg/gen/
+COPY --from=builder /app/services/productSvc/api/gen /app/api/gen/
 
 # Expose the application port
 EXPOSE 50053

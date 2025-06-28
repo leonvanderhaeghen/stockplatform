@@ -52,6 +52,39 @@ const logError = (method, url, error) => {
 };
 
 const authService = {
+  // Register new user
+  register: async (userData) => {
+    const url = `${AUTH_BASE}/register`;
+    try {
+      logRequest('POST', url, { ...userData, password: '***' });
+      const response = await api.post(url, userData);
+      logResponse('POST', url, response);
+      
+      // The backend wraps the response in a 'data' field
+      const responseData = response.data.data || response.data;
+      const { token, user } = responseData;
+      
+      if (!token || !user) {
+        throw new Error('Invalid response format from server');
+      }
+      
+      // Map the role if it's a number
+      if (typeof user.role === 'number') {
+        user.role = mapRoleIdToString(user.role);
+      } else if (typeof user.role === 'string') {
+        // Ensure the role is uppercase to match our constants
+        user.role = user.role.toUpperCase();
+      }
+      
+      return {
+        token,
+        user
+      };
+    } catch (error) {
+      logError('POST', url, error);
+    }
+  },
+
   // Login user
   login: async (email, password) => {
     const url = `${AUTH_BASE}/login`;

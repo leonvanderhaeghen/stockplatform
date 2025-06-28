@@ -17,8 +17,8 @@ import (
 	"github.com/leonvanderhaeghen/stockplatform/services/orderSvc/internal/application"
 	"github.com/leonvanderhaeghen/stockplatform/services/orderSvc/internal/config"
 	"github.com/leonvanderhaeghen/stockplatform/services/orderSvc/internal/database"
-	grpcintf "github.com/leonvanderhaeghen/stockplatform/services/orderSvc/internal/interfaces/grpc"
 	"github.com/leonvanderhaeghen/stockplatform/services/orderSvc/internal/domain"
+	grpcintf "github.com/leonvanderhaeghen/stockplatform/services/orderSvc/internal/interfaces/grpc"
 )
 
 // Server holds the gRPC server and its dependencies

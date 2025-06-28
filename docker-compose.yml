@@ -164,12 +164,12 @@ services:
       - "8080:8080"
     environment:
       - PORT=8080
-      - PRODUCT_SERVICE_ADDR=product-service:50053
-      - INVENTORY_SERVICE_ADDR=inventory-service:50054
-      - ORDER_SERVICE_ADDR=order-service:50055
-      - USER_SERVICE_ADDR=user-service:50056
-      - SUPPLIER_SERVICE_ADDR=supplier-service:50057
-      - JWT_SECRET=your-secret-key-here
+      - GATEWAY_SERVICES_PRODUCT_ADDR=product-service:50053
+      - GATEWAY_SERVICES_INVENTORY_ADDR=inventory-service:50054
+      - GATEWAY_SERVICES_ORDER_ADDR=order-service:50055
+      - GATEWAY_SERVICES_USER_ADDR=user-service:50056
+      - GATEWAY_SERVICES_SUPPLIER_ADDR=supplier-service:50057
+      - GATEWAY_JWT_SECRET=your-secret-key-here
       - GO111MODULE=on
     depends_on:
       - product-service

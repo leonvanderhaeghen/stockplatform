@@ -43,18 +43,18 @@ RUN \
     echo "Dependencies downloaded successfully"
 
 # Create necessary directories for generated code
-RUN mkdir -p /app/pkg/gen/go/order/v1
+RUN mkdir -p api/gen/go/order/v1
 
 # Generate protobuf code
-RUN protoc -I=/app/proto \
-    --go_out=/app/pkg/gen/go/order/v1 \
+RUN protoc -I=api/proto \
+    --go_out=api/gen/go/order/v1 \
     --go_opt=paths=source_relative \
-    --go-grpc_out=/app/pkg/gen/go/order/v1 \
+    --go-grpc_out=api/gen/go/order/v1 \
     --go-grpc_opt=paths=source_relative \
-    /app/proto/order/v1/order.proto
+    api/proto/order/v1/order.proto
 
 # Verify the generated files
-RUN ls -la /app/pkg/gen/go/order/v1/
+RUN ls -la api/gen/go/order/v1/
 
 # Build the application with retries and verbose output
 RUN \
@@ -81,6 +81,9 @@ ENV TZ=UTC \
 
 # Copy the binary from builder to the final image
 COPY --from=builder /orderSvc .
+
+# Copy the generated protobuf code
+COPY --from=builder /app/services/orderSvc/api/gen /app/api/gen/
 
 # Expose the application port
 EXPOSE 50055
