@@ -62,8 +62,6 @@ const ProductFormPage = ({ isEdit = false }) => {
         price: product.price || 0,
         cost: product.cost || 0,
         category: product.category?.id || '',
-        inStock: product.inStock !== undefined ? product.inStock : true,
-        stock: product.stock || 0,
         images: product.images || [],
       });
     } else if (!isEdit) {
@@ -75,8 +73,6 @@ const ProductFormPage = ({ isEdit = false }) => {
         price: 0,
         cost: 0,
         category: '',
-        inStock: true,
-        stock: 0,
         images: [],
       });
     }
@@ -90,8 +86,6 @@ const ProductFormPage = ({ isEdit = false }) => {
         // Convert string numbers to numbers
         price: parseFloat(values.price),
         cost: parseFloat(values.cost),
-        stock: parseInt(values.stock, 10),
-        inStock: values.inStock || values.stock > 0,
       };
 
       return isEdit

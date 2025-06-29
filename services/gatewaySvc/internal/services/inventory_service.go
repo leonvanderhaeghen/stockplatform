@@ -607,3 +607,96 @@ func (s *InventoryServiceImpl) DeductForDirectPOSTransaction(
 // Third duplicate implementation of CompletePickup removed to resolve duplicate method error
 
 // Fourth duplicate implementation of DeductForDirectPOSTransaction removed to resolve duplicate method error
+
+// GetInventoryReservations gets inventory reservations with optional filters
+// Note: The inventory service doesn't currently have a method to list reservations,
+// so this returns an empty list as a placeholder
+func (s *InventoryServiceImpl) GetInventoryReservations(
+	ctx context.Context,
+	orderId, productId, status string,
+	limit, offset int,
+) (interface{}, error) {
+	s.logger.Debug("GetInventoryReservations",
+		zap.String("orderId", orderId),
+		zap.String("productId", productId),
+		zap.String("status", status),
+		zap.Int("limit", limit),
+		zap.Int("offset", offset),
+	)
+
+	// TODO: The inventory service doesn't have a method to list reservations yet.
+	// This is a placeholder implementation that returns an empty list.
+	// In the future, we should add a ListReservations method to the inventory service.
+	s.logger.Info("GetInventoryReservations called - returning empty list (method not implemented in inventory service)")
+
+	// Return empty reservations list for now
+	return []interface{}{}, nil
+}
+
+// GetLowStockItems gets inventory items that are low in stock with threshold and location filtering
+func (s *InventoryServiceImpl) GetLowStockItems(
+	ctx context.Context,
+	location string,
+	threshold, limit, offset int,
+) (interface{}, error) {
+	s.logger.Debug("GetLowStockItems",
+		zap.String("location", location),
+		zap.Int("threshold", threshold),
+		zap.Int("limit", limit),
+		zap.Int("offset", offset),
+	)
+
+	// Create the request for listing inventory with low stock filter
+	req := &inventoryv1.ListInventoryRequest{
+		Limit:       int32(limit),
+		Offset:      int32(offset),
+		StockStatus: "low_stock", // Use the stock_status field from protobuf
+	}
+
+	// Call the gRPC method for general inventory listing
+	// Note: Location filtering will be handled by the inventory service internally
+	// or we'll filter the results here if needed
+	resp, err := s.client.ListInventory(ctx, req)
+	if err != nil {
+		s.logger.Error("Failed to get low stock items",
+			zap.Int("threshold", threshold),
+			zap.String("location", location),
+			zap.Error(err),
+		)
+		return nil, fmt.Errorf("failed to get low stock items: %w", err)
+	}
+
+	// Filter by threshold and location if needed
+	filtered := s.filterByThresholdAndLocation(resp.GetInventories(), threshold, location)
+	return filtered, nil
+}
+
+// filterByThreshold filters inventory items based on the provided threshold
+func (s *InventoryServiceImpl) filterByThreshold(items []*inventoryv1.InventoryItem, threshold int) []*inventoryv1.InventoryItem {
+	var filtered []*inventoryv1.InventoryItem
+	for _, item := range items {
+		if item.GetQuantity() <= int32(threshold) {
+			filtered = append(filtered, item)
+		}
+	}
+	return filtered
+}
+
+// filterByThresholdAndLocation filters inventory items based on threshold and location
+func (s *InventoryServiceImpl) filterByThresholdAndLocation(items []*inventoryv1.InventoryItem, threshold int, location string) []*inventoryv1.InventoryItem {
+	var filtered []*inventoryv1.InventoryItem
+	for _, item := range items {
+		// Filter by threshold
+		if item.GetQuantity() > int32(threshold) {
+			continue
+		}
+		
+		// Filter by location if specified
+		if location != "" && item.GetLocationId() != location {
+			continue
+		}
+		
+		filtered = append(filtered, item)
+	}
+	return filtered
+}

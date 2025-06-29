@@ -24,6 +24,7 @@ import {
   DialogActions,
   TextField,
   Alert,
+  AlertTitle,
   CircularProgress,
   Tabs,
   Tab,
@@ -50,8 +51,21 @@ import {
   Delete as DeleteIcon,
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { inventoryService, productService } from '../services';
+import { inventoryService, productService, storeService } from '../services';
 import { formatCurrency, formatDate } from '../utils/formatters';
+import {
+  useInventoryItems,
+  useInventoryReservations,
+  useLowStockItems,
+  useInventoryHistory,
+  useUpdateInventoryQuantity,
+  useReserveInventory,
+  useReleaseInventory,
+  useCreateInventoryItem,
+  useDeleteInventoryItem
+} from '../utils/hooks/useInventory';
+import InventoryStatus from '../components/inventory/InventoryStatus';
+import InventoryErrorBoundary from '../components/inventory/InventoryErrorBoundary';
 
 const InventoryPage = () => {
   const queryClient = useQueryClient();
@@ -86,16 +100,18 @@ const InventoryPage = () => {
   const [removeItemDialogOpen, setRemoveItemDialogOpen] = useState(false);
   const [selectedInventory, setSelectedInventory] = useState(null);
 
-  // Fetch products with inventory data
+  // Fetch products and inventory data using new hooks
   const { data: productsData, isLoading: productsLoading, refetch: refetchProducts } = useQuery({
-    queryKey: ['products-inventory', page, rowsPerPage],
+    queryKey: ['products', page, rowsPerPage],
     queryFn: () => productService.getProducts({
       page: page + 1,
       limit: rowsPerPage,
-      includeInventory: true,
     }),
     keepPreviousData: true,
   });
+
+  // Fetch inventory items using the new hook
+  const { data: inventoryItems = [] } = useInventoryItems();
 
   // Defensive extraction of products array
   const products = Array.isArray(productsData)
@@ -108,111 +124,37 @@ const InventoryPage = () => {
           ? productsData.data
           : [];
 
-  // Fetch inventory reservations
-  const { data: reservationsData, isLoading: reservationsLoading } = useQuery({
-    queryKey: ['inventory-reservations'],
-    queryFn: () => inventoryService.getReservations(),
-    enabled: tabValue === 1,
-  });
+  // Fetch inventory reservations using new hook
+  const { data: reservationsData, isLoading: reservationsLoading } = useInventoryReservations(
+    tabValue === 1 ? {} : undefined
+  );
 
-  // Fetch low stock alerts
-  const { data: lowStockData, isLoading: lowStockLoading } = useQuery({
-    queryKey: ['inventory-low-stock'],
-    queryFn: () => inventoryService.getLowStockAlerts(),
-    enabled: tabValue === 2,
-  });
+  // Fetch low stock alerts using new hook
+  const { data: lowStockData, isLoading: lowStockLoading } = useLowStockItems(
+    tabValue === 2 ? 10 : undefined
+  );
 
-  // Fetch inventory history for selected product
-  const { data: historyData, isLoading: historyLoading } = useQuery({
-    queryKey: ['inventory-history', selectedProduct?.id],
-    queryFn: () => inventoryService.getInventoryHistory(selectedProduct.id),
-    enabled: historyDialogOpen && selectedProduct?.id,
-  });
+  // Fetch inventory history for selected product using new hook
+  const { data: historyData, isLoading: historyLoading } = useInventoryHistory(
+    historyDialogOpen && selectedProduct?.id ? selectedProduct.id : null
+  );
 
-  // Check stock mutation
+  // Use new inventory hooks for mutations
+  const updateQuantityMutation = useUpdateInventoryQuantity();
+  const reserveInventoryMutation = useReserveInventory();
+  const releaseInventoryMutation = useReleaseInventory();
+  const createItemMutation = useCreateInventoryItem();
+  const removeItemMutation = useDeleteInventoryItem();
+
+  // Check stock mutation (keeping original for compatibility)
   const checkStockMutation = useMutation({
     mutationFn: (productId) => inventoryService.checkStock(productId),
     onSuccess: (data) => {
       setSuccess(`Stock check: ${data.available} units available`);
-      queryClient.invalidateQueries(['products-inventory']);
+      setError('');
     },
     onError: (error) => {
-      setError(error.response?.data?.message || 'Failed to check stock');
-    },
-  });
-
-  // Reserve inventory mutation
-  const reserveInventoryMutation = useMutation({
-    mutationFn: ({ productId, reservationData }) => 
-      inventoryService.reserveInventory(productId, reservationData),
-    onSuccess: () => {
-      setSuccess('Inventory reserved successfully');
-      queryClient.invalidateQueries(['products-inventory']);
-      queryClient.invalidateQueries(['inventory-reservations']);
-      setReservationDialogOpen(false);
-      resetReservationData();
-    },
-    onError: (error) => {
-      setError(error.response?.data?.message || 'Failed to reserve inventory');
-    },
-  });
-
-  // Release inventory mutation
-  const releaseInventoryMutation = useMutation({
-    mutationFn: ({ productId, releaseData }) => 
-      inventoryService.releaseInventory(productId, releaseData),
-    onSuccess: () => {
-      setSuccess('Inventory released successfully');
-      queryClient.invalidateQueries(['products-inventory']);
-      queryClient.invalidateQueries(['inventory-reservations']);
-      setReleaseDialogOpen(false);
-      resetReleaseData();
-    },
-    onError: (error) => {
-      setError(error.response?.data?.message || 'Failed to release inventory');
-    },
-  });
-
-  // Adjust inventory mutation
-  const adjustInventoryMutation = useMutation({
-    mutationFn: ({ productId, adjustmentData }) => 
-      inventoryService.adjustInventory(productId, adjustmentData),
-    onSuccess: () => {
-      setSuccess('Inventory adjusted successfully');
-      queryClient.invalidateQueries(['products-inventory']);
-      setAdjustmentDialogOpen(false);
-      resetAdjustmentData();
-    },
-    onError: (error) => {
-      setError(error.response?.data?.message || 'Failed to adjust inventory');
-    },
-  });
-
-  // Create item mutation
-  const createItemMutation = useMutation({
-    mutationFn: (itemData) => productService.createProduct(itemData),
-    onSuccess: () => {
-      setSuccess('Item created successfully');
-      queryClient.invalidateQueries(['products-inventory']);
-      setCreateItemDialogOpen(false);
-      setSelectedInventory(null);
-    },
-    onError: (error) => {
-      setError(error.response?.data?.message || 'Failed to create item');
-    },
-  });
-
-  // Remove item mutation
-  const removeItemMutation = useMutation({
-    mutationFn: (itemId) => productService.deleteProduct(itemId),
-    onSuccess: () => {
-      setSuccess('Item removed successfully');
-      queryClient.invalidateQueries(['products-inventory']);
-      setRemoveItemDialogOpen(false);
-      setSelectedInventory(null);
-    },
-    onError: (error) => {
-      setError(error.response?.data?.message || 'Failed to remove item');
+      setError(`Error checking stock: ${error.message}`);
     },
   });
 
@@ -255,26 +197,36 @@ const InventoryPage = () => {
     if (selectedProduct && reservationData.quantity > 0) {
       reserveInventoryMutation.mutate({
         productId: selectedProduct.id,
-        reservationData,
+        quantity: reservationData.quantity,
+        orderId: reservationData.orderId,
+        notes: reservationData.notes
       });
+      setReservationDialogOpen(false);
+      resetReservationData();
     }
   };
 
   const handleReleaseInventory = () => {
     if (selectedProduct && releaseData.quantity > 0) {
       releaseInventoryMutation.mutate({
-        productId: selectedProduct.id,
-        releaseData,
+        reservationId: releaseData.reservationId,
+        quantity: releaseData.quantity,
+        reason: releaseData.reason
       });
+      setReleaseDialogOpen(false);
+      resetReleaseData();
     }
   };
 
   const handleAdjustInventory = () => {
     if (selectedProduct && adjustmentData.quantity !== 0) {
-      adjustInventoryMutation.mutate({
-        productId: selectedProduct.id,
-        adjustmentData,
+      updateQuantityMutation.mutate({
+        id: selectedProduct.id,
+        change: adjustmentData.type === 'ADD' ? adjustmentData.quantity : -adjustmentData.quantity,
+        reason: adjustmentData.reason || 'Manual adjustment'
       });
+      setAdjustmentDialogOpen(false);
+      resetAdjustmentData();
     }
   };
 
@@ -538,12 +490,13 @@ const InventoryPage = () => {
                       secondary={`SKU: ${item.sku} | Current Stock: ${item.stockQuantity}`}
                     />
                     <ListItemSecondaryAction>
-                      <Chip
-                        label={getStockStatusText(item.stockQuantity)}
-                        color={getStockStatusColor(item.stockQuantity)}
-                        size="small"
-                        variant="outlined"
-                      />
+                      <InventoryErrorBoundary>
+                        <InventoryStatus
+                          quantity={inventoryItems.find(inv => inv.product_id === item.id)?.quantity}
+                          lowStockThreshold={inventoryItems.find(inv => inv.product_id === item.id)?.low_stock_threshold}
+                          showQuantity={true}
+                        />
+                      </InventoryErrorBoundary>
                     </ListItemSecondaryAction>
                   </ListItem>
                   {index < lowStockItems.length - 1 && <Divider />}
@@ -819,9 +772,9 @@ const InventoryPage = () => {
           <Button 
             onClick={handleAdjustInventory} 
             variant="contained"
-            disabled={adjustmentData.quantity === 0 || !adjustmentData.reason || adjustInventoryMutation.isLoading}
+            disabled={adjustmentData.quantity === 0 || !adjustmentData.reason || updateQuantityMutation.isLoading}
           >
-            {adjustInventoryMutation.isLoading ? <CircularProgress size={20} /> : 'Adjust'}
+            {updateQuantityMutation.isLoading ? <CircularProgress size={20} /> : 'Adjust'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -877,46 +830,189 @@ const InventoryPage = () => {
       </Dialog>
 
       {/* Create Item Dialog */}
-      <Dialog open={createItemDialogOpen} onClose={() => setCreateItemDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Create Item</DialogTitle>
+      <Dialog open={createItemDialogOpen} onClose={() => setCreateItemDialogOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <AddIcon />
+            Create New Inventory Item
+          </Box>
+        </DialogTitle>
         <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Name"
-                value={selectedInventory?.name || ''}
-                onChange={(e) => setSelectedInventory({ ...selectedInventory, name: e.target.value })}
-              />
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              Create a new inventory item to track stock levels and manage product availability.
+            </Typography>
+            
+            <Grid container spacing={3}>
+              {/* Basic Information */}
+              <Grid item xs={12}>
+                <Typography variant="h6" sx={{ mb: 2, color: 'primary.main' }}>
+                  Basic Information
+                </Typography>
+              </Grid>
+              
+              <Grid item xs={12} sm={8}>
+                <TextField
+                  fullWidth
+                  label="Product Name"
+                  placeholder="Enter product name"
+                  value={selectedInventory?.name || ''}
+                  onChange={(e) => setSelectedInventory({ ...selectedInventory, name: e.target.value })}
+                  required
+                  error={!selectedInventory?.name}
+                  helperText={!selectedInventory?.name ? "Product name is required" : ""}
+                />
+              </Grid>
+              
+              <Grid item xs={12} sm={4}>
+                <TextField
+                  fullWidth
+                  label="SKU"
+                  placeholder="e.g., PROD-001"
+                  value={selectedInventory?.sku || ''}
+                  onChange={(e) => setSelectedInventory({ ...selectedInventory, sku: e.target.value.toUpperCase() })}
+                  required
+                  error={!selectedInventory?.sku}
+                  helperText={!selectedInventory?.sku ? "SKU is required" : "Unique product identifier"}
+                />
+              </Grid>
+              
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={2}
+                  label="Description"
+                  placeholder="Optional product description"
+                  value={selectedInventory?.description || ''}
+                  onChange={(e) => setSelectedInventory({ ...selectedInventory, description: e.target.value })}
+                  helperText="Brief description of the product"
+                />
+              </Grid>
+
+              {/* Stock Information */}
+              <Grid item xs={12}>
+                <Typography variant="h6" sx={{ mb: 2, mt: 2, color: 'primary.main' }}>
+                  Stock Information
+                </Typography>
+              </Grid>
+              
+              <Grid item xs={12} sm={4}>
+                <TextField
+                  fullWidth
+                  type="number"
+                  label="Initial Quantity"
+                  value={selectedInventory?.quantity || 0}
+                  onChange={(e) => setSelectedInventory({ ...selectedInventory, quantity: Math.max(0, parseInt(e.target.value) || 0) })}
+                  inputProps={{ min: 0 }}
+                  helperText="Starting stock quantity"
+                />
+              </Grid>
+              
+              <Grid item xs={12} sm={4}>
+                <TextField
+                  fullWidth
+                  type="number"
+                  label="Minimum Stock Level"
+                  value={selectedInventory?.minStockLevel || 0}
+                  onChange={(e) => setSelectedInventory({ ...selectedInventory, minStockLevel: Math.max(0, parseInt(e.target.value) || 0) })}
+                  inputProps={{ min: 0 }}
+                  helperText="Low stock alert threshold"
+                />
+              </Grid>
+              
+              <Grid item xs={12} sm={4}>
+                <TextField
+                  fullWidth
+                  type="number"
+                  label="Maximum Stock Level"
+                  value={selectedInventory?.maxStockLevel || 0}
+                  onChange={(e) => setSelectedInventory({ ...selectedInventory, maxStockLevel: Math.max(0, parseInt(e.target.value) || 0) })}
+                  inputProps={{ min: 0 }}
+                  helperText="Maximum stock capacity"
+                />
+              </Grid>
+
+              {/* Location & Category */}
+              <Grid item xs={12}>
+                <Typography variant="h6" sx={{ mb: 2, mt: 2, color: 'primary.main' }}>
+                  Organization
+                </Typography>
+              </Grid>
+              
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Storage Location"
+                  placeholder="e.g., Warehouse A, Shelf B-3"
+                  value={selectedInventory?.location || ''}
+                  onChange={(e) => setSelectedInventory({ ...selectedInventory, location: e.target.value })}
+                  helperText="Physical storage location"
+                />
+              </Grid>
+              
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Category"
+                  placeholder="e.g., Electronics, Clothing"
+                  value={selectedInventory?.category || ''}
+                  onChange={(e) => setSelectedInventory({ ...selectedInventory, category: e.target.value })}
+                  helperText="Product category"
+                />
+              </Grid>
+              
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={2}
+                  label="Notes"
+                  placeholder="Additional notes or special instructions"
+                  value={selectedInventory?.notes || ''}
+                  onChange={(e) => setSelectedInventory({ ...selectedInventory, notes: e.target.value })}
+                  helperText="Optional notes for this inventory item"
+                />
+              </Grid>
             </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="SKU"
-                value={selectedInventory?.sku || ''}
-                onChange={(e) => setSelectedInventory({ ...selectedInventory, sku: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                type="number"
-                label="Quantity"
-                value={selectedInventory?.quantity || 0}
-                onChange={(e) => setSelectedInventory({ ...selectedInventory, quantity: parseInt(e.target.value) || 0 })}
-              />
-            </Grid>
-          </Grid>
+            
+            {/* Validation Summary */}
+            {(!selectedInventory?.name || !selectedInventory?.sku) && (
+              <Alert severity="warning" sx={{ mt: 3 }}>
+                <AlertTitle>Required Fields Missing</AlertTitle>
+                Please fill in all required fields (Product Name and SKU) before creating the item.
+              </Alert>
+            )}
+          </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setCreateItemDialogOpen(false)}>Cancel</Button>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
           <Button 
             onClick={() => {
-              createItemMutation.mutate(selectedInventory);
+              setCreateItemDialogOpen(false);
+              setSelectedInventory(null);
+            }}
+            size="large"
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={() => {
+              if (selectedInventory?.name && selectedInventory?.sku) {
+                createItemMutation.mutate({
+                  ...selectedInventory,
+                  // Ensure numeric fields are properly formatted
+                  quantity: selectedInventory.quantity || 0,
+                  minStockLevel: selectedInventory.minStockLevel || 0,
+                  maxStockLevel: selectedInventory.maxStockLevel || 0,
+                });
+              }
             }} 
             variant="contained"
+            size="large"
+            disabled={!selectedInventory?.name || !selectedInventory?.sku || createItemMutation.isLoading}
+            startIcon={createItemMutation.isLoading ? <CircularProgress size={20} /> : <AddIcon />}
           >
-            Create
+            {createItemMutation.isLoading ? 'Creating...' : 'Create Item'}
           </Button>
         </DialogActions>
       </Dialog>

@@ -236,3 +236,67 @@ func (s *Server) removeStock(c *gin.Context) {
 
 	respondWithSuccess(c, http.StatusOK, item)
 }
+
+// getInventoryReservations returns inventory reservations with optional filters
+func (s *Server) getInventoryReservations(c *gin.Context) {
+	orderId := c.Query("orderId")
+	productId := c.Query("productId")
+	status := c.Query("status")
+	limitStr := c.DefaultQuery("limit", "10")
+	offsetStr := c.DefaultQuery("offset", "0")
+
+	limit, err := parseIntParam(limitStr, 10)
+	if err != nil {
+		respondWithError(c, http.StatusBadRequest, "Invalid limit parameter")
+		return
+	}
+
+	offset, err := parseIntParam(offsetStr, 0)
+	if err != nil {
+		respondWithError(c, http.StatusBadRequest, "Invalid offset parameter")
+		return
+	}
+
+	reservations, err := s.inventorySvc.GetInventoryReservations(c.Request.Context(), orderId, productId, status, limit, offset)
+	if err != nil {
+		genericErrorHandler(c, err, s.logger, "Get inventory reservations")
+		return
+	}
+
+	respondWithSuccess(c, http.StatusOK, reservations)
+}
+
+// getLowStockItems returns inventory items that are low in stock
+func (s *Server) getLowStockItems(c *gin.Context) {
+	thresholdStr := c.DefaultQuery("threshold", "10")
+	location := c.Query("location")
+	limitStr := c.DefaultQuery("limit", "10")
+	offsetStr := c.DefaultQuery("offset", "0")
+
+	threshold, err := parseIntParam(thresholdStr, 10)
+	if err != nil {
+		respondWithError(c, http.StatusBadRequest, "Invalid threshold parameter")
+		return
+	}
+
+	limit, err := parseIntParam(limitStr, 10)
+	if err != nil {
+		respondWithError(c, http.StatusBadRequest, "Invalid limit parameter")
+		return
+	}
+
+	offset, err := parseIntParam(offsetStr, 0)
+	if err != nil {
+		respondWithError(c, http.StatusBadRequest, "Invalid offset parameter")
+		return
+	}
+
+	// Get low stock items with threshold and location filtering
+	items, err := s.inventorySvc.GetLowStockItems(c.Request.Context(), location, threshold, limit, offset)
+	if err != nil {
+		genericErrorHandler(c, err, s.logger, "Get low stock items")
+		return
+	}
+
+	respondWithSuccess(c, http.StatusOK, items)
+}

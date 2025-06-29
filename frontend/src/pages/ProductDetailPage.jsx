@@ -9,12 +9,9 @@ import {
   Button,
   Divider,
   Chip,
-  Avatar,
   Card,
-  CardContent,
   CardMedia,
   IconButton,
-  Stack,
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -27,6 +24,7 @@ import {
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 import productService from '../services/productService';
+import inventoryService from '../services/inventoryService';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 
 const ProductDetailPage = () => {
@@ -34,11 +32,21 @@ const ProductDetailPage = () => {
   const navigate = useNavigate();
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
 
-  const { data: product, isLoading, error } = useQuery({
+  const { data: product, isLoading: productLoading, error } = useQuery({
     queryKey: ['product', id],
     queryFn: () => productService.getProduct(id),
     enabled: !!id,
   });
+
+  // Fetch inventory data for this product
+  const { data: inventoryData, isLoading: inventoryLoading } = useQuery({
+    queryKey: ['inventory-item', id],
+    queryFn: () => inventoryService.getInventoryItem(id),
+    enabled: !!id && !!product,
+    retry: false, // Don't retry if inventory item doesn't exist
+  });
+
+  const isLoading = productLoading || inventoryLoading;
 
   const handleEdit = () => {
     navigate(`/products/edit/${id}`);
@@ -68,8 +76,8 @@ const ProductDetailPage = () => {
             {product.name}
           </Typography>
           <Chip
-            label={product.inStock ? 'In Stock' : 'Out of Stock'}
-            color={product.inStock ? 'success' : 'error'}
+            label={inventoryData && inventoryData.quantity > 0 ? 'In Stock' : 'Out of Stock'}
+            color={inventoryData && inventoryData.quantity > 0 ? 'success' : 'error'}
             size="small"
           />
         </Box>
@@ -110,32 +118,40 @@ const ProductDetailPage = () => {
                 />
                 <DetailItem 
                   icon={<CategoryIcon color="action" />} 
-                  label="Category" 
-                  value={product.category?.name || 'N/A'} 
+                  label="Category IDs" 
+                  value={product.category_ids?.join(', ') || 'N/A'} 
                 />
                 <DetailItem 
                   icon={<PriceIcon color="action" />} 
                   label="Price" 
-                  value={`$${product.price?.toFixed(2)}`} 
+                  value={`$${parseFloat(product.selling_price).toFixed(2)}`} 
                 />
                 <DetailItem 
                   icon={<InventoryIcon color="action" />} 
-                  label="Stock" 
-                  value={product.stock} 
+                  label="Stock Quantity" 
+                  value={inventoryData?.quantity || 0} 
+                />
+                <DetailItem 
+                  label="Low Stock Threshold" 
+                  value={inventoryData?.low_stock_threshold || 'N/A'} 
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
                 <DetailItem 
-                  label="Cost" 
-                  value={`$${product.cost?.toFixed(2)}`} 
+                  label="Currency" 
+                  value={product.currency || 'N/A'} 
+                />
+                <DetailItem 
+                  label="Cost Price" 
+                  value={`$${parseFloat(product.cost_price).toFixed(2)}`} 
                 />
                 <DetailItem 
                   label="Created" 
-                  value={format(new Date(product.createdAt), 'PPpp')} 
+                  value={format(new Date(product.created_at.seconds * 1000), 'PPpp')} 
                 />
                 <DetailItem 
                   label="Last Updated" 
-                  value={format(new Date(product.updatedAt), 'PPpp')} 
+                  value={format(new Date(product.updated_at.seconds * 1000), 'PPpp')} 
                 />
               </Grid>
             </Grid>

@@ -50,8 +50,12 @@ const inventoryService = {
   },
 
   // Get low stock items
-  getLowStockItems: async (threshold = 10) => {
-    const { data } = await api.get(`${INVENTORY_BASE}/low-stock`, { params: { threshold } });
+  getLowStockItems: async (threshold = 10, location = '') => {
+    const params = { threshold };
+    if (location) {
+      params.location = location;
+    }
+    const { data } = await api.get(`${INVENTORY_BASE}/low-stock`, { params });
     return data;
   },
 

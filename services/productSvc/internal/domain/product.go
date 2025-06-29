@@ -26,9 +26,7 @@ type Product struct {
 	IsActive      bool                   `bson:"is_active" json:"is_active"`
 	IsVisible     map[string]bool        `bson:"is_visible,omitempty" json:"is_visible,omitempty"`
 	Variants      []Variant              `bson:"variants,omitempty" json:"variants,omitempty"`
-	InStock       bool                   `bson:"in_stock" json:"in_stock"`
-	StockQty      int32                  `bson:"stock_qty" json:"stock_qty" validate:"gte=0"`
-	LowStockAt    int32                  `bson:"low_stock_at,omitempty" json:"low_stock_at,omitempty" validate:"omitempty,gte=0"`
+
 	ImageURLs     []string               `bson:"image_urls,omitempty" json:"image_urls,omitempty"`
 	VideoURLs     []string               `bson:"video_urls,omitempty" json:"video_urls,omitempty"`
 	Metadata      map[string]interface{} `bson:"metadata,omitempty" json:"metadata,omitempty"`

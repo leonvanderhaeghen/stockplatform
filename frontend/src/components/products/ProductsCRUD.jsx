@@ -98,9 +98,6 @@ const ProductsCRUD = () => {
         categoryIds: 'category_ids',
         supplierId: 'supplier_id',
         isActive: 'is_active',
-        inStock: 'in_stock',
-        stockQty: 'stock_qty',
-        lowStockAt: 'low_stock_at',
         imageUrls: 'image_urls',
         videoUrls: 'video_urls',
         metadata: 'metadata',
@@ -207,10 +204,10 @@ const ProductsCRUD = () => {
         ) : products.length === 0 ? (
           <Box p={4} textAlign="center">
             <Typography>No products found</Typography>
-            <Button 
-              onClick={() => handleOpen()} 
-              variant="contained" 
-              color="primary" 
+            <Button
+              onClick={() => handleOpen()}
+              variant="contained"
+              color="primary"
               startIcon={<AddIcon />}
               sx={{ mt: 2 }}
             >
@@ -223,9 +220,10 @@ const ProductsCRUD = () => {
               <TableRow>
                 <TableCell>Name</TableCell>
                 <TableCell>Description</TableCell>
-                <TableCell>Price</TableCell>
-                <TableCell>Stock</TableCell>
-                <TableCell>Actions</TableCell>
+                <TableCell>SKU</TableCell>
+                <TableCell>Selling Price</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell align="right">Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -233,9 +231,17 @@ const ProductsCRUD = () => {
                 <TableRow key={product.id}>
                   <TableCell>{product.name}</TableCell>
                   <TableCell>{product.description}</TableCell>
-                  <TableCell>${product.price?.toFixed(2)}</TableCell>
-                  <TableCell>{product.stock}</TableCell>
+                  <TableCell>{product.sku}</TableCell>
                   <TableCell>
+                    $
+                    {product.selling_price
+                      ? parseFloat(product.selling_price).toFixed(2)
+                      : '0.00'}
+                  </TableCell>
+                  <TableCell>
+                    {product.is_active ? 'Active' : 'Inactive'}
+                  </TableCell>
+                  <TableCell align="right">
                     <IconButton onClick={() => handleOpen(product)}>
                       <EditIcon />
                     </IconButton>
@@ -262,8 +268,6 @@ const ProductsCRUD = () => {
               sku: '',
               barcode: '',
               category: '',
-              inStock: true,
-              stockQty: 0,
               images: []
             }}
             onSubmit={handleSubmit}

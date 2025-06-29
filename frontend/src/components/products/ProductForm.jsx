@@ -215,17 +215,6 @@ const validationSchema = Yup.object().shape({
       return /^\d+(\.\d{1,2})?$/.test(value);
     }),
   currency: Yup.string().required('Currency is required'),
-  inStock: Yup.boolean().default(true),
-  stockQty: Yup.number()
-    .min(0, 'Stock quantity cannot be negative')
-    .required('Stock quantity is required'),
-  lowStockAt: Yup.number()
-    .min(0, 'Low stock threshold cannot be negative')
-    .test('less-than-stock', 'Low stock threshold must be less than stock quantity', function(value) {
-      if (value === undefined || value === '') return true;
-      const stockQty = this.parent.stockQty;
-      return value < stockQty;
-    }),
   isActive: Yup.boolean().default(true),
   categoryIds: Yup.array().of(Yup.string()),
   supplierId: Yup.string().required('Supplier is required'),
@@ -243,9 +232,6 @@ const ProductForm = ({
     costPrice: '',
     sellingPrice: '',
     currency: 'USD',
-    inStock: true,
-    stockQty: 0,
-    lowStockAt: 0,
     isActive: true,
     categoryIds: [],
     supplierId: '',
@@ -480,62 +466,6 @@ const ProductForm = ({
                       </MenuItem>
                     ))}
                   </TextField>
-                </Grid>
-              </Grid>
-            </Collapse>
-          </Grid>
-
-          {/* Inventory Section */}
-          <Grid item xs={12}>
-            {renderSectionHeader('Inventory', 'inventory')}
-            <Collapse in={expandedSections.inventory}>
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    id="stockQty"
-                    name="stockQty"
-                    label="Stock Quantity"
-                    type="number"
-                    value={formik.values.stockQty}
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
-                    error={formik.touched.stockQty && Boolean(formik.errors.stockQty)}
-                    helperText={formik.touched.stockQty && formik.errors.stockQty}
-                    margin="normal"
-                    disabled={loading}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    id="lowStockAt"
-                    name="lowStockAt"
-                    label="Low Stock Threshold"
-                    type="number"
-                    value={formik.values.lowStockAt}
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
-                    error={formik.touched.lowStockAt && Boolean(formik.errors.lowStockAt)}
-                    helperText={formik.touched.lowStockAt && formik.errors.lowStockAt}
-                    margin="normal"
-                    disabled={loading}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={formik.values.inStock}
-                        onChange={(e) => formik.setFieldValue('inStock', e.target.checked)}
-                        name="inStock"
-                        color="primary"
-                        disabled={loading}
-                      />
-                    }
-                    label={formik.values.inStock ? 'In Stock' : 'Out of Stock'}
-                    sx={{ mt: 2 }}
-                  />
                 </Grid>
                 <Grid item xs={12} sm={6}>
                   <FormControlLabel

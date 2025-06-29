@@ -21,6 +21,7 @@ type ServiceClients struct {
 	OrderSvc     services.OrderService
 	UserSvc      services.UserService
 	SupplierSvc  services.SupplierService
+	StoreSvc     services.StoreService
 }
 
 // Server holds the REST server and its dependencies
@@ -53,6 +54,7 @@ func (s *Server) Initialize() error {
 		serviceClients.OrderSvc,
 		serviceClients.UserSvc,
 		serviceClients.SupplierSvc,
+		serviceClients.StoreSvc,
 		s.config.JWT.Secret,
 		s.config.Server.Port,
 		s.logger,
@@ -121,11 +123,17 @@ func (s *Server) initServices() (*ServiceClients, error) {
 		return nil, err
 	}
 
+	storeSvc, err := services.NewStoreService(s.config.Services.StoreAddr, s.logger)
+	if err != nil {
+		return nil, err
+	}
+
 	return &ServiceClients{
 		ProductSvc:   productSvc,
 		InventorySvc: inventorySvc,
 		OrderSvc:     orderSvc,
 		UserSvc:      userSvc,
 		SupplierSvc:  supplierSvc,
+		StoreSvc:     storeSvc,
 	}, nil
 }

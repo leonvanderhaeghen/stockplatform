@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+
 	"fmt"
 	"strings"
 	"time"
@@ -12,12 +13,17 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/leonvanderhaeghen/stockplatform/services/productSvc/internal/domain"
+	supplierclient "github.com/leonvanderhaeghen/stockplatform/pkg/clients/supplier"
+	inventoryclient "github.com/leonvanderhaeghen/stockplatform/pkg/clients/inventory"
+	supplierv1 "github.com/leonvanderhaeghen/stockplatform/services/supplierSvc/api/gen/go/proto/supplier/v1"
+	inventoryv1 "github.com/leonvanderhaeghen/stockplatform/services/inventorySvc/api/gen/go/proto/inventory/v1"
 )
 
 // ProductService implements the business logic for product operations
 type ProductService struct {
 	repo           domain.ProductRepository
-	supplierSvc   *SupplierService
+	supplierClient *supplierclient.Client
+	inventoryClient *inventoryclient.Client
 	logger         *zap.Logger
 }
 
@@ -100,15 +106,12 @@ func (s *ProductService) ListProducts(ctx context.Context, opts *domain.ListOpti
 }
 
 // NewProductService creates a new product service
-func NewProductService(
-	repo domain.ProductRepository, 
-	supplierSvc *SupplierService,
-	logger *zap.Logger,
-) *ProductService {
+func NewProductService(repo domain.ProductRepository, supplierClient *supplierclient.Client, inventoryClient *inventoryclient.Client, logger *zap.Logger) *ProductService {
 	return &ProductService{
-		repo:         repo,
-		supplierSvc: supplierSvc,
-		logger:       logger.Named("product_service"),
+		repo:           repo,
+		supplierClient: supplierClient,
+		inventoryClient: inventoryClient,
+		logger:         logger.Named("product_service"),
 	}
 }
 
@@ -119,7 +122,7 @@ func (s *ProductService) CreateProduct(ctx context.Context, input *domain.Produc
 		return nil, domain.ErrSupplierRequired
 	}
 
-	_, err := s.supplierSvc.GetSupplier(ctx, input.SupplierID)
+	_, err := s.supplierClient.GetSupplier(ctx, &supplierv1.GetSupplierRequest{Id: input.SupplierID})
 	if err != nil {
 		s.logger.Error("Invalid supplier ID", 
 			zap.String("supplierID", input.SupplierID), 
@@ -159,8 +162,7 @@ func (s *ProductService) CreateProduct(ctx context.Context, input *domain.Produc
 		input.Variants = []domain.Variant{}
 	}
 
-	// Set stock status
-	input.InStock = input.StockQty > 0
+
 
 	// Set default visibility for the supplier
 	if input.SupplierID != "" {
@@ -179,30 +181,9 @@ func (s *ProductService) CreateProduct(ctx context.Context, input *domain.Produc
 		return nil, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// Check if product with same SKU or barcode already exists
-	existing, _, err := s.repo.List(ctx, &domain.ListOptions{
-		Filter: &domain.ProductFilter{
-			SearchTerm: input.SKU,
-		},
-		Pagination: &domain.Pagination{
-			Page:     1,
-			PageSize: 1,
-		},
-	})
-
-	if err != nil {
-		s.logger.Error("Failed to check for existing product", 
-			zap.String("sku", input.SKU), 
-			zap.Error(err))
-		return nil, fmt.Errorf("failed to check for existing product: %w", err)
-	}
-
-	if len(existing) > 0 {
-		s.logger.Warn("Product with same SKU or barcode already exists", 
-			zap.String("sku", input.SKU), 
-			zap.String("barcode", input.Barcode))
-		return nil, domain.ErrProductAlreadyExists
-	}
+	// Rely on MongoDB unique indexes for duplicate SKU / barcode detection.
+	// Attempting a pre-check with text search fails before the collection and its text index exist.
+	// Duplicate errors will surface as mongo.IsDuplicateKeyError during the insert below.
 
 	// Create the product
 	product, err := s.repo.Create(ctx, input)
@@ -211,6 +192,23 @@ func (s *ProductService) CreateProduct(ctx context.Context, input *domain.Produc
 			zap.String("sku", input.SKU), 
 			zap.Error(err))
 		return nil, fmt.Errorf("failed to create product: %w", err)
+	}
+
+	// Create inventory item for the product
+	inventoryReq := &inventoryv1.CreateInventoryRequest{
+		ProductId:  product.ID.Hex(),
+		Sku:        product.SKU,
+		Quantity:   0,
+		LocationId: "default",
+	}
+
+	_, err = s.inventoryClient.CreateInventory(ctx, inventoryReq)
+	if err != nil {
+		s.logger.Error("Failed to create inventory item", 
+			zap.String("product_id", product.ID.Hex()),
+			zap.Error(err))
+		// Don't fail product creation if inventory creation fails
+		// Log the error and continue
 	}
 
 	s.logger.Info("Product created successfully", 
@@ -254,7 +252,7 @@ func (s *ProductService) UpdateProduct(ctx context.Context, input *domain.Produc
 
 	// If supplier ID is being updated, validate the new supplier exists
 	if input.SupplierID != "" && input.SupplierID != existing.SupplierID {
-		_, err := s.supplierSvc.GetSupplier(ctx, input.SupplierID)
+		_, err := s.supplierClient.GetSupplier(ctx, &supplierv1.GetSupplierRequest{Id: input.SupplierID})
 		if err != nil {
 			s.logger.Error("Invalid supplier ID", 
 				zap.String("supplierID", input.SupplierID), 
@@ -336,8 +334,6 @@ func (s *ProductService) UpdateProduct(ctx context.Context, input *domain.Produc
 	existing.Barcode = input.Barcode
 	existing.CategoryIDs = input.CategoryIDs
 	existing.IsActive = input.IsActive
-	existing.StockQty = input.StockQty
-	existing.LowStockAt = input.LowStockAt
 	existing.ImageURLs = input.ImageURLs
 	existing.VideoURLs = input.VideoURLs
 	existing.Metadata = input.Metadata
@@ -493,20 +489,8 @@ func (s *ProductService) AdjustStock(ctx context.Context, id string, adjustment 
 		return domain.ErrInvalidID
 	}
 
-	// Get current stock
-	product, err := s.repo.GetByID(ctx, id)
-	if err != nil {
-		return err
-	}
-
-	// Calculate new quantity
-	newQty := product.StockQty + adjustment
-	if newQty < 0 {
-		return fmt.Errorf("insufficient stock for adjustment")
-	}
-
-	// Update stock
-	return s.repo.UpdateStock(ctx, id, newQty)
+	// Inventory operations are handled by inventorySvc
+	return fmt.Errorf("inventory operations are handled by inventorySvc")
 }
 
 // UpdateProductPricing updates the pricing for a product
@@ -729,7 +713,7 @@ func (s *ProductService) UpdateVariantStock(ctx context.Context, productID, vari
 	}
 
 	// Update the product's stock quantity
-	product.StockQty = quantity
+	// Inventory operations are handled by inventorySvc
 
 	// Update the product with modified variant
 	return s.repo.Update(ctx, product)
@@ -745,7 +729,7 @@ func (s *ProductService) BulkUpdateProductVisibility(ctx context.Context, suppli
 	}
 
 	// Check if supplier exists
-	_, err := s.supplierSvc.GetSupplier(ctx, supplierID)
+	_, err := s.supplierClient.GetSupplier(ctx, &supplierv1.GetSupplierRequest{Id: supplierID})
 	if err != nil {
 		s.logger.Error("Invalid supplier ID",
 			zap.String("supplierID", supplierID),
@@ -840,7 +824,7 @@ func (s *ProductService) GetProductsBySupplier(
 	}
 
 	// Check if supplier exists
-	_, err := s.supplierSvc.GetSupplier(ctx, supplierID)
+	_, err := s.supplierClient.GetSupplier(ctx, &supplierv1.GetSupplierRequest{Id: supplierID})
 	if err != nil {
 		s.logger.Error("Invalid supplier ID",
 			zap.String("supplierID", supplierID),
@@ -894,9 +878,7 @@ func (s *ProductService) ValidateProduct(p *domain.Product) error {
 	}
 
 	// Validate stock quantity
-	if p.StockQty < 0 {
-		return fmt.Errorf("stock quantity cannot be negative")
-	}
+	// Inventory validation is handled by inventorySvc
 
 	// Validate currency (ISO 4217)
 	if p.Currency == "" {

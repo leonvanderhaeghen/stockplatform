@@ -104,9 +104,7 @@ func (r *ProductRepository) Update(ctx context.Context, product *domain.Product)
 			"is_active":      product.IsActive,
 			"is_visible":     product.IsVisible,
 			"variants":       product.Variants,
-			"in_stock":       product.InStock,
-			"stock_qty":      product.StockQty,
-			"low_stock_at":   product.LowStockAt,
+
 			"image_urls":     product.ImageURLs,
 			"video_urls":     product.VideoURLs,
 			"metadata":       product.Metadata,
@@ -334,35 +332,9 @@ func (r *ProductRepository) Search(ctx context.Context, query string, opts *doma
 	return r.List(ctx, searchOpts)
 }
 
-// UpdateStock updates the stock quantity of a product
+// UpdateStock is deprecated - inventory operations are handled by inventorySvc
 func (r *ProductRepository) UpdateStock(ctx context.Context, id string, quantity int32) error {
-	// Parse the ID
-	objID, err := primitive.ObjectIDFromHex(id)
-	if err != nil {
-		return domain.ErrInvalidID
-	}
-
-	// Update the stock quantity
-	result, err := r.collection.UpdateOne(
-		ctx,
-		bson.M{"_id": objID, "deleted_at": bson.M{"$exists": false}},
-		bson.M{
-			"$set": bson.M{
-				"stock_qty":  quantity,
-				"in_stock":   quantity > 0,
-				"updated_at": time.Now(),
-			},
-		},
-	)
-	if err != nil {
-		return fmt.Errorf("failed to update stock: %w", err)
-	}
-
-	if result.MatchedCount == 0 {
-		return domain.ErrProductNotFound
-	}
-
-	return nil
+	return fmt.Errorf("inventory operations are handled by inventorySvc")
 }
 
 // BulkUpdateVisibility updates the visibility of multiple products for a supplier
@@ -425,167 +397,14 @@ func (r *ProductRepository) GetByCategory(ctx context.Context, categoryID string
 	return nil, 0, nil
 }
 
-// BulkUpdateStock updates the stock quantity for multiple products in a single operation
+// BulkUpdateStock is deprecated - inventory operations are handled by inventorySvc
 func (r *ProductRepository) BulkUpdateStock(ctx context.Context, updates map[string]int32) error {
-	if len(updates) == 0 {
-		return nil
-	}
-
-	session, err := r.collection.Database().Client().StartSession()
-	if err != nil {
-		return fmt.Errorf("failed to start session: %w", err)
-	}
-	defer session.EndSession(ctx)
-
-	_, err = session.WithTransaction(ctx, func(sessCtx mongo.SessionContext) (interface{}, error) {
-		for productID, quantity := range updates {
-			// Convert string ID to ObjectID
-			objID, err := primitive.ObjectIDFromHex(productID)
-			if err != nil {
-				r.logger.Warn("Invalid product ID in bulk update", 
-					zap.String("productID", productID), 
-					zap.Error(err))
-				continue
-			}
-
-			// Update the product's stock quantity and in_stock status
-			update := bson.M{
-				"$set": bson.M{
-					"stock_qty":    quantity,
-					"in_stock":     quantity > 0,
-					"updated_at":   time.Now(),
-				},
-			}
-
-			// Execute the update
-			_, err = r.collection.UpdateOne(
-				sessCtx,
-				bson.M{"_id": objID},
-				update,
-			)
-
-			if err != nil {
-				r.logger.Error("Failed to update product stock",
-					zap.String("productID", productID),
-					zap.Int32("quantity", quantity),
-					zap.Error(err))
-				return nil, fmt.Errorf("failed to update stock for product %s: %w", productID, err)
-			}
-		}
-		return nil, nil
-	})
-
-	if err != nil {
-		return fmt.Errorf("bulk update stock transaction failed: %w", err)
-	}
-
-	return nil
+	return fmt.Errorf("inventory operations are handled by inventorySvc")
 }
 
-// GetLowStockProducts retrieves products with stock quantities below the specified threshold
+// GetLowStockProducts is deprecated - inventory operations are handled by inventorySvc
 func (r *ProductRepository) GetLowStockProducts(ctx context.Context, threshold int32, opts *domain.ListOptions) ([]*domain.Product, int64, error) {
-	// Build the filter for low stock products
-	filter := bson.M{
-		"deleted_at": bson.M{"$exists": false},
-		"stock_qty": bson.M{"$gt": 0, "$lte": threshold},
-	}
-
-	// Apply additional filters from ListOptions if provided
-	if opts != nil && opts.Filter != nil {
-		// Apply category filter
-		if len(opts.Filter.CategoryIDs) > 0 {
-			filter["category_ids"] = bson.M{"$in": opts.Filter.CategoryIDs}
-		}
-
-		// Apply price range filter if specified
-		priceFilter := bson.M{}
-		if opts.Filter.MinPrice > 0 {
-			priceFilter["$gte"] = opts.Filter.MinPrice
-		}
-		if opts.Filter.MaxPrice > 0 {
-			priceFilter["$lte"] = opts.Filter.MaxPrice
-		}
-		if len(priceFilter) > 0 {
-			filter["selling_price"] = priceFilter
-		}
-
-		// Apply search term if provided
-		if opts.Filter.SearchTerm != "" {
-			filter["$text"] = bson.M{"$search": opts.Filter.SearchTerm}
-		}
-
-		// Apply IDs filter if specified
-		if len(opts.Filter.IDs) > 0 {
-			var objectIDs []primitive.ObjectID
-			for _, id := range opts.Filter.IDs {
-				objID, err := primitive.ObjectIDFromHex(id)
-				if err != nil {
-					return nil, 0, fmt.Errorf("invalid product ID: %v", id)
-				}
-				objectIDs = append(objectIDs, objID)
-			}
-			filter["_id"] = bson.M{"$in": objectIDs}
-		}
-	}
-
-	// Set up find options
-	findOptions := options.Find()
-
-	// Apply pagination if provided
-	if opts != nil && opts.Pagination != nil {
-		if opts.Pagination.PageSize > 0 {
-			findOptions.SetLimit(int64(opts.Pagination.PageSize))
-			if opts.Pagination.Page > 0 {
-				findOptions.SetSkip(int64((opts.Pagination.Page - 1) * opts.Pagination.PageSize))
-			}
-		}
-
-		// Apply sorting if provided
-		if opts.Sort != nil {
-			sortField := "stock_qty" // Default sort by stock quantity
-			switch opts.Sort.Field {
-			case domain.SortFieldName:
-				sortField = "name"
-			case domain.SortFieldPrice:
-				sortField = "selling_price"
-			case domain.SortFieldCreatedAt:
-				sortField = "created_at"
-			case domain.SortFieldUpdatedAt:
-				sortField = "updated_at"
-			}
-
-			sortOrder := 1 // Default to ascending
-			if opts.Sort.Order == domain.SortOrderDesc {
-				sortOrder = -1
-			}
-
-			findOptions.SetSort(bson.D{{Key: sortField, Value: sortOrder}})
-		} else {
-			// Default sort by stock quantity ascending if no sort specified
-			findOptions.SetSort(bson.D{{Key: "stock_qty", Value: 1}})
-		}
-	}
-
-	// Count total matching documents
-	total, err := r.collection.CountDocuments(ctx, filter)
-	if err != nil {
-		return nil, 0, fmt.Errorf("failed to count low stock products: %w", err)
-	}
-
-	// Find products
-	cursor, err := r.collection.Find(ctx, filter, findOptions)
-	if err != nil {
-		return nil, 0, fmt.Errorf("failed to find low stock products: %w", err)
-	}
-	defer cursor.Close(ctx)
-
-	// Decode products
-	var products []*domain.Product
-	if err := cursor.All(ctx, &products); err != nil {
-		return nil, 0, fmt.Errorf("failed to decode low stock products: %w", err)
-	}
-
-	return products, total, nil
+	return nil, 0, fmt.Errorf("inventory operations are handled by inventorySvc")
 }
 
 // PublishProducts updates the published status of multiple products
@@ -715,71 +534,6 @@ func (r *ProductRepository) UpdateVariantStock(ctx context.Context, productID, v
 
 	if !variantFound {
 		return domain.ErrVariantNotFound
-	}
-
-	// Update the product's in_stock status based on variant stock
-	if err := r.updateProductStockStatus(ctx, objID); err != nil {
-		r.logger.Error("Failed to update product stock status",
-			zap.String("productID", productID),
-			zap.Error(err))
-		// Don't fail the entire operation if this fails
-	}
-
-	return nil
-}
-
-// updateProductStockStatus updates the product's in_stock status based on its variants
-func (r *ProductRepository) updateProductStockStatus(ctx context.Context, productID primitive.ObjectID) error {
-	// Use MongoDB aggregation to calculate total stock from variants
-	pipeline := mongo.Pipeline{
-		bson.D{{Key: "$match", Value: bson.M{"_id": productID}}},
-		bson.D{{
-			Key: "$addFields",
-			Value: bson.M{
-				// For now, we'll assume at least one variant has stock if variants exist
-				// This is a placeholder since we don't have direct stock quantity in the variant
-				// In a real implementation, you would need to define how stock is tracked for variants
-				"in_stock": bson.M{"$gt": bson.A{bson.M{"$size": "$variants"}, 0}},
-				"updated_at": time.Now(),
-			},
-		}},
-	}
-
-	// Execute aggregation
-	cursor, err := r.collection.Aggregate(ctx, pipeline)
-	if err != nil {
-		return fmt.Errorf("failed to aggregate product stock status: %w", err)
-	}
-	defer cursor.Close(ctx)
-
-	// Get the first result (should be only one)
-	if !cursor.Next(ctx) {
-		return domain.ErrProductNotFound
-	}
-
-	// Update the product with the calculated values
-	var result bson.M
-	if err := cursor.Decode(&result); err != nil {
-		return fmt.Errorf("failed to decode aggregation result: %w", err)
-	}
-
-	// Update the product with the calculated values
-	update := bson.M{
-		"$set": bson.M{
-			// Use the calculated in_stock value from the aggregation
-			"in_stock":   result["in_stock"],
-			"updated_at": time.Now(),
-		},
-	}
-
-	_, err = r.collection.UpdateOne(
-		ctx,
-		bson.M{"_id": productID},
-		update,
-	)
-
-	if err != nil {
-		return fmt.Errorf("failed to update product stock status: %w", err)
 	}
 
 	return nil

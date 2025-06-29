@@ -19,7 +19,6 @@ type Database struct {
 	Database        *mongo.Database
 	ProductRepo     *mongodb.ProductRepository
 	CategoryRepo    domain.CategoryRepository
-	SupplierRepo    *mongodb.SupplierRepository
 	logger          *zap.Logger
 }
 
@@ -47,14 +46,12 @@ func Initialize(cfg *config.Config, logger *zap.Logger) (*Database, error) {
 	// Initialize repositories
 	productRepo := mongodb.NewProductRepository(database, logger)
 	categoryRepo := mongodb.NewCategoryRepository(database, logger)
-	supplierRepo := mongodb.NewSupplierRepository(database, logger)
 
 	return &Database{
 		Client:       client,
 		Database:     database,
 		ProductRepo:  productRepo,
 		CategoryRepo: categoryRepo,
-		SupplierRepo: supplierRepo,
 		logger:       logger,
 	}, nil
 }

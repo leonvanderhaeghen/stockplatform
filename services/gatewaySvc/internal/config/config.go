@@ -32,6 +32,7 @@ type ServicesConfig struct {
 	OrderAddr     string `mapstructure:"order_addr" validate:"required"`
 	UserAddr      string `mapstructure:"user_addr" validate:"required"`
 	SupplierAddr  string `mapstructure:"supplier_addr" validate:"required"`
+	StoreAddr     string `mapstructure:"store_addr" validate:"required"`
 }
 
 // LoggingConfig holds logging configuration
@@ -83,6 +84,7 @@ func setDefaults() {
 	viper.SetDefault("services.order_addr", "localhost:50055")
 	viper.SetDefault("services.user_addr", "localhost:50056")
 	viper.SetDefault("services.supplier_addr", "localhost:50057")
+	viper.SetDefault("services.store_addr", "localhost:50058")
 
 	// Logging defaults
 	viper.SetDefault("logging.level", "info")

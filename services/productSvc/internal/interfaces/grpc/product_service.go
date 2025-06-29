@@ -61,9 +61,7 @@ func (s *ProductServiceServer) CreateProduct(
 		CategoryIDs:   req.CategoryIds,
 		SupplierID:    req.SupplierId,
 		IsActive:      req.IsActive,
-		InStock:       req.InStock,
-		StockQty:      req.StockQty,
-		LowStockAt:    req.LowStockAt,
+
 		ImageURLs:     req.ImageUrls,
 		VideoURLs:     req.VideoUrls,
 		Metadata:      metadata,
@@ -178,9 +176,7 @@ func toProtoProduct(p *domain.Product) *productv1.Product {
 		CategoryIds:   p.CategoryIDs,
 		SupplierId:    p.SupplierID,
 		IsActive:      p.IsActive,
-		InStock:       p.InStock,
-		StockQty:      p.StockQty,
-		LowStockAt:    p.LowStockAt,
+
 		ImageUrls:     p.ImageURLs,
 		VideoUrls:     p.VideoURLs,
 		Metadata:      convertMetadata(p.Metadata),

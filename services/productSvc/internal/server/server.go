@@ -18,15 +18,19 @@ import (
 	"github.com/leonvanderhaeghen/stockplatform/services/productSvc/internal/config"
 	"github.com/leonvanderhaeghen/stockplatform/services/productSvc/internal/database"
 	grpchandlers "github.com/leonvanderhaeghen/stockplatform/services/productSvc/internal/interfaces/grpc"
+	supplierclient "github.com/leonvanderhaeghen/stockplatform/pkg/clients/supplier"
+	inventoryclient "github.com/leonvanderhaeghen/stockplatform/pkg/clients/inventory"
 )
 
 // Server holds the gRPC server and its dependencies
 type Server struct {
-	grpcServer   *grpc.Server
-	healthServer *health.Server
-	config       *config.Config
-	database     *database.Database
-	logger       *zap.Logger
+	grpcServer     *grpc.Server
+	healthServer   *health.Server
+	config         *config.Config
+	database       *database.Database
+	logger         *zap.Logger
+	supplierClient *supplierclient.Client
+	inventoryClient *inventoryclient.Client
 }
 
 // New creates a new server instance
@@ -44,9 +48,30 @@ func (s *Server) Initialize() error {
 	s.grpcServer = grpc.NewServer()
 	s.healthServer = health.NewServer()
 
+	// Initialize supplier gRPC client
+	supplierConfig := supplierclient.Config{
+		Address: s.config.SupplierServiceAddr,
+	}
+	supplierClient, err := supplierclient.New(supplierConfig, s.logger)
+	if err != nil {
+		s.logger.Error("Failed to initialize supplier client", zap.Error(err))
+		return err
+	}
+	s.supplierClient = supplierClient
+
+	// Initialize inventory gRPC client
+	inventoryConfig := inventoryclient.Config{
+		Address: s.config.InventoryServiceAddr,
+	}
+	inventoryClient, err := inventoryclient.New(inventoryConfig, s.logger)
+	if err != nil {
+		s.logger.Error("Failed to initialize inventory client", zap.Error(err))
+		return err
+	}
+	s.inventoryClient = inventoryClient
+
 	// Initialize application services
-	supplierService := application.NewSupplierService(s.database.SupplierRepo, s.logger)
-	productService := application.NewProductService(s.database.ProductRepo, supplierService, s.logger)
+	productService := application.NewProductService(s.database.ProductRepo, supplierClient, inventoryClient, s.logger)
 	categoryService := application.NewCategoryService(s.database.CategoryRepo, s.logger)
 
 	// Register gRPC services
@@ -93,6 +118,20 @@ func (s *Server) Start() error {
 // Stop gracefully stops the gRPC server
 func (s *Server) Stop() error {
 	s.logger.Info("Shutting down gRPC server...")
+
+	// Close supplier client connection
+	if s.supplierClient != nil {
+		if err := s.supplierClient.Close(); err != nil {
+			s.logger.Error("Failed to close supplier client", zap.Error(err))
+		}
+	}
+
+	// Close inventory client connection
+	if s.inventoryClient != nil {
+		if err := s.inventoryClient.Close(); err != nil {
+			s.logger.Error("Failed to close inventory client", zap.Error(err))
+		}
+	}
 
 	// Graceful shutdown with timeout
 	done := make(chan struct{})

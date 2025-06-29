@@ -8,6 +8,7 @@ import categoryService from './categoryService';
 import supplierService from './supplierService';
 import posService from './posService';
 import adminService from './adminService';
+import storeService from './storeService';
 
 export {
   api,
@@ -20,4 +21,5 @@ export {
   supplierService,
   posService,
   adminService,
+  storeService,
 };

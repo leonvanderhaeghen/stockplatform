@@ -58,6 +58,8 @@ services:
       - GRPC_PORT=50053
       - MONGO_URI=mongodb://admin:admin123@mongodb:27017
       - GO111MODULE=on
+      - SUPPLIER_SERVICE_ADDR=supplier-service:50057   # service-DNS name + gRPC port
+
     depends_on:
       mongodb:
         condition: service_healthy
@@ -77,6 +79,7 @@ services:
       - GRPC_PORT=50054
       - MONGO_URI=mongodb://admin:admin123@mongodb:27017
       - GO111MODULE=on
+      - PRODUCT_SERVICE_ADDR=product-service:50053   # service-DNS name + gRPC port
     depends_on:
       mongodb:
         condition: service_healthy

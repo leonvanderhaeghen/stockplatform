@@ -94,6 +94,21 @@ type InventoryService interface {
 	
 	// DeductForDirectPOSTransaction directly deducts inventory for POS sales
 	DeductForDirectPOSTransaction(ctx context.Context, locationID string, staffID string, items []map[string]interface{}, reason string) (interface{}, error)
+	
+	// GetInventoryReservations gets inventory reservations with optional filters
+	GetInventoryReservations(ctx context.Context, orderId, productId, status string, limit, offset int) (interface{}, error)
+	
+	// GetLowStockItems gets inventory items that are low in stock with threshold and location filtering
+	GetLowStockItems(ctx context.Context, location string, threshold, limit, offset int) (interface{}, error)
+}
+
+// StoreService defines the interface for store operations
+type StoreService interface {
+	// ListStores lists all stores with pagination
+	ListStores(ctx context.Context, limit, offset int) (interface{}, error)
+	
+	// GetStore retrieves a store by ID
+	GetStore(ctx context.Context, id string) (interface{}, error)
 }
 
 // OrderService defines the interface for order operations

@@ -32,6 +32,7 @@ func main() {
 		zap.String("order_service", cfg.Services.OrderAddr),
 		zap.String("user_service", cfg.Services.UserAddr),
 		zap.String("supplier_service", cfg.Services.SupplierAddr),
+		zap.String("store_service", cfg.Services.StoreAddr),
 	)
 
 	// Initialize server

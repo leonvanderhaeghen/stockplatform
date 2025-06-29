@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Button, Chip, IconButton, Tooltip } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Visibility as ViewIcon } from '@mui/icons-material';
+import { Box, Chip } from '@mui/material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
 import DataTable from '../components/common/DataTable';
 import productService from '../services/productService';
+import { useInventoryItems } from '../utils/hooks/useInventory';
 import ConfirmDialog from '../components/common/ConfirmDialog';
+import InventoryStatus from '../components/inventory/InventoryStatus';
+import InventoryErrorBoundary from '../components/inventory/InventoryErrorBoundary';
 
 const ProductsPage = () => {
   const navigate = useNavigate();
@@ -15,10 +17,39 @@ const ProductsPage = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
 
   // Fetch products
-  const { data: products = [], isLoading } = useQuery({
+  const { data: products = [], isLoading: productsLoading } = useQuery({
     queryKey: ['products'],
     queryFn: () => productService.getProducts(),
   });
+
+  // Fetch inventory items to join with products using the new hook
+  const { data: inventoryItems = [], isLoading: inventoryLoading } = useInventoryItems();
+
+  // Create a map of product ID to inventory data for efficient lookup
+  const inventoryMap = useMemo(() => {
+    const map = new Map();
+    inventoryItems.forEach(item => {
+      if (item.product_id) {
+        map.set(item.product_id, item);
+      }
+    });
+    return map;
+  }, [inventoryItems]);
+
+  // Combine products with their inventory data
+  const productsWithInventory = useMemo(() => {
+    return products.map(product => {
+      const inventory = inventoryMap.get(product.id);
+      return {
+        ...product,
+        inventory: inventory || null,
+        stockQty: inventory?.quantity || 0,
+        inStock: inventory ? inventory.quantity > 0 : false,
+      };
+    });
+  }, [products, inventoryMap]);
+
+  const isLoading = productsLoading || inventoryLoading;
 
   // Delete product mutation
   const deleteMutation = useMutation({
@@ -65,16 +96,38 @@ const ProductsPage = () => {
       ),
     },
     { 
+      field: 'stockQty', 
+      headerName: 'Stock', 
+      width: 100,
+      renderCell: (params) => {
+        const inventoryItem = inventoryMap.get(params.id);
+        return (
+          <InventoryErrorBoundary>
+            <InventoryStatus 
+              quantity={inventoryItem?.quantity}
+              lowStockThreshold={inventoryItem?.low_stock_threshold}
+            />
+          </InventoryErrorBoundary>
+        );
+      },
+    },
+    { 
       field: 'inStock', 
       headerName: 'Status', 
       width: 120,
-      renderCell: (params) => (
-        <Chip 
-          label={params.value ? 'In Stock' : 'Out of Stock'} 
-          color={params.value ? 'success' : 'error'} 
-          size="small"
-        />
-      ),
+      renderCell: (params) => {
+        const inventoryItem = inventoryMap.get(params.id);
+        return (
+          <InventoryErrorBoundary>
+            <Chip
+              label={inventoryItem?.quantity || 0}
+              color={inventoryItem && inventoryItem.quantity > 0 ? 'success' : 'default'}
+              size="small"
+              variant="outlined"
+            />
+          </InventoryErrorBoundary>
+        );
+      },
     },
   ];
 
@@ -104,7 +157,7 @@ const ProductsPage = () => {
   return (
     <Box sx={{ height: '100%', width: '100%' }}>
       <DataTable
-        rows={products}
+        rows={productsWithInventory}
         columns={columns}
         loading={isLoading || deleteMutation.isPending}
         title="Products"

@@ -24,6 +24,7 @@ type Server struct {
 	orderSvc    services.OrderService
 	userSvc     services.UserService
 	supplierSvc services.SupplierService
+	storeSvc    services.StoreService
 	logger      *zap.Logger
 	jwtSecret   string
 	port        string
@@ -36,6 +37,7 @@ func NewServer(
 	orderSvc services.OrderService,
 	userSvc services.UserService,
 	supplierSvc services.SupplierService,
+	storeSvc services.StoreService,
 	jwtSecret string,
 	port string,
 	logger *zap.Logger,
@@ -63,6 +65,7 @@ func NewServer(
 		orderSvc:    orderSvc,
 		userSvc:     userSvc,
 		supplierSvc: supplierSvc,
+		storeSvc:    storeSvc,
 		logger:      logger.Named("rest_server"),
 		jwtSecret:   jwtSecret,
 		port:        port,
@@ -145,6 +148,8 @@ func (s *Server) SetupRoutes() {
 	inventory.Use(s.authMiddleware(), s.staffMiddleware())
 	{
 		inventory.GET("", s.listInventory)
+		inventory.GET("/reservations", s.getInventoryReservations)
+		inventory.GET("/low-stock", s.getLowStockItems)
 		inventory.GET("/:id", s.getInventoryItem)
 		inventory.GET("/product/:productId", s.getInventoryItemByProduct)
 		inventory.GET("/sku/:sku", s.getInventoryItemBySKU)
@@ -199,6 +204,14 @@ func (s *Server) SetupRoutes() {
 		// Sync routes
 		suppliers.POST("/:id/sync/products", supplierHandler.SyncProducts)
 		suppliers.POST("/:id/sync/inventory", supplierHandler.SyncInventory)
+	}
+	
+	// Store routes (admin/staff only)
+	stores := v1.Group("/stores")
+	stores.Use(s.authMiddleware(), s.staffMiddleware())
+	{
+		stores.GET("", s.getStores)
+		stores.GET("/:id", s.getStore)
 	}
 	
 	// POS (Point of Sale) routes (admin/staff only)
