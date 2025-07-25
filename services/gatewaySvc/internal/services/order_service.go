@@ -3,11 +3,9 @@ package services
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"go.uber.org/zap"
 
-	orderv1 "github.com/leonvanderhaeghen/stockplatform/services/orderSvc/api/gen/go/proto/order/v1"
 	orderclient "github.com/leonvanderhaeghen/stockplatform/pkg/clients/order"
 )
 

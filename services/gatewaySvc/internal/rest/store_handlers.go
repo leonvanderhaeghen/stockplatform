@@ -49,3 +49,24 @@ func (s *Server) getStore(c *gin.Context) {
 
 	respondWithSuccess(c, http.StatusOK, store)
 }
+
+// createStore handles creating a new store
+func (s *Server) createStore(c *gin.Context) {
+    var req struct {
+        Name    string `json:"name" binding:"required"`
+        Address string `json:"address" binding:"required"`
+    }
+
+    if err := c.ShouldBindJSON(&req); err != nil {
+        respondWithError(c, http.StatusBadRequest, "Invalid request payload")
+        return
+    }
+
+    store, err := s.storeSvc.CreateStore(c.Request.Context(), req.Name, req.Address)
+    if err != nil {
+        genericErrorHandler(c, err, s.logger, "Create store")
+        return
+    }
+
+    respondWithSuccess(c, http.StatusCreated, store)
+}

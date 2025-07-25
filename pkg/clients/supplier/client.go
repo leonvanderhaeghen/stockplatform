@@ -9,6 +9,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"go.uber.org/zap"
 
+	"github.com/leonvanderhaeghen/stockplatform/pkg/models"
 	supplierv1 "github.com/leonvanderhaeghen/stockplatform/services/supplierSvc/api/gen/go/proto/supplier/v1"
 )
 
@@ -54,8 +55,26 @@ func (c *Client) Close() error {
 }
 
 // CreateSupplier creates a new supplier
-func (c *Client) CreateSupplier(ctx context.Context, req *supplierv1.CreateSupplierRequest) (*supplierv1.CreateSupplierResponse, error) {
-	c.logger.Debug("Creating supplier", zap.String("name", req.Name))
+func (c *Client) CreateSupplier(ctx context.Context, name, contactPerson, email, phone, address, city, state, country, postalCode, taxID, website, currency, paymentTerms string, leadTimeDays int32, metadata map[string]string) (*models.CreateSupplierResponse, error) {
+	c.logger.Debug("Creating supplier", zap.String("name", name))
+	
+	req := &supplierv1.CreateSupplierRequest{
+		Name:          name,
+		ContactPerson: contactPerson,
+		Email:         email,
+		Phone:         phone,
+		Address:       address,
+		City:          city,
+		State:         state,
+		Country:       country,
+		PostalCode:    postalCode,
+		TaxId:         taxID,
+		Website:       website,
+		Currency:      currency,
+		LeadTimeDays:  leadTimeDays,
+		PaymentTerms:  paymentTerms,
+		Metadata:      metadata,
+	}
 	
 	resp, err := c.client.CreateSupplier(ctx, req)
 	if err != nil {
@@ -64,12 +83,16 @@ func (c *Client) CreateSupplier(ctx context.Context, req *supplierv1.CreateSuppl
 	}
 	
 	c.logger.Debug("Supplier created successfully", zap.String("id", resp.Supplier.Id))
-	return resp, nil
+	return c.convertToCreateSupplierResponse(resp), nil
 }
 
 // GetSupplier retrieves a supplier by ID
-func (c *Client) GetSupplier(ctx context.Context, req *supplierv1.GetSupplierRequest) (*supplierv1.GetSupplierResponse, error) {
-	c.logger.Debug("Getting supplier", zap.String("id", req.Id))
+func (c *Client) GetSupplier(ctx context.Context, id string) (*models.Supplier, error) {
+	c.logger.Debug("Getting supplier", zap.String("id", id))
+	
+	req := &supplierv1.GetSupplierRequest{
+		Id: id,
+	}
 	
 	resp, err := c.client.GetSupplier(ctx, req)
 	if err != nil {
@@ -77,12 +100,31 @@ func (c *Client) GetSupplier(ctx context.Context, req *supplierv1.GetSupplierReq
 		return nil, fmt.Errorf("failed to get supplier: %w", err)
 	}
 	
-	return resp, nil
+	return c.convertToSupplier(resp.Supplier), nil
 }
 
 // UpdateSupplier updates an existing supplier
-func (c *Client) UpdateSupplier(ctx context.Context, req *supplierv1.UpdateSupplierRequest) (*supplierv1.UpdateSupplierResponse, error) {
-	c.logger.Debug("Updating supplier", zap.String("id", req.Id))
+func (c *Client) UpdateSupplier(ctx context.Context, id, name, contactPerson, email, phone, address, city, state, country, postalCode, taxID, website, currency, paymentTerms string, leadTimeDays int32, metadata map[string]string) (*models.UpdateSupplierResponse, error) {
+	c.logger.Debug("Updating supplier", zap.String("id", id))
+	
+	req := &supplierv1.UpdateSupplierRequest{
+		Id:            id,
+		Name:          name,
+		ContactPerson: contactPerson,
+		Email:         email,
+		Phone:         phone,
+		Address:       address,
+		City:          city,
+		State:         state,
+		Country:       country,
+		PostalCode:    postalCode,
+		TaxId:         taxID,
+		Website:       website,
+		Currency:      currency,
+		LeadTimeDays:  leadTimeDays,
+		PaymentTerms:  paymentTerms,
+		Metadata:      metadata,
+	}
 	
 	resp, err := c.client.UpdateSupplier(ctx, req)
 	if err != nil {
@@ -90,25 +132,35 @@ func (c *Client) UpdateSupplier(ctx context.Context, req *supplierv1.UpdateSuppl
 		return nil, fmt.Errorf("failed to update supplier: %w", err)
 	}
 	
-	return resp, nil
+	return c.convertToUpdateSupplierResponse(resp), nil
 }
 
 // DeleteSupplier deletes a supplier by ID
-func (c *Client) DeleteSupplier(ctx context.Context, req *supplierv1.DeleteSupplierRequest) (*supplierv1.DeleteSupplierResponse, error) {
-	c.logger.Debug("Deleting supplier", zap.String("id", req.Id))
+func (c *Client) DeleteSupplier(ctx context.Context, id string) error {
+	c.logger.Debug("Deleting supplier", zap.String("id", id))
 	
-	resp, err := c.client.DeleteSupplier(ctx, req)
-	if err != nil {
-		c.logger.Error("Failed to delete supplier", zap.Error(err))
-		return nil, fmt.Errorf("failed to delete supplier: %w", err)
+	req := &supplierv1.DeleteSupplierRequest{
+		Id: id,
 	}
 	
-	return resp, nil
+	_, err := c.client.DeleteSupplier(ctx, req)
+	if err != nil {
+		c.logger.Error("Failed to delete supplier", zap.Error(err))
+		return fmt.Errorf("failed to delete supplier: %w", err)
+	}
+	
+	c.logger.Debug("Supplier deleted successfully", zap.String("id", id))
+	return nil
 }
 
 // ListSuppliers lists suppliers with pagination
-func (c *Client) ListSuppliers(ctx context.Context, req *supplierv1.ListSuppliersRequest) (*supplierv1.ListSuppliersResponse, error) {
-	c.logger.Debug("Listing suppliers", zap.Int32("page_size", req.PageSize))
+func (c *Client) ListSuppliers(ctx context.Context, pageSize int32, pageToken string) (*models.ListSuppliersResponse, error) {
+	c.logger.Debug("Listing suppliers", zap.Int32("page_size", pageSize))
+	
+	req := &supplierv1.ListSuppliersRequest{
+		PageSize:  pageSize,
+		PageToken: pageToken,
+	}
 	
 	resp, err := c.client.ListSuppliers(ctx, req)
 	if err != nil {
@@ -116,5 +168,5 @@ func (c *Client) ListSuppliers(ctx context.Context, req *supplierv1.ListSupplier
 		return nil, fmt.Errorf("failed to list suppliers: %w", err)
 	}
 	
-	return resp, nil
+	return c.convertToListSuppliersResponse(resp), nil
 }

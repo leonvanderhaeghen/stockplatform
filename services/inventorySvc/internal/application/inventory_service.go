@@ -265,14 +265,47 @@ func (s *InventoryService) ScheduleInventoryCount(ctx context.Context, id string
 
 // AdjustStock adjusts inventory quantity and records reason
 func (s *InventoryService) AdjustStock(ctx context.Context, id string, quantity int32, reason string, performedBy string) error {
-	s.logger.Info("Adjusting stock",
-		zap.String("id", id),
-		zap.Int32("quantity", quantity),
-		zap.String("reason", reason),
-		zap.String("performed_by", performedBy),
+	item, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return fmt.Errorf("failed to get inventory item: %w", err)
+	}
+
+	oldQuantity := item.Quantity
+	newQuantity := oldQuantity + quantity
+	if newQuantity < 0 {
+		return fmt.Errorf("insufficient stock: cannot adjust to negative quantity")
+	}
+
+	item.Quantity = newQuantity
+	item.LastUpdated = time.Now()
+
+	// Update the item
+	if err := s.repo.Update(ctx, item); err != nil {
+		return fmt.Errorf("failed to update inventory item: %w", err)
+	}
+
+	// Record history
+	historyErr := s.recordInventoryHistory(
+		ctx,
+		id,
+		"ADJUSTMENT",
+		reason,
+		oldQuantity,
+		newQuantity,
+		"", // No reference ID for manual adjustments
+		"MANUAL",
+		performedBy,
 	)
-	
-	return s.repo.AdjustStock(ctx, id, quantity, reason, performedBy)
+
+	if historyErr != nil {
+		s.logger.Error("Failed to record inventory history after adjustment",
+			zap.String("inventory_id", id),
+			zap.Error(historyErr),
+		)
+		// Don't fail the operation if history recording fails
+	}
+
+	return nil
 }
 
 // AddStock increases the quantity of an inventory item
@@ -284,16 +317,43 @@ func (s *InventoryService) AddStock(ctx context.Context, id string, quantity int
 	
 	item, err := s.repo.GetByID(ctx, id)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get inventory item: %w", err)
 	}
 	
 	if item == nil {
 		return errors.New("inventory item not found")
 	}
-	
+
+	oldQuantity := item.Quantity
 	item.AddStock(quantity)
-	return s.repo.Update(ctx, item)
-}
+	
+	// Update the item
+	if err := s.repo.Update(ctx, item); err != nil {
+		return fmt.Errorf("failed to update inventory item: %w", err)
+	}
+
+	// Record history
+	historyErr := s.recordInventoryHistory(
+		ctx,
+		id,
+		"STOCK_ADDED",
+		"Manual stock addition",
+		oldQuantity,
+		item.Quantity,
+		"", // No reference ID for manual additions
+		"MANUAL",
+		"system", // Default system user for automated operations
+	)
+
+	if historyErr != nil {
+		s.logger.Error("Failed to record inventory history after adding stock",
+			zap.String("inventory_id", id),
+			zap.Error(historyErr),
+		)
+		// Don't fail the operation if history recording fails
+	}
+
+	return nil
 
 // RemoveStock decreases the quantity of an inventory item
 func (s *InventoryService) RemoveStock(ctx context.Context, id string, quantity int32) error {
@@ -304,19 +364,46 @@ func (s *InventoryService) RemoveStock(ctx context.Context, id string, quantity 
 	
 	item, err := s.repo.GetByID(ctx, id)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get inventory item: %w", err)
 	}
 	
 	if item == nil {
 		return errors.New("inventory item not found")
 	}
+
+	oldQuantity := item.Quantity
 	
 	if !item.RemoveStock(quantity) {
-		return errors.New("insufficient stock")
+		return fmt.Errorf("insufficient stock: requested %d, available %d", quantity, item.Quantity)
 	}
 	
-	return s.repo.Update(ctx, item)
-}
+	// Update the item
+	if err := s.repo.Update(ctx, item); err != nil {
+		return fmt.Errorf("failed to update inventory item: %w", err)
+	}
+
+	// Record history
+	historyErr := s.recordInventoryHistory(
+		ctx,
+		id,
+		"STOCK_REMOVED",
+		"Manual stock removal",
+		oldQuantity,
+		item.Quantity,
+		"", // No reference ID for manual removals
+		"MANUAL",
+		"system", // Default system user for automated operations
+	)
+
+	if historyErr != nil {
+		s.logger.Error("Failed to record inventory history after removing stock",
+			zap.String("inventory_id", id),
+			zap.Error(historyErr),
+		)
+		// Don't fail the operation if history recording fails
+	}
+
+	return nil
 
 // ReserveStock reserves stock for an order
 func (s *InventoryService) ReserveStock(ctx context.Context, id string, quantity int32) error {
@@ -621,6 +708,76 @@ func (s *InventoryService) DeductForDirectPOSTransaction(
 		if err := s.repo.Update(ctx, inventoryItem); err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+// GetInventoryHistory retrieves the history of changes for a specific inventory item
+func (s *InventoryService) GetInventoryHistory(
+	ctx context.Context,
+	inventoryID string,
+	limit, offset int32,
+) ([]*domain.InventoryHistory, int32, error) {
+	s.logger.Debug("Getting inventory history",
+		zap.String("inventory_id", inventoryID),
+		zap.Int32("limit", limit),
+		zap.Int32("offset", offset),
+	)
+
+	// Validate inventory item exists
+	_, err := s.repo.GetByID(ctx, inventoryID)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return nil, 0, fmt.Errorf("inventory item not found: %w", err)
+		}
+		s.logger.Error("Failed to get inventory item",
+			zap.String("inventory_id", inventoryID),
+			zap.Error(err),
+		)
+		return nil, 0, fmt.Errorf("failed to get inventory item: %w", err)
+	}
+
+	// Get history from repository
+	history, total, err := s.repo.GetHistory(ctx, inventoryID, limit, offset)
+	if err != nil {
+		s.logger.Error("Failed to get inventory history",
+			zap.String("inventory_id", inventoryID),
+			zap.Error(err),
+		)
+		return nil, 0, fmt.Errorf("failed to get inventory history: %w", err)
+	}
+
+	return history, total, nil
+}
+
+// recordInventoryHistory is a helper method to record inventory changes
+func (s *InventoryService) recordInventoryHistory(
+	ctx context.Context,
+	inventoryID string,
+	changeType string,
+	description string,
+	quantityBefore, quantityAfter int32,
+	referenceID, referenceType, performedBy string,
+) error {
+	history := &domain.InventoryHistory{
+		InventoryID:   inventoryID,
+		ChangeType:    changeType,
+		Description:   description,
+		QuantityBefore: quantityBefore,
+		QuantityAfter:  quantityAfter,
+		ReferenceID:   referenceID,
+		ReferenceType: referenceType,
+		PerformedBy:   performedBy,
+	}
+
+	if err := s.repo.RecordHistory(ctx, history); err != nil {
+		s.logger.Error("Failed to record inventory history",
+			zap.String("inventory_id", inventoryID),
+			zap.String("change_type", changeType),
+			zap.Error(err),
+		)
+		return fmt.Errorf("failed to record inventory history: %w", err)
 	}
 
 	return nil

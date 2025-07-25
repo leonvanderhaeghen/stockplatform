@@ -19,11 +19,11 @@ func main() {
 	}
 
 	// Initialize database
-	db, err := database.Initialize(cfg.MongoDB.URI, cfg.MongoDB.Database)
+	db, err := database.Initialize(cfg)
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
-	defer db.Disconnect()
+	defer db.Close()
 
 	// Initialize and start server
 	srv := server.New(cfg, db)

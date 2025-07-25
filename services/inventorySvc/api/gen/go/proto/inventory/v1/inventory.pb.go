@@ -3622,7 +3622,7 @@ func (x *CancelPickupRequest) GetReason() string {
 type CancelPickupResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
-	CancelledAt   string                 `protobuf:"bytes,2,opt,name=cancelled_at,json=cancelledAt,proto3" json:"cancelled_at,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3664,11 +3664,242 @@ func (x *CancelPickupResponse) GetSuccess() bool {
 	return false
 }
 
-func (x *CancelPickupResponse) GetCancelledAt() string {
+func (x *CancelPickupResponse) GetMessage() string {
 	if x != nil {
-		return x.CancelledAt
+		return x.Message
 	}
 	return ""
+}
+
+// GetInventoryHistoryRequest is the request for retrieving inventory item history
+type GetInventoryHistoryRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	InventoryId   string                 `protobuf:"bytes,1,opt,name=inventory_id,json=inventoryId,proto3" json:"inventory_id,omitempty"` // ID of the inventory item
+	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`                               // Maximum number of history entries to return
+	Offset        int32                  `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`                             // Offset for pagination
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetInventoryHistoryRequest) Reset() {
+	*x = GetInventoryHistoryRequest{}
+	mi := &file_inventory_v1_inventory_proto_msgTypes[58]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetInventoryHistoryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetInventoryHistoryRequest) ProtoMessage() {}
+
+func (x *GetInventoryHistoryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_inventory_v1_inventory_proto_msgTypes[58]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetInventoryHistoryRequest.ProtoReflect.Descriptor instead.
+func (*GetInventoryHistoryRequest) Descriptor() ([]byte, []int) {
+	return file_inventory_v1_inventory_proto_rawDescGZIP(), []int{58}
+}
+
+func (x *GetInventoryHistoryRequest) GetInventoryId() string {
+	if x != nil {
+		return x.InventoryId
+	}
+	return ""
+}
+
+func (x *GetInventoryHistoryRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *GetInventoryHistoryRequest) GetOffset() int32 {
+	if x != nil {
+		return x.Offset
+	}
+	return 0
+}
+
+// InventoryHistoryEntry represents a single entry in the inventory history
+type InventoryHistoryEntry struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Id             string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	InventoryId    string                 `protobuf:"bytes,2,opt,name=inventory_id,json=inventoryId,proto3" json:"inventory_id,omitempty"`
+	ChangeType     string                 `protobuf:"bytes,3,opt,name=change_type,json=changeType,proto3" json:"change_type,omitempty"` // e.g., QUANTITY_CHANGE, STATUS_UPDATE, etc.
+	Description    string                 `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`                 // Human-readable description of the change
+	QuantityBefore int32                  `protobuf:"varint,5,opt,name=quantity_before,json=quantityBefore,proto3" json:"quantity_before,omitempty"`
+	QuantityAfter  int32                  `protobuf:"varint,6,opt,name=quantity_after,json=quantityAfter,proto3" json:"quantity_after,omitempty"`
+	ReferenceId    string                 `protobuf:"bytes,7,opt,name=reference_id,json=referenceId,proto3" json:"reference_id,omitempty"`       // e.g., order ID, transfer ID, etc.
+	ReferenceType  string                 `protobuf:"bytes,8,opt,name=reference_type,json=referenceType,proto3" json:"reference_type,omitempty"` // e.g., ORDER, TRANSFER, ADJUSTMENT, etc.
+	PerformedBy    string                 `protobuf:"bytes,9,opt,name=performed_by,json=performedBy,proto3" json:"performed_by,omitempty"`       // User ID who performed the change
+	CreatedAt      string                 `protobuf:"bytes,10,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`            // Timestamp of the change
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *InventoryHistoryEntry) Reset() {
+	*x = InventoryHistoryEntry{}
+	mi := &file_inventory_v1_inventory_proto_msgTypes[59]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InventoryHistoryEntry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InventoryHistoryEntry) ProtoMessage() {}
+
+func (x *InventoryHistoryEntry) ProtoReflect() protoreflect.Message {
+	mi := &file_inventory_v1_inventory_proto_msgTypes[59]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InventoryHistoryEntry.ProtoReflect.Descriptor instead.
+func (*InventoryHistoryEntry) Descriptor() ([]byte, []int) {
+	return file_inventory_v1_inventory_proto_rawDescGZIP(), []int{59}
+}
+
+func (x *InventoryHistoryEntry) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *InventoryHistoryEntry) GetInventoryId() string {
+	if x != nil {
+		return x.InventoryId
+	}
+	return ""
+}
+
+func (x *InventoryHistoryEntry) GetChangeType() string {
+	if x != nil {
+		return x.ChangeType
+	}
+	return ""
+}
+
+func (x *InventoryHistoryEntry) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *InventoryHistoryEntry) GetQuantityBefore() int32 {
+	if x != nil {
+		return x.QuantityBefore
+	}
+	return 0
+}
+
+func (x *InventoryHistoryEntry) GetQuantityAfter() int32 {
+	if x != nil {
+		return x.QuantityAfter
+	}
+	return 0
+}
+
+func (x *InventoryHistoryEntry) GetReferenceId() string {
+	if x != nil {
+		return x.ReferenceId
+	}
+	return ""
+}
+
+func (x *InventoryHistoryEntry) GetReferenceType() string {
+	if x != nil {
+		return x.ReferenceType
+	}
+	return ""
+}
+
+func (x *InventoryHistoryEntry) GetPerformedBy() string {
+	if x != nil {
+		return x.PerformedBy
+	}
+	return ""
+}
+
+func (x *InventoryHistoryEntry) GetCreatedAt() string {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return ""
+}
+
+// GetInventoryHistoryResponse is the response containing inventory history
+type GetInventoryHistoryResponse struct {
+	state         protoimpl.MessageState   `protogen:"open.v1"`
+	Entries       []*InventoryHistoryEntry `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty"`
+	Total         int32                    `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"` // Total number of history entries available
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetInventoryHistoryResponse) Reset() {
+	*x = GetInventoryHistoryResponse{}
+	mi := &file_inventory_v1_inventory_proto_msgTypes[60]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetInventoryHistoryResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetInventoryHistoryResponse) ProtoMessage() {}
+
+func (x *GetInventoryHistoryResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_inventory_v1_inventory_proto_msgTypes[60]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetInventoryHistoryResponse.ProtoReflect.Descriptor instead.
+func (*GetInventoryHistoryResponse) Descriptor() ([]byte, []int) {
+	return file_inventory_v1_inventory_proto_rawDescGZIP(), []int{60}
+}
+
+func (x *GetInventoryHistoryResponse) GetEntries() []*InventoryHistoryEntry {
+	if x != nil {
+		return x.Entries
+	}
+	return nil
+}
+
+func (x *GetInventoryHistoryResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
 }
 
 // AdjustInventoryForOrderRequest is the request for adjusting inventory based on order operations
@@ -3686,7 +3917,7 @@ type AdjustInventoryForOrderRequest struct {
 
 func (x *AdjustInventoryForOrderRequest) Reset() {
 	*x = AdjustInventoryForOrderRequest{}
-	mi := &file_inventory_v1_inventory_proto_msgTypes[58]
+	mi := &file_inventory_v1_inventory_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3698,7 +3929,7 @@ func (x *AdjustInventoryForOrderRequest) String() string {
 func (*AdjustInventoryForOrderRequest) ProtoMessage() {}
 
 func (x *AdjustInventoryForOrderRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_inventory_v1_inventory_proto_msgTypes[58]
+	mi := &file_inventory_v1_inventory_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3711,7 +3942,7 @@ func (x *AdjustInventoryForOrderRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdjustInventoryForOrderRequest.ProtoReflect.Descriptor instead.
 func (*AdjustInventoryForOrderRequest) Descriptor() ([]byte, []int) {
-	return file_inventory_v1_inventory_proto_rawDescGZIP(), []int{58}
+	return file_inventory_v1_inventory_proto_rawDescGZIP(), []int{61}
 }
 
 func (x *AdjustInventoryForOrderRequest) GetOrderId() string {
@@ -3770,7 +4001,7 @@ type InventoryAdjustmentItem struct {
 
 func (x *InventoryAdjustmentItem) Reset() {
 	*x = InventoryAdjustmentItem{}
-	mi := &file_inventory_v1_inventory_proto_msgTypes[59]
+	mi := &file_inventory_v1_inventory_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3782,7 +4013,7 @@ func (x *InventoryAdjustmentItem) String() string {
 func (*InventoryAdjustmentItem) ProtoMessage() {}
 
 func (x *InventoryAdjustmentItem) ProtoReflect() protoreflect.Message {
-	mi := &file_inventory_v1_inventory_proto_msgTypes[59]
+	mi := &file_inventory_v1_inventory_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3795,7 +4026,7 @@ func (x *InventoryAdjustmentItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InventoryAdjustmentItem.ProtoReflect.Descriptor instead.
 func (*InventoryAdjustmentItem) Descriptor() ([]byte, []int) {
-	return file_inventory_v1_inventory_proto_rawDescGZIP(), []int{59}
+	return file_inventory_v1_inventory_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *InventoryAdjustmentItem) GetProductId() string {
@@ -3849,7 +4080,7 @@ type InventoryAdjustmentResult struct {
 
 func (x *InventoryAdjustmentResult) Reset() {
 	*x = InventoryAdjustmentResult{}
-	mi := &file_inventory_v1_inventory_proto_msgTypes[60]
+	mi := &file_inventory_v1_inventory_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3861,7 +4092,7 @@ func (x *InventoryAdjustmentResult) String() string {
 func (*InventoryAdjustmentResult) ProtoMessage() {}
 
 func (x *InventoryAdjustmentResult) ProtoReflect() protoreflect.Message {
-	mi := &file_inventory_v1_inventory_proto_msgTypes[60]
+	mi := &file_inventory_v1_inventory_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3874,7 +4105,7 @@ func (x *InventoryAdjustmentResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InventoryAdjustmentResult.ProtoReflect.Descriptor instead.
 func (*InventoryAdjustmentResult) Descriptor() ([]byte, []int) {
-	return file_inventory_v1_inventory_proto_rawDescGZIP(), []int{60}
+	return file_inventory_v1_inventory_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *InventoryAdjustmentResult) GetProductId() string {
@@ -3937,7 +4168,7 @@ type AdjustInventoryForOrderResponse struct {
 
 func (x *AdjustInventoryForOrderResponse) Reset() {
 	*x = AdjustInventoryForOrderResponse{}
-	mi := &file_inventory_v1_inventory_proto_msgTypes[61]
+	mi := &file_inventory_v1_inventory_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3949,7 +4180,7 @@ func (x *AdjustInventoryForOrderResponse) String() string {
 func (*AdjustInventoryForOrderResponse) ProtoMessage() {}
 
 func (x *AdjustInventoryForOrderResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_inventory_v1_inventory_proto_msgTypes[61]
+	mi := &file_inventory_v1_inventory_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3962,7 +4193,7 @@ func (x *AdjustInventoryForOrderResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdjustInventoryForOrderResponse.ProtoReflect.Descriptor instead.
 func (*AdjustInventoryForOrderResponse) Descriptor() ([]byte, []int) {
-	return file_inventory_v1_inventory_proto_rawDescGZIP(), []int{61}
+	return file_inventory_v1_inventory_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *AdjustInventoryForOrderResponse) GetSuccess() bool {
@@ -4261,10 +4492,31 @@ const file_inventory_v1_inventory_proto_rawDesc = "" +
 	"\fcompleted_at\x18\x03 \x01(\tR\vcompletedAt\"T\n" +
 	"\x13CancelPickupRequest\x12%\n" +
 	"\x0ereservation_id\x18\x01 \x01(\tR\rreservationId\x12\x16\n" +
-	"\x06reason\x18\x02 \x01(\tR\x06reason\"S\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\"J\n" +
 	"\x14CancelPickupResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\x12!\n" +
-	"\fcancelled_at\x18\x02 \x01(\tR\vcancelledAt\"\x80\x02\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"m\n" +
+	"\x1aGetInventoryHistoryRequest\x12!\n" +
+	"\finventory_id\x18\x01 \x01(\tR\vinventoryId\x12\x14\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
+	"\x06offset\x18\x03 \x01(\x05R\x06offset\"\xe9\x02\n" +
+	"\x15InventoryHistoryEntry\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
+	"\finventory_id\x18\x02 \x01(\tR\vinventoryId\x12\x1f\n" +
+	"\vchange_type\x18\x03 \x01(\tR\n" +
+	"changeType\x12 \n" +
+	"\vdescription\x18\x04 \x01(\tR\vdescription\x12'\n" +
+	"\x0fquantity_before\x18\x05 \x01(\x05R\x0equantityBefore\x12%\n" +
+	"\x0equantity_after\x18\x06 \x01(\x05R\rquantityAfter\x12!\n" +
+	"\freference_id\x18\a \x01(\tR\vreferenceId\x12%\n" +
+	"\x0ereference_type\x18\b \x01(\tR\rreferenceType\x12!\n" +
+	"\fperformed_by\x18\t \x01(\tR\vperformedBy\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\n" +
+	" \x01(\tR\tcreatedAt\"r\n" +
+	"\x1bGetInventoryHistoryResponse\x12=\n" +
+	"\aentries\x18\x01 \x03(\v2#.inventory.v1.InventoryHistoryEntryR\aentries\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\"\x80\x02\n" +
 	"\x1eAdjustInventoryForOrderRequest\x12\x19\n" +
 	"\border_id\x18\x01 \x01(\tR\aorderId\x12\x1f\n" +
 	"\vlocation_id\x18\x02 \x01(\tR\n" +
@@ -4291,7 +4543,7 @@ const file_inventory_v1_inventory_proto_rawDesc = "" +
 	"\rerror_message\x18\a \x01(\tR\ferrorMessage\"z\n" +
 	"\x1fAdjustInventoryForOrderResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12=\n" +
-	"\x05items\x18\x02 \x03(\v2'.inventory.v1.InventoryAdjustmentResultR\x05items2\x84\x15\n" +
+	"\x05items\x18\x02 \x03(\v2'.inventory.v1.InventoryAdjustmentResultR\x05items2\xf0\x15\n" +
 	"\x10InventoryService\x12^\n" +
 	"\x0fCreateInventory\x12$.inventory.v1.CreateInventoryRequest\x1a%.inventory.v1.CreateInventoryResponse\x12U\n" +
 	"\fGetInventory\x12!.inventory.v1.GetInventoryRequest\x1a\".inventory.v1.GetInventoryResponse\x12k\n" +
@@ -4320,7 +4572,8 @@ const file_inventory_v1_inventory_proto_rawDesc = "" +
 	"\x10ReserveForPickup\x12%.inventory.v1.ReserveForPickupRequest\x1a&.inventory.v1.ReserveForPickupResponse\x12[\n" +
 	"\x0eCompletePickup\x12#.inventory.v1.CompletePickupRequest\x1a$.inventory.v1.CompletePickupResponse\x12U\n" +
 	"\fCancelPickup\x12!.inventory.v1.CancelPickupRequest\x1a\".inventory.v1.CancelPickupResponse\x12v\n" +
-	"\x17AdjustInventoryForOrder\x12,.inventory.v1.AdjustInventoryForOrderRequest\x1a-.inventory.v1.AdjustInventoryForOrderResponseBMZKgithub.com/leonvanderhaeghen/stockplatform/pkg/gen/inventory/v1;inventoryv1b\x06proto3"
+	"\x17AdjustInventoryForOrder\x12,.inventory.v1.AdjustInventoryForOrderRequest\x1a-.inventory.v1.AdjustInventoryForOrderResponse\x12j\n" +
+	"\x13GetInventoryHistory\x12(.inventory.v1.GetInventoryHistoryRequest\x1a).inventory.v1.GetInventoryHistoryResponseBMZKgithub.com/leonvanderhaeghen/stockplatform/pkg/gen/inventory/v1;inventoryv1b\x06proto3"
 
 var (
 	file_inventory_v1_inventory_proto_rawDescOnce sync.Once
@@ -4334,7 +4587,7 @@ func file_inventory_v1_inventory_proto_rawDescGZIP() []byte {
 	return file_inventory_v1_inventory_proto_rawDescData
 }
 
-var file_inventory_v1_inventory_proto_msgTypes = make([]protoimpl.MessageInfo, 62)
+var file_inventory_v1_inventory_proto_msgTypes = make([]protoimpl.MessageInfo, 65)
 var file_inventory_v1_inventory_proto_goTypes = []any{
 	(*InventoryItem)(nil),                   // 0: inventory.v1.InventoryItem
 	(*StoreLocation)(nil),                   // 1: inventory.v1.StoreLocation
@@ -4394,10 +4647,13 @@ var file_inventory_v1_inventory_proto_goTypes = []any{
 	(*CompletePickupResponse)(nil),          // 55: inventory.v1.CompletePickupResponse
 	(*CancelPickupRequest)(nil),             // 56: inventory.v1.CancelPickupRequest
 	(*CancelPickupResponse)(nil),            // 57: inventory.v1.CancelPickupResponse
-	(*AdjustInventoryForOrderRequest)(nil),  // 58: inventory.v1.AdjustInventoryForOrderRequest
-	(*InventoryAdjustmentItem)(nil),         // 59: inventory.v1.InventoryAdjustmentItem
-	(*InventoryAdjustmentResult)(nil),       // 60: inventory.v1.InventoryAdjustmentResult
-	(*AdjustInventoryForOrderResponse)(nil), // 61: inventory.v1.AdjustInventoryForOrderResponse
+	(*GetInventoryHistoryRequest)(nil),      // 58: inventory.v1.GetInventoryHistoryRequest
+	(*InventoryHistoryEntry)(nil),           // 59: inventory.v1.InventoryHistoryEntry
+	(*GetInventoryHistoryResponse)(nil),     // 60: inventory.v1.GetInventoryHistoryResponse
+	(*AdjustInventoryForOrderRequest)(nil),  // 61: inventory.v1.AdjustInventoryForOrderRequest
+	(*InventoryAdjustmentItem)(nil),         // 62: inventory.v1.InventoryAdjustmentItem
+	(*InventoryAdjustmentResult)(nil),       // 63: inventory.v1.InventoryAdjustmentResult
+	(*AdjustInventoryForOrderResponse)(nil), // 64: inventory.v1.AdjustInventoryForOrderResponse
 }
 var file_inventory_v1_inventory_proto_depIdxs = []int32{
 	0,  // 0: inventory.v1.CreateInventoryResponse.inventory:type_name -> inventory.v1.InventoryItem
@@ -4419,69 +4675,72 @@ var file_inventory_v1_inventory_proto_depIdxs = []int32{
 	49, // 16: inventory.v1.GetNearbyInventoryResponse.locations:type_name -> inventory.v1.NearbyLocationInventory
 	44, // 17: inventory.v1.ReserveForPickupRequest.items:type_name -> inventory.v1.InventoryRequestItem
 	52, // 18: inventory.v1.ReserveForPickupResponse.items:type_name -> inventory.v1.InventoryReservationResult
-	59, // 19: inventory.v1.AdjustInventoryForOrderRequest.items:type_name -> inventory.v1.InventoryAdjustmentItem
-	60, // 20: inventory.v1.AdjustInventoryForOrderResponse.items:type_name -> inventory.v1.InventoryAdjustmentResult
-	3,  // 21: inventory.v1.InventoryService.CreateInventory:input_type -> inventory.v1.CreateInventoryRequest
-	5,  // 22: inventory.v1.InventoryService.GetInventory:input_type -> inventory.v1.GetInventoryRequest
-	6,  // 23: inventory.v1.InventoryService.GetInventoryByProductID:input_type -> inventory.v1.GetInventoryByProductIDRequest
-	7,  // 24: inventory.v1.InventoryService.GetInventoryBySKU:input_type -> inventory.v1.GetInventoryBySKURequest
-	9,  // 25: inventory.v1.InventoryService.UpdateInventory:input_type -> inventory.v1.UpdateInventoryRequest
-	11, // 26: inventory.v1.InventoryService.DeleteInventory:input_type -> inventory.v1.DeleteInventoryRequest
-	13, // 27: inventory.v1.InventoryService.ListInventory:input_type -> inventory.v1.ListInventoryRequest
-	14, // 28: inventory.v1.InventoryService.ListInventoryByLocation:input_type -> inventory.v1.ListInventoryByLocationRequest
-	16, // 29: inventory.v1.InventoryService.AddStock:input_type -> inventory.v1.AddStockRequest
-	18, // 30: inventory.v1.InventoryService.RemoveStock:input_type -> inventory.v1.RemoveStockRequest
-	20, // 31: inventory.v1.InventoryService.ReserveStock:input_type -> inventory.v1.ReserveStockRequest
-	22, // 32: inventory.v1.InventoryService.ReleaseReservation:input_type -> inventory.v1.ReleaseReservationRequest
-	24, // 33: inventory.v1.InventoryService.FulfillReservation:input_type -> inventory.v1.FulfillReservationRequest
-	26, // 34: inventory.v1.InventoryService.CreateLocation:input_type -> inventory.v1.CreateLocationRequest
-	28, // 35: inventory.v1.InventoryService.GetLocation:input_type -> inventory.v1.GetLocationRequest
-	30, // 36: inventory.v1.InventoryService.UpdateLocation:input_type -> inventory.v1.UpdateLocationRequest
-	32, // 37: inventory.v1.InventoryService.DeleteLocation:input_type -> inventory.v1.DeleteLocationRequest
-	34, // 38: inventory.v1.InventoryService.ListLocations:input_type -> inventory.v1.ListLocationsRequest
-	36, // 39: inventory.v1.InventoryService.CreateTransfer:input_type -> inventory.v1.CreateTransferRequest
-	38, // 40: inventory.v1.InventoryService.GetTransfer:input_type -> inventory.v1.GetTransferRequest
-	40, // 41: inventory.v1.InventoryService.UpdateTransferStatus:input_type -> inventory.v1.UpdateTransferStatusRequest
-	42, // 42: inventory.v1.InventoryService.ListTransfers:input_type -> inventory.v1.ListTransfersRequest
-	45, // 43: inventory.v1.InventoryService.CheckAvailability:input_type -> inventory.v1.CheckAvailabilityRequest
-	48, // 44: inventory.v1.InventoryService.GetNearbyInventory:input_type -> inventory.v1.GetNearbyInventoryRequest
-	51, // 45: inventory.v1.InventoryService.ReserveForPickup:input_type -> inventory.v1.ReserveForPickupRequest
-	54, // 46: inventory.v1.InventoryService.CompletePickup:input_type -> inventory.v1.CompletePickupRequest
-	56, // 47: inventory.v1.InventoryService.CancelPickup:input_type -> inventory.v1.CancelPickupRequest
-	58, // 48: inventory.v1.InventoryService.AdjustInventoryForOrder:input_type -> inventory.v1.AdjustInventoryForOrderRequest
-	4,  // 49: inventory.v1.InventoryService.CreateInventory:output_type -> inventory.v1.CreateInventoryResponse
-	8,  // 50: inventory.v1.InventoryService.GetInventory:output_type -> inventory.v1.GetInventoryResponse
-	8,  // 51: inventory.v1.InventoryService.GetInventoryByProductID:output_type -> inventory.v1.GetInventoryResponse
-	8,  // 52: inventory.v1.InventoryService.GetInventoryBySKU:output_type -> inventory.v1.GetInventoryResponse
-	10, // 53: inventory.v1.InventoryService.UpdateInventory:output_type -> inventory.v1.UpdateInventoryResponse
-	12, // 54: inventory.v1.InventoryService.DeleteInventory:output_type -> inventory.v1.DeleteInventoryResponse
-	15, // 55: inventory.v1.InventoryService.ListInventory:output_type -> inventory.v1.ListInventoryResponse
-	15, // 56: inventory.v1.InventoryService.ListInventoryByLocation:output_type -> inventory.v1.ListInventoryResponse
-	17, // 57: inventory.v1.InventoryService.AddStock:output_type -> inventory.v1.AddStockResponse
-	19, // 58: inventory.v1.InventoryService.RemoveStock:output_type -> inventory.v1.RemoveStockResponse
-	21, // 59: inventory.v1.InventoryService.ReserveStock:output_type -> inventory.v1.ReserveStockResponse
-	23, // 60: inventory.v1.InventoryService.ReleaseReservation:output_type -> inventory.v1.ReleaseReservationResponse
-	25, // 61: inventory.v1.InventoryService.FulfillReservation:output_type -> inventory.v1.FulfillReservationResponse
-	27, // 62: inventory.v1.InventoryService.CreateLocation:output_type -> inventory.v1.CreateLocationResponse
-	29, // 63: inventory.v1.InventoryService.GetLocation:output_type -> inventory.v1.GetLocationResponse
-	31, // 64: inventory.v1.InventoryService.UpdateLocation:output_type -> inventory.v1.UpdateLocationResponse
-	33, // 65: inventory.v1.InventoryService.DeleteLocation:output_type -> inventory.v1.DeleteLocationResponse
-	35, // 66: inventory.v1.InventoryService.ListLocations:output_type -> inventory.v1.ListLocationsResponse
-	37, // 67: inventory.v1.InventoryService.CreateTransfer:output_type -> inventory.v1.CreateTransferResponse
-	39, // 68: inventory.v1.InventoryService.GetTransfer:output_type -> inventory.v1.GetTransferResponse
-	41, // 69: inventory.v1.InventoryService.UpdateTransferStatus:output_type -> inventory.v1.UpdateTransferStatusResponse
-	43, // 70: inventory.v1.InventoryService.ListTransfers:output_type -> inventory.v1.ListTransfersResponse
-	47, // 71: inventory.v1.InventoryService.CheckAvailability:output_type -> inventory.v1.CheckAvailabilityResponse
-	50, // 72: inventory.v1.InventoryService.GetNearbyInventory:output_type -> inventory.v1.GetNearbyInventoryResponse
-	53, // 73: inventory.v1.InventoryService.ReserveForPickup:output_type -> inventory.v1.ReserveForPickupResponse
-	55, // 74: inventory.v1.InventoryService.CompletePickup:output_type -> inventory.v1.CompletePickupResponse
-	57, // 75: inventory.v1.InventoryService.CancelPickup:output_type -> inventory.v1.CancelPickupResponse
-	61, // 76: inventory.v1.InventoryService.AdjustInventoryForOrder:output_type -> inventory.v1.AdjustInventoryForOrderResponse
-	49, // [49:77] is the sub-list for method output_type
-	21, // [21:49] is the sub-list for method input_type
-	21, // [21:21] is the sub-list for extension type_name
-	21, // [21:21] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	59, // 19: inventory.v1.GetInventoryHistoryResponse.entries:type_name -> inventory.v1.InventoryHistoryEntry
+	62, // 20: inventory.v1.AdjustInventoryForOrderRequest.items:type_name -> inventory.v1.InventoryAdjustmentItem
+	63, // 21: inventory.v1.AdjustInventoryForOrderResponse.items:type_name -> inventory.v1.InventoryAdjustmentResult
+	3,  // 22: inventory.v1.InventoryService.CreateInventory:input_type -> inventory.v1.CreateInventoryRequest
+	5,  // 23: inventory.v1.InventoryService.GetInventory:input_type -> inventory.v1.GetInventoryRequest
+	6,  // 24: inventory.v1.InventoryService.GetInventoryByProductID:input_type -> inventory.v1.GetInventoryByProductIDRequest
+	7,  // 25: inventory.v1.InventoryService.GetInventoryBySKU:input_type -> inventory.v1.GetInventoryBySKURequest
+	9,  // 26: inventory.v1.InventoryService.UpdateInventory:input_type -> inventory.v1.UpdateInventoryRequest
+	11, // 27: inventory.v1.InventoryService.DeleteInventory:input_type -> inventory.v1.DeleteInventoryRequest
+	13, // 28: inventory.v1.InventoryService.ListInventory:input_type -> inventory.v1.ListInventoryRequest
+	14, // 29: inventory.v1.InventoryService.ListInventoryByLocation:input_type -> inventory.v1.ListInventoryByLocationRequest
+	16, // 30: inventory.v1.InventoryService.AddStock:input_type -> inventory.v1.AddStockRequest
+	18, // 31: inventory.v1.InventoryService.RemoveStock:input_type -> inventory.v1.RemoveStockRequest
+	20, // 32: inventory.v1.InventoryService.ReserveStock:input_type -> inventory.v1.ReserveStockRequest
+	22, // 33: inventory.v1.InventoryService.ReleaseReservation:input_type -> inventory.v1.ReleaseReservationRequest
+	24, // 34: inventory.v1.InventoryService.FulfillReservation:input_type -> inventory.v1.FulfillReservationRequest
+	26, // 35: inventory.v1.InventoryService.CreateLocation:input_type -> inventory.v1.CreateLocationRequest
+	28, // 36: inventory.v1.InventoryService.GetLocation:input_type -> inventory.v1.GetLocationRequest
+	30, // 37: inventory.v1.InventoryService.UpdateLocation:input_type -> inventory.v1.UpdateLocationRequest
+	32, // 38: inventory.v1.InventoryService.DeleteLocation:input_type -> inventory.v1.DeleteLocationRequest
+	34, // 39: inventory.v1.InventoryService.ListLocations:input_type -> inventory.v1.ListLocationsRequest
+	36, // 40: inventory.v1.InventoryService.CreateTransfer:input_type -> inventory.v1.CreateTransferRequest
+	38, // 41: inventory.v1.InventoryService.GetTransfer:input_type -> inventory.v1.GetTransferRequest
+	40, // 42: inventory.v1.InventoryService.UpdateTransferStatus:input_type -> inventory.v1.UpdateTransferStatusRequest
+	42, // 43: inventory.v1.InventoryService.ListTransfers:input_type -> inventory.v1.ListTransfersRequest
+	45, // 44: inventory.v1.InventoryService.CheckAvailability:input_type -> inventory.v1.CheckAvailabilityRequest
+	48, // 45: inventory.v1.InventoryService.GetNearbyInventory:input_type -> inventory.v1.GetNearbyInventoryRequest
+	51, // 46: inventory.v1.InventoryService.ReserveForPickup:input_type -> inventory.v1.ReserveForPickupRequest
+	54, // 47: inventory.v1.InventoryService.CompletePickup:input_type -> inventory.v1.CompletePickupRequest
+	56, // 48: inventory.v1.InventoryService.CancelPickup:input_type -> inventory.v1.CancelPickupRequest
+	61, // 49: inventory.v1.InventoryService.AdjustInventoryForOrder:input_type -> inventory.v1.AdjustInventoryForOrderRequest
+	58, // 50: inventory.v1.InventoryService.GetInventoryHistory:input_type -> inventory.v1.GetInventoryHistoryRequest
+	4,  // 51: inventory.v1.InventoryService.CreateInventory:output_type -> inventory.v1.CreateInventoryResponse
+	8,  // 52: inventory.v1.InventoryService.GetInventory:output_type -> inventory.v1.GetInventoryResponse
+	8,  // 53: inventory.v1.InventoryService.GetInventoryByProductID:output_type -> inventory.v1.GetInventoryResponse
+	8,  // 54: inventory.v1.InventoryService.GetInventoryBySKU:output_type -> inventory.v1.GetInventoryResponse
+	10, // 55: inventory.v1.InventoryService.UpdateInventory:output_type -> inventory.v1.UpdateInventoryResponse
+	12, // 56: inventory.v1.InventoryService.DeleteInventory:output_type -> inventory.v1.DeleteInventoryResponse
+	15, // 57: inventory.v1.InventoryService.ListInventory:output_type -> inventory.v1.ListInventoryResponse
+	15, // 58: inventory.v1.InventoryService.ListInventoryByLocation:output_type -> inventory.v1.ListInventoryResponse
+	17, // 59: inventory.v1.InventoryService.AddStock:output_type -> inventory.v1.AddStockResponse
+	19, // 60: inventory.v1.InventoryService.RemoveStock:output_type -> inventory.v1.RemoveStockResponse
+	21, // 61: inventory.v1.InventoryService.ReserveStock:output_type -> inventory.v1.ReserveStockResponse
+	23, // 62: inventory.v1.InventoryService.ReleaseReservation:output_type -> inventory.v1.ReleaseReservationResponse
+	25, // 63: inventory.v1.InventoryService.FulfillReservation:output_type -> inventory.v1.FulfillReservationResponse
+	27, // 64: inventory.v1.InventoryService.CreateLocation:output_type -> inventory.v1.CreateLocationResponse
+	29, // 65: inventory.v1.InventoryService.GetLocation:output_type -> inventory.v1.GetLocationResponse
+	31, // 66: inventory.v1.InventoryService.UpdateLocation:output_type -> inventory.v1.UpdateLocationResponse
+	33, // 67: inventory.v1.InventoryService.DeleteLocation:output_type -> inventory.v1.DeleteLocationResponse
+	35, // 68: inventory.v1.InventoryService.ListLocations:output_type -> inventory.v1.ListLocationsResponse
+	37, // 69: inventory.v1.InventoryService.CreateTransfer:output_type -> inventory.v1.CreateTransferResponse
+	39, // 70: inventory.v1.InventoryService.GetTransfer:output_type -> inventory.v1.GetTransferResponse
+	41, // 71: inventory.v1.InventoryService.UpdateTransferStatus:output_type -> inventory.v1.UpdateTransferStatusResponse
+	43, // 72: inventory.v1.InventoryService.ListTransfers:output_type -> inventory.v1.ListTransfersResponse
+	47, // 73: inventory.v1.InventoryService.CheckAvailability:output_type -> inventory.v1.CheckAvailabilityResponse
+	50, // 74: inventory.v1.InventoryService.GetNearbyInventory:output_type -> inventory.v1.GetNearbyInventoryResponse
+	53, // 75: inventory.v1.InventoryService.ReserveForPickup:output_type -> inventory.v1.ReserveForPickupResponse
+	55, // 76: inventory.v1.InventoryService.CompletePickup:output_type -> inventory.v1.CompletePickupResponse
+	57, // 77: inventory.v1.InventoryService.CancelPickup:output_type -> inventory.v1.CancelPickupResponse
+	64, // 78: inventory.v1.InventoryService.AdjustInventoryForOrder:output_type -> inventory.v1.AdjustInventoryForOrderResponse
+	60, // 79: inventory.v1.InventoryService.GetInventoryHistory:output_type -> inventory.v1.GetInventoryHistoryResponse
+	51, // [51:80] is the sub-list for method output_type
+	22, // [22:51] is the sub-list for method input_type
+	22, // [22:22] is the sub-list for extension type_name
+	22, // [22:22] is the sub-list for extension extendee
+	0,  // [0:22] is the sub-list for field type_name
 }
 
 func init() { file_inventory_v1_inventory_proto_init() }
@@ -4495,7 +4754,7 @@ func file_inventory_v1_inventory_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_inventory_v1_inventory_proto_rawDesc), len(file_inventory_v1_inventory_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   62,
+			NumMessages:   65,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

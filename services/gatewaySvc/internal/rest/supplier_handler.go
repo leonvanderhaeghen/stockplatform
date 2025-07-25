@@ -9,7 +9,6 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/leonvanderhaeghen/stockplatform/services/gatewaySvc/internal/services"
-	supplierv1 "github.com/leonvanderhaeghen/stockplatform/services/supplierSvc/api/gen/go/proto/supplier/v1"
 )
 
 // SupplierHandler handles HTTP requests for supplier operations

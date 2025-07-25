@@ -93,6 +93,8 @@ github.com/leonvanderhaeghen/stockplatform/services/orderSvc v0.0.0-202506172355
 github.com/leonvanderhaeghen/stockplatform/services/orderSvc v0.0.0-20250617235535-5a86d542f1f1/go.mod h1:vD3ZkUR7JbwQEfnulq4KwK+vgoB0O/kx8D1aZCXcq80=
 github.com/leonvanderhaeghen/stockplatform/services/productSvc v0.0.0-20250617235535-5a86d542f1f1 h1:9ukHty37XHQbM9oGcpL6rGauCZIlSxQ+Dn5LcLJPU2A=
 github.com/leonvanderhaeghen/stockplatform/services/productSvc v0.0.0-20250617235535-5a86d542f1f1/go.mod h1:DgfLWhDhTSYFUH81Fc04vhLdHnBreXWpTYoEMcRw+QA=
+github.com/leonvanderhaeghen/stockplatform/services/storeSvc v0.0.0-20250617235535-5a86d542f1f1 h1:o3QOFzNA7rT5T4sOJrO+0UexWVLdVJQmQl/j8NX6Y60=
+github.com/leonvanderhaeghen/stockplatform/services/storeSvc v0.0.0-20250617235535-5a86d542f1f1/go.mod h1:QxZU8aCRrA7UPtY30+biqVmhUz9ec3O+mviFrYR/ULc=
 github.com/leonvanderhaeghen/stockplatform/services/supplierSvc v0.0.0-20250617235535-5a86d542f1f1 h1:/4nqbPP/GfL22RNKgcqRGy49ED9QhgkqifBOHPAdhYA=
 github.com/leonvanderhaeghen/stockplatform/services/supplierSvc v0.0.0-20250617235535-5a86d542f1f1/go.mod h1:5aEo8T15R9SVL37r4Cz0XPqmskQ5WBC0wLm7GVUQSeQ=
 github.com/leonvanderhaeghen/stockplatform/services/userSvc v0.0.0-20250617235535-5a86d542f1f1 h1:VjluWL+grjMqU+3SlRsxfEubSAiojAHwTdL7NG0oJzU=

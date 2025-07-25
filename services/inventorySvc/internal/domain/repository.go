@@ -1,6 +1,23 @@
 package domain
 
-import "context"
+import (
+	"context"
+	"time"
+)
+
+// InventoryHistory represents a historical record of changes to an inventory item
+type InventoryHistory struct {
+	ID           string    `bson:"_id,omitempty"`
+	InventoryID  string    `bson:"inventory_id"`
+	ChangeType   string    `bson:"change_type"`   // e.g., QUANTITY_CHANGE, STATUS_UPDATE, etc.
+	Description  string    `bson:"description"`   // Human-readable description of the change
+	QuantityBefore int32   `bson:"quantity_before"`
+	QuantityAfter  int32   `bson:"quantity_after"`
+	ReferenceID   string    `bson:"reference_id,omitempty"`   // e.g., order ID, transfer ID, etc.
+	ReferenceType string    `bson:"reference_type,omitempty"` // e.g., ORDER, TRANSFER, ADJUSTMENT, etc.
+	PerformedBy  string    `bson:"performed_by"`  // User ID who performed the change
+	CreatedAt    time.Time `bson:"created_at"`    // Timestamp of the change
+}
 
 // TransferRepository defines the interface for inventory transfer persistence
 type TransferRepository interface {
@@ -72,4 +89,10 @@ type InventoryRepository interface {
 	
 	// AdjustStock adjusts inventory quantity and records reason
 	AdjustStock(ctx context.Context, itemID string, quantity int32, reason string, performedBy string) error
+	
+	// GetHistory retrieves the history of changes for a specific inventory item
+	GetHistory(ctx context.Context, inventoryID string, limit, offset int32) ([]*InventoryHistory, int32, error)
+	
+	// RecordHistory adds a new history entry for an inventory item
+	RecordHistory(ctx context.Context, history *InventoryHistory) error
 }

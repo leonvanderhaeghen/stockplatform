@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/leonvanderhaeghen/stockplatform/pkg/clients/order"
-	orderpb "github.com/leonvanderhaeghen/stockplatform/services/orderSvc/api/gen/go/proto/order/v1"
 	"github.com/leonvanderhaeghen/stockplatform/services/inventorySvc/internal/domain"
 	"go.uber.org/zap"
 )

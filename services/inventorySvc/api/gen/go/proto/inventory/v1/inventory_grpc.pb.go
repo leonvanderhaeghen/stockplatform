@@ -47,6 +47,7 @@ const (
 	InventoryService_CompletePickup_FullMethodName          = "/inventory.v1.InventoryService/CompletePickup"
 	InventoryService_CancelPickup_FullMethodName            = "/inventory.v1.InventoryService/CancelPickup"
 	InventoryService_AdjustInventoryForOrder_FullMethodName = "/inventory.v1.InventoryService/AdjustInventoryForOrder"
+	InventoryService_GetInventoryHistory_FullMethodName     = "/inventory.v1.InventoryService/GetInventoryHistory"
 )
 
 // InventoryServiceClient is the client API for InventoryService service.
@@ -111,6 +112,8 @@ type InventoryServiceClient interface {
 	CancelPickup(ctx context.Context, in *CancelPickupRequest, opts ...grpc.CallOption) (*CancelPickupResponse, error)
 	// AdjustInventoryForOrder adjusts inventory based on order operations (called by order service)
 	AdjustInventoryForOrder(ctx context.Context, in *AdjustInventoryForOrderRequest, opts ...grpc.CallOption) (*AdjustInventoryForOrderResponse, error)
+	// GetInventoryHistory retrieves the history of changes for a specific inventory item
+	GetInventoryHistory(ctx context.Context, in *GetInventoryHistoryRequest, opts ...grpc.CallOption) (*GetInventoryHistoryResponse, error)
 }
 
 type inventoryServiceClient struct {
@@ -401,6 +404,16 @@ func (c *inventoryServiceClient) AdjustInventoryForOrder(ctx context.Context, in
 	return out, nil
 }
 
+func (c *inventoryServiceClient) GetInventoryHistory(ctx context.Context, in *GetInventoryHistoryRequest, opts ...grpc.CallOption) (*GetInventoryHistoryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetInventoryHistoryResponse)
+	err := c.cc.Invoke(ctx, InventoryService_GetInventoryHistory_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // InventoryServiceServer is the server API for InventoryService service.
 // All implementations should embed UnimplementedInventoryServiceServer
 // for forward compatibility.
@@ -463,6 +476,8 @@ type InventoryServiceServer interface {
 	CancelPickup(context.Context, *CancelPickupRequest) (*CancelPickupResponse, error)
 	// AdjustInventoryForOrder adjusts inventory based on order operations (called by order service)
 	AdjustInventoryForOrder(context.Context, *AdjustInventoryForOrderRequest) (*AdjustInventoryForOrderResponse, error)
+	// GetInventoryHistory retrieves the history of changes for a specific inventory item
+	GetInventoryHistory(context.Context, *GetInventoryHistoryRequest) (*GetInventoryHistoryResponse, error)
 }
 
 // UnimplementedInventoryServiceServer should be embedded to have
@@ -555,6 +570,9 @@ func (UnimplementedInventoryServiceServer) CancelPickup(context.Context, *Cancel
 }
 func (UnimplementedInventoryServiceServer) AdjustInventoryForOrder(context.Context, *AdjustInventoryForOrderRequest) (*AdjustInventoryForOrderResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AdjustInventoryForOrder not implemented")
+}
+func (UnimplementedInventoryServiceServer) GetInventoryHistory(context.Context, *GetInventoryHistoryRequest) (*GetInventoryHistoryResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetInventoryHistory not implemented")
 }
 func (UnimplementedInventoryServiceServer) testEmbeddedByValue() {}
 
@@ -1080,6 +1098,24 @@ func _InventoryService_AdjustInventoryForOrder_Handler(srv interface{}, ctx cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _InventoryService_GetInventoryHistory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetInventoryHistoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(InventoryServiceServer).GetInventoryHistory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: InventoryService_GetInventoryHistory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(InventoryServiceServer).GetInventoryHistory(ctx, req.(*GetInventoryHistoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // InventoryService_ServiceDesc is the grpc.ServiceDesc for InventoryService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1198,6 +1234,10 @@ var InventoryService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AdjustInventoryForOrder",
 			Handler:    _InventoryService_AdjustInventoryForOrder_Handler,
+		},
+		{
+			MethodName: "GetInventoryHistory",
+			Handler:    _InventoryService_GetInventoryHistory_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

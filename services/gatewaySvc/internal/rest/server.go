@@ -211,7 +211,8 @@ func (s *Server) SetupRoutes() {
 	stores.Use(s.authMiddleware(), s.staffMiddleware())
 	{
 		stores.GET("", s.getStores)
-		stores.GET("/:id", s.getStore)
+        stores.POST("", s.createStore)
+        stores.GET("/:id", s.getStore)
 	}
 	
 	// POS (Point of Sale) routes (admin/staff only)

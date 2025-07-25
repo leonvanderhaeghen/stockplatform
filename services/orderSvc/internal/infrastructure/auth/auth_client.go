@@ -6,17 +6,14 @@ import (
 	"strings"
 
 	"go.uber.org/zap"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 
-	userpb "github.com/leonvanderhaeghen/stockplatform/services/userSvc/api/gen/go/proto/user/v1"
+	userclient "github.com/leonvanderhaeghen/stockplatform/pkg/clients/user"
 )
 
 // AuthClient handles authentication and authorization with the user service
 type AuthClient struct {
-	client userpb.UserServiceClient
-	conn   *grpc.ClientConn
+	client *userclient.Client
 	logger *zap.Logger
 }
 
@@ -31,32 +28,26 @@ type UserClaims struct {
 
 // NewAuthClient creates a new authentication client
 func NewAuthClient(userServiceAddr string, logger *zap.Logger) (*AuthClient, error) {
-	conn, err := grpc.Dial(userServiceAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	userCfg := userclient.Config{Address: userServiceAddr}
+	client, err := userclient.New(userCfg, logger)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to user service: %w", err)
+		return nil, fmt.Errorf("failed to create user client: %w", err)
 	}
-
-	client := userpb.NewUserServiceClient(conn)
 
 	return &AuthClient{
 		client: client,
-		conn:   conn,
 		logger: logger.Named("auth_client"),
 	}, nil
 }
 
 // Close closes the gRPC connection
 func (a *AuthClient) Close() error {
-	return a.conn.Close()
+	return a.client.Close()
 }
 
 // ValidateToken validates a JWT token with the user service
 func (a *AuthClient) ValidateToken(ctx context.Context, token string) (*UserClaims, error) {
-	req := &userpb.ValidateTokenRequest{
-		Token: token,
-	}
-
-	resp, err := a.client.ValidateToken(ctx, req)
+	resp, err := a.client.ValidateToken(ctx, token)
 	if err != nil {
 		a.logger.Warn("Token validation failed", zap.Error(err))
 		return nil, fmt.Errorf("token validation failed: %w", err)
@@ -73,12 +64,7 @@ func (a *AuthClient) ValidateToken(ctx context.Context, token string) (*UserClai
 
 // CheckPermission checks if a user has a specific permission
 func (a *AuthClient) CheckPermission(ctx context.Context, role, permission string) (bool, error) {
-	req := &userpb.CheckPermissionRequest{
-		Role:       role,
-		Permission: permission,
-	}
-
-	resp, err := a.client.CheckPermission(ctx, req)
+	resp, err := a.client.CheckPermission(ctx, role, permission)
 	if err != nil {
 		a.logger.Warn("Permission check failed", zap.Error(err))
 		return false, fmt.Errorf("permission check failed: %w", err)

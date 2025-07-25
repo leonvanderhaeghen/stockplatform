@@ -15,8 +15,6 @@ import (
 	"github.com/leonvanderhaeghen/stockplatform/services/productSvc/internal/domain"
 	supplierclient "github.com/leonvanderhaeghen/stockplatform/pkg/clients/supplier"
 	inventoryclient "github.com/leonvanderhaeghen/stockplatform/pkg/clients/inventory"
-	supplierv1 "github.com/leonvanderhaeghen/stockplatform/services/supplierSvc/api/gen/go/proto/supplier/v1"
-	inventoryv1 "github.com/leonvanderhaeghen/stockplatform/services/inventorySvc/api/gen/go/proto/inventory/v1"
 )
 
 // ProductService implements the business logic for product operations

@@ -132,6 +132,25 @@ services:
     networks:
       - stockplatform-network
 
+  # Store Service
+  store-service:
+    build:
+      context: .
+      dockerfile: ./services/storeSvc/Dockerfile
+    container_name: stockplatform-store-service
+    restart: unless-stopped
+    ports:
+      - "50058:50058"
+    environment:
+      - GRPC_PORT=50058
+      - MONGO_URI=mongodb://admin:admin123@mongodb:27017
+      - GO111MODULE=on
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - stockplatform-network
+
   # User Service
   user-service:
     build:
@@ -172,6 +191,7 @@ services:
       - GATEWAY_SERVICES_ORDER_ADDR=order-service:50055
       - GATEWAY_SERVICES_USER_ADDR=user-service:50056
       - GATEWAY_SERVICES_SUPPLIER_ADDR=supplier-service:50057
+      - GATEWAY_SERVICES_STORE_ADDR=store-service:50058
       - GATEWAY_JWT_SECRET=your-secret-key-here
       - GO111MODULE=on
     depends_on:
@@ -180,6 +200,7 @@ services:
       - order-service
       - user-service
       - supplier-service
+      - store-service
     networks:
       - stockplatform-network
 

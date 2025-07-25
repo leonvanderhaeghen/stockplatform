@@ -9,6 +9,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"go.uber.org/zap"
 
+	"github.com/leonvanderhaeghen/stockplatform/pkg/models"
 	productv1 "github.com/leonvanderhaeghen/stockplatform/services/productSvc/api/gen/go/proto/product/v1"
 )
 
@@ -54,8 +55,10 @@ func (c *Client) Close() error {
 }
 
 // CreateProduct creates a new product
-func (c *Client) CreateProduct(ctx context.Context, req *productv1.CreateProductRequest) (*productv1.CreateProductResponse, error) {
-	c.logger.Debug("Creating product", zap.String("name", req.Name))
+func (c *Client) CreateProduct(ctx context.Context, name, description, sku, supplierID string, costPrice, sellingPrice float64, isActive bool, categoryIDs []string) (*models.CreateProductResponse, error) {
+	c.logger.Debug("Creating product", zap.String("name", name))
+	
+	req := convertToCreateProductRequest(name, description, sku, supplierID, costPrice, sellingPrice, isActive, categoryIDs)
 	
 	resp, err := c.client.CreateProduct(ctx, req)
 	if err != nil {
@@ -64,12 +67,16 @@ func (c *Client) CreateProduct(ctx context.Context, req *productv1.CreateProduct
 	}
 	
 	c.logger.Debug("Product created successfully", zap.String("id", resp.Product.Id))
-	return resp, nil
+	return convertToCreateProductResponse(resp), nil
 }
 
 // GetProduct retrieves a product by ID
-func (c *Client) GetProduct(ctx context.Context, req *productv1.GetProductRequest) (*productv1.GetProductResponse, error) {
-	c.logger.Debug("Getting product", zap.String("id", req.Id))
+func (c *Client) GetProduct(ctx context.Context, id string) (*models.Product, error) {
+	c.logger.Debug("Getting product", zap.String("id", id))
+	
+	req := &productv1.GetProductRequest{
+		Id: id,
+	}
 	
 	resp, err := c.client.GetProduct(ctx, req)
 	if err != nil {
@@ -77,12 +84,28 @@ func (c *Client) GetProduct(ctx context.Context, req *productv1.GetProductReques
 		return nil, fmt.Errorf("failed to get product: %w", err)
 	}
 	
-	return resp, nil
+	return convertToProduct(resp.Product), nil
 }
 
 // ListProducts lists products with filtering and sorting
-func (c *Client) ListProducts(ctx context.Context, req *productv1.ListProductsRequest) (*productv1.ListProductsResponse, error) {
+func (c *Client) ListProducts(ctx context.Context, categoryID, supplierID string, isActive *bool, limit, offset int32) (*models.ListProductsResponse, error) {
 	c.logger.Debug("Listing products")
+	
+	req := &productv1.ListProductsRequest{
+		Pagination: &productv1.Pagination{
+			Page:     (offset / limit) + 1,
+			PageSize: limit,
+		},
+	}
+	
+	// Add filters if provided
+	if categoryID != "" || supplierID != "" {
+		req.Filter = &productv1.ProductFilter{}
+		if categoryID != "" {
+			req.Filter.CategoryIds = []string{categoryID}
+		}
+		// Note: SupplierId not available in ProductFilter, ignoring for now
+	}
 	
 	resp, err := c.client.ListProducts(ctx, req)
 	if err != nil {
@@ -90,12 +113,17 @@ func (c *Client) ListProducts(ctx context.Context, req *productv1.ListProductsRe
 		return nil, fmt.Errorf("failed to list products: %w", err)
 	}
 	
-	return resp, nil
+	return convertToListProductsResponse(resp), nil
 }
 
 // ListCategories lists all product categories
-func (c *Client) ListCategories(ctx context.Context, req *productv1.ListCategoriesRequest) (*productv1.ListCategoriesResponse, error) {
+func (c *Client) ListCategories(ctx context.Context, parentID string, limit, offset int32) (*productv1.ListCategoriesResponse, error) {
 	c.logger.Debug("Listing categories")
+	
+	req := &productv1.ListCategoriesRequest{
+		ParentId: parentID,
+		Depth:    0, // 0 for all depths
+	}
 	
 	resp, err := c.client.ListCategories(ctx, req)
 	if err != nil {
@@ -103,12 +131,19 @@ func (c *Client) ListCategories(ctx context.Context, req *productv1.ListCategori
 		return nil, fmt.Errorf("failed to list categories: %w", err)
 	}
 	
+	// Note: Returning protobuf response for now as category domain models not defined
 	return resp, nil
 }
 
 // CreateCategory creates a new product category
-func (c *Client) CreateCategory(ctx context.Context, req *productv1.CreateCategoryRequest) (*productv1.CreateCategoryResponse, error) {
-	c.logger.Debug("Creating category", zap.String("name", req.Name))
+func (c *Client) CreateCategory(ctx context.Context, name, description, parentID string) (*productv1.CreateCategoryResponse, error) {
+	c.logger.Debug("Creating category", zap.String("name", name))
+	
+	req := &productv1.CreateCategoryRequest{
+		Name:        name,
+		Description: description,
+		ParentId:    parentID,
+	}
 	
 	resp, err := c.client.CreateCategory(ctx, req)
 	if err != nil {
@@ -117,5 +152,6 @@ func (c *Client) CreateCategory(ctx context.Context, req *productv1.CreateCatego
 	}
 	
 	c.logger.Debug("Category created successfully", zap.String("id", resp.Category.Id))
+	// Note: Returning protobuf response for now as category domain models not defined
 	return resp, nil
 }

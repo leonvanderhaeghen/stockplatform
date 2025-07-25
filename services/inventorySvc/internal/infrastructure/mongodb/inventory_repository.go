@@ -33,6 +33,10 @@ func NewInventoryRepository(db *mongo.Database, collectionName string, logger *z
 			Keys:    bson.D{{Key: "sku", Value: 1}},
 			Options: options.Index().SetUnique(true),
 		},
+		{
+			Keys:    bson.D{{Key: "inventory_id", Value: 1}, {Key: "created_at", Value: -1}},
+			Options: options.Index().SetUnique(false),
+		},
 	}
 	
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -567,6 +571,76 @@ func (r *InventoryRepository) GetByOrderAndLocation(ctx context.Context, orderID
 	}
 	
 	return items, nil
+}
+
+// GetHistory retrieves the history of changes for a specific inventory item
+func (r *InventoryRepository) GetHistory(ctx context.Context, inventoryID string, limit, offset int32) ([]*domain.InventoryHistory, int32, error) {
+	r.logger.Debug("Getting inventory history", 
+		zap.String("inventory_id", inventoryID),
+		zap.Int32("limit", limit),
+		zap.Int32("offset", offset),
+	)
+
+	// First, get the total count for pagination
+	totalCount, err := r.collection.CountDocuments(ctx, bson.M{"inventory_id": inventoryID})
+	if err != nil {
+		r.logger.Error("Failed to count inventory history", 
+			zap.String("inventory_id", inventoryID),
+			zap.Error(err),
+		)
+		return nil, 0, err
+	}
+
+	// Then get the paginated results
+	opts := options.Find()
+	opts.SetSort(bson.D{{Key: "created_at", Value: -1}}) // Most recent first
+	if limit > 0 {
+		opts.SetLimit(int64(limit))
+	}
+	if offset > 0 {
+		opts.SetSkip(int64(offset))
+	}
+
+	cursor, err := r.collection.Find(ctx, bson.M{"inventory_id": inventoryID}, opts)
+	if err != nil {
+		r.logger.Error("Failed to find inventory history", 
+			zap.String("inventory_id", inventoryID),
+			zap.Error(err),
+		)
+		return nil, 0, err
+	}
+	defer cursor.Close(ctx)
+
+	var history []*domain.InventoryHistory
+	if err := cursor.All(ctx, &history); err != nil {
+		r.logger.Error("Failed to decode inventory history", 
+			zap.String("inventory_id", inventoryID),
+			zap.Error(err),
+		)
+		return nil, 0, err
+	}
+
+	return history, int32(totalCount), nil
+}
+
+// RecordHistory adds a new history entry for an inventory item
+func (r *InventoryRepository) RecordHistory(ctx context.Context, history *domain.InventoryHistory) error {
+	history.CreatedAt = time.Now()
+	_, err := r.collection.InsertOne(ctx, history)
+	if err != nil {
+		r.logger.Error("Failed to record inventory history", 
+			zap.String("inventory_id", history.InventoryID,
+			zap.String("change_type", history.ChangeType),
+			zap.Error(err)),
+		)
+		return err
+	}
+
+	r.logger.Debug("Recorded inventory history", 
+		zap.String("inventory_id", history.InventoryID),
+		zap.String("change_type", history.ChangeType),
+	)
+	return nil
 }
 
 // AdjustStock adjusts stock with a reason and user identification

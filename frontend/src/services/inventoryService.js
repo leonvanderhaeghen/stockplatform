@@ -6,8 +6,9 @@ const INVENTORY_BASE = '/inventory';
 const inventoryService = {
   // Get all inventory items with optional filters
   getInventoryItems: async (params = {}) => {
-    const { data } = await api.get(INVENTORY_BASE, { params });
-    return data;
+    const response = await api.get(INVENTORY_BASE, { params });
+    // Handle both response formats: { data: [...] } and direct array
+    return Array.isArray(response.data) ? response.data : (response.data?.data || []);
   },
 
   // Get a single inventory item by ID

@@ -3,10 +3,11 @@ package services
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"go.uber.org/zap"
 
-	productv1 "github.com/leonvanderhaeghen/stockplatform/services/productSvc/api/gen/go/proto/product/v1"
+	"github.com/leonvanderhaeghen/stockplatform/pkg/models"
 	productclient "github.com/leonvanderhaeghen/stockplatform/pkg/clients/product"
 )
 
@@ -44,12 +45,7 @@ func (s *ProductServiceImpl) CreateCategory(
 	)
 
 
-	resp, err := s.client.CreateCategory(ctx, &productv1.CreateCategoryRequest{
-		Name:        name,
-		Description: description,
-		ParentId:    parentID,
-		IsActive:    isActive,
-	})
+	resp, err := s.client.CreateCategory(ctx, name, description, parentID)
 	if err != nil {
 		s.logger.Error("Failed to create category",
 			zap.String("name", name),
@@ -70,13 +66,7 @@ func (s *ProductServiceImpl) ListCategories(
 	s.logger.Debug("ListCategories")
 
 	// Call the gRPC service with default parameters
-	// In a real implementation, you might want to get these from query parameters
-	req := &productv1.ListCategoriesRequest{
-		ParentId: "", // Empty string means get root categories
-		Depth:    3,  // Default to 3 levels deep
-	}
-
-	resp, err := s.client.ListCategories(ctx, req)
+	resp, err := s.client.ListCategories(ctx, "", 100, 0) // parentID="", limit=100, offset=0
 	if err != nil {
 		s.logger.Error("Failed to list categories",
 			zap.Error(err),
@@ -131,28 +121,12 @@ func (s *ProductServiceImpl) ListProducts(
 		sortOrder = productv1.ProductSort_SORT_ORDER_ASC
 	}
 
-	// Build the request
-	req := &productv1.ListProductsRequest{
-		Pagination: &productv1.Pagination{
-			Page:     int32(offset/limit) + 1,
-			PageSize: int32(limit),
-		},
-		Sort: &productv1.ProductSort{
-			Field: sortField,
-			Order: sortOrder,
-		},
+	// Use simplified client interface
+	// Note: The refactored client doesn't support complex sorting/filtering yet
+	var isActivePtr *bool
+	if active {
+		isActivePtr = &active
 	}
-
-	// Add filters if provided
-	if categoryID != "" || query != "" || active {
-		req.Filter = &productv1.ProductFilter{}
-
-		if categoryID != "" {
-			req.Filter.CategoryIds = []string{categoryID}
-		}
-
-		if query != "" {
-			req.Filter.SearchTerm = query
 		}
 
 		// Note: The active filter is not directly supported in the gRPC API
@@ -160,7 +134,7 @@ func (s *ProductServiceImpl) ListProducts(
 	}
 
 	// Call the gRPC service
-	resp, err := s.client.ListProducts(ctx, req)
+	resp, err := s.client.ListProducts(ctx, categoryID, "", isActivePtr, int32(limit), int32(offset))
 	if err != nil {
 		s.logger.Error("Failed to list products",
 			zap.Error(err),
@@ -170,10 +144,13 @@ func (s *ProductServiceImpl) ListProducts(
 
 	// Return the products in a structured response
 	return map[string]interface{}{
-		"products": resp.GetProducts(),
-		"total":    resp.GetTotalCount(),
-		"page":     resp.GetPage(),
-		"pageSize": resp.GetPageSize(),
+		"products": resp.Products,
+		"total":    resp.TotalCount,
+		"pagination": map[string]interface{}{
+			"limit":  limit,
+			"offset": offset,
+			"total":  int(resp.TotalCount),
+		},
 	}, nil
 }
 
@@ -183,11 +160,7 @@ func (s *ProductServiceImpl) GetProductByID(ctx context.Context, id string) (int
 		zap.String("id", id),
 	)
 
-	req := &productv1.GetProductRequest{
-		Id: id,
-	}
-
-	resp, err := s.client.GetProduct(ctx, req)
+	product, err := s.client.GetProduct(ctx, id)
 	if err != nil {
 		s.logger.Error("Failed to get product",
 			zap.String("id", id),
@@ -196,7 +169,7 @@ func (s *ProductServiceImpl) GetProductByID(ctx context.Context, id string) (int
 		return nil, fmt.Errorf("failed to get product: %w", err)
 	}
 
-	return resp.GetProduct(), nil
+	return product, nil
 }
 
 // CreateProduct creates a new product
@@ -218,35 +191,18 @@ func (s *ProductServiceImpl) CreateProduct(
 		zap.Strings("categoryIDs", categoryIDs),
 	)
 
-	// Convert the request to the gRPC format
-	req := &productv1.CreateProductRequest{
-		Name:         name,
-		Description:  description,
-		CostPrice:    costPrice,
-		SellingPrice: sellingPrice,
-		Currency:     currency,
-		Sku:          sku,
-		Barcode:      barcode,
-		CategoryIds:  categoryIDs,
-		SupplierId:   supplierID,
-		IsActive:     isActive,
-		InStock:      inStock,
-		StockQty:     stockQty,
-		LowStockAt:   lowStockAt,
-		ImageUrls:    imageURLs,
-		VideoUrls:    videoURLs,
+	// Parse price strings to floats
+	costPriceFloat, err := strconv.ParseFloat(costPrice, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid cost price: %w", err)
+	}
+	sellingPriceFloat, err := strconv.ParseFloat(sellingPrice, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid selling price: %w", err)
 	}
 
-	// Add metadata if present
-	if len(metadata) > 0 {
-		req.Metadata = make(map[string]string, len(metadata))
-		for k, v := range metadata {
-			req.Metadata[k] = v
-		}
-	}
-
-	// Call the gRPC service
-	resp, err := s.client.CreateProduct(ctx, req)
+	// Call the gRPC service using refactored client
+	resp, err := s.client.CreateProduct(ctx, name, description, sku, supplierID, costPriceFloat, sellingPriceFloat, isActive, categoryIDs)
 	if err != nil {
 		s.logger.Error("Failed to create product",
 			zap.Error(err),
@@ -256,7 +212,7 @@ func (s *ProductServiceImpl) CreateProduct(
 		return nil, fmt.Errorf("failed to create product: %w", err)
 	}
 
-	return resp.GetProduct(), nil
+	return resp.Product, nil
 }
 
 // UpdateProduct updates an existing product

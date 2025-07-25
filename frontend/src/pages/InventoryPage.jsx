@@ -1,41 +1,40 @@
 import React, { useState, useEffect } from 'react';
+import Autocomplete from '@mui/material/Autocomplete';
 import {
   Box,
   Typography,
-  Paper,
   Button,
-  Grid,
-  Card,
-  CardContent,
+  IconButton,
+  Paper,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  TablePagination,
+  CircularProgress,
+  Tabs,
+  Tab,
+  Card,
+  CardContent,
   Chip,
-  IconButton,
-  Menu,
-  MenuItem,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   TextField,
-  Alert,
-  AlertTitle,
-  CircularProgress,
-  Tabs,
-  Tab,
+  MenuItem,
+  Divider,
   FormControl,
   InputLabel,
   Select,
+  Alert,
+  AlertTitle,
+  Grid,
   List,
   ListItem,
   ListItemText,
-  ListItemSecondaryAction,
-  Divider,
+  Menu
 } from '@mui/material';
 import {
   Inventory as InventoryIcon,
@@ -50,7 +49,7 @@ import {
   History as HistoryIcon,
   Delete as DeleteIcon,
 } from '@mui/icons-material';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { inventoryService, productService, storeService } from '../services';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import {
@@ -62,7 +61,7 @@ import {
   useReserveInventory,
   useReleaseInventory,
   useCreateInventoryItem,
-  useDeleteInventoryItem
+  useDeleteInventoryItem,
 } from '../utils/hooks/useInventory';
 import InventoryStatus from '../components/inventory/InventoryStatus';
 import InventoryErrorBoundary from '../components/inventory/InventoryErrorBoundary';
@@ -70,9 +69,7 @@ import InventoryErrorBoundary from '../components/inventory/InventoryErrorBounda
 const InventoryPage = () => {
   const queryClient = useQueryClient();
   const [tabValue, setTabValue] = useState(0);
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [selectedProduct, setSelectedProduct] = useState(null);
+  // Removed unused selectedProduct state
   const [anchorEl, setAnchorEl] = useState(null);
   const [reservationDialogOpen, setReservationDialogOpen] = useState(false);
   const [releaseDialogOpen, setReleaseDialogOpen] = useState(false);
@@ -80,6 +77,15 @@ const InventoryPage = () => {
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [products, setProducts] = useState([]);
+  const [totalProducts, setTotalProducts] = useState(0);
+  
+  // Location filtering state
+  const [selectedLocation, setSelectedLocation] = useState('');
+  const [locationOptions, setLocationOptions] = useState([]);
+  const [locationInputValue, setLocationInputValue] = useState('');
+  const [lowStockThreshold, setLowStockThreshold] = useState(10);
   const [reservationData, setReservationData] = useState({
     quantity: 1,
     orderId: '',
@@ -99,52 +105,168 @@ const InventoryPage = () => {
   const [createItemDialogOpen, setCreateItemDialogOpen] = useState(false);
   const [removeItemDialogOpen, setRemoveItemDialogOpen] = useState(false);
   const [selectedInventory, setSelectedInventory] = useState(null);
+  
+  // Product lookup and store management state
+  const [productLookupLoading, setProductLookupLoading] = useState(false);
+  const [productOptions, setProductOptions] = useState([]);
+  const [productLookupValue, setProductLookupValue] = useState('');
+  const [storeOptions, setStoreOptions] = useState([]);
+  const [storeDialogOpen, setStoreDialogOpen] = useState(false);
+  const [newStore, setNewStore] = useState({ name: '', address: '', phone: '', email: '' });
 
   // Fetch products and inventory data using new hooks
-  const { data: productsData, isLoading: productsLoading, refetch: refetchProducts } = useQuery({
-    queryKey: ['products', page, rowsPerPage],
-    queryFn: () => productService.getProducts({
-      page: page + 1,
-      limit: rowsPerPage,
-    }),
-    keepPreviousData: true,
-  });
-
-  // Fetch inventory items using the new hook
-  const { data: inventoryItems = [] } = useInventoryItems();
-
-  // Defensive extraction of products array
-  const products = Array.isArray(productsData)
-    ? productsData
-    : Array.isArray(productsData?.products)
-      ? productsData.products
-      : Array.isArray(productsData?.items)
-        ? productsData.items
-        : Array.isArray(productsData?.data)
-          ? productsData.data
-          : [];
+  const { data: inventoryItems = [], isLoading: inventoryLoading } = useInventoryItems();
+  
+  // Fetch products for analytics
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const data = await productService.getProducts();
+        setProducts(data.products || []);
+        setTotalProducts(data.total || 0);
+      } catch (error) {
+        console.error('Failed to fetch products:', error);
+        setError('Failed to load product data');
+      }
+    };
+    
+    if (tabValue === 3) { // Only fetch when analytics tab is active
+      fetchProducts();
+    }
+  }, [tabValue]);
 
   // Fetch inventory reservations using new hook
   const { data: reservationsData, isLoading: reservationsLoading } = useInventoryReservations(
     tabValue === 1 ? {} : undefined
   );
 
-  // Fetch low stock alerts using new hook
+  // Fetch low stock alerts using new hook with location filtering
   const { data: lowStockData, isLoading: lowStockLoading } = useLowStockItems(
-    tabValue === 2 ? 10 : undefined
+    tabValue === 2 ? lowStockThreshold : undefined,
+    tabValue === 2 ? selectedLocation : undefined
   );
 
   // Fetch inventory history for selected product using new hook
   const { data: historyData, isLoading: historyLoading } = useInventoryHistory(
-    historyDialogOpen && selectedProduct?.id ? selectedProduct.id : null
+    historyDialogOpen && selectedInventory?.id ? selectedInventory.id : null
   );
 
   // Use new inventory hooks for mutations
-  const updateQuantityMutation = useUpdateInventoryQuantity();
-  const reserveInventoryMutation = useReserveInventory();
-  const releaseInventoryMutation = useReleaseInventory();
-  const createItemMutation = useCreateInventoryItem();
-  const removeItemMutation = useDeleteInventoryItem();
+  const updateQuantityMutation = useUpdateInventoryQuantity({
+    onSuccess: () => {
+      queryClient.invalidateQueries(['inventory']);
+      setSuccess('Inventory quantity updated successfully');
+    },
+    onError: (error) => {
+      setError(error.message || 'Failed to update inventory quantity');
+    }
+  });
+  
+  const reserveInventoryMutation = useReserveInventory({
+    onSuccess: () => {
+      queryClient.invalidateQueries(['inventory', 'reservations']);
+      setReservationDialogOpen(false);
+      setSuccess('Inventory reserved successfully');
+    },
+    onError: (error) => {
+      setError(error.message || 'Failed to reserve inventory');
+    }
+  });
+  
+  const releaseInventoryMutation = useReleaseInventory({
+    onSuccess: () => {
+      queryClient.invalidateQueries(['inventory', 'reservations']);
+      setReleaseDialogOpen(false);
+      setSuccess('Inventory released successfully');
+    },
+    onError: (error) => {
+      setError(error.message || 'Failed to release inventory');
+    }
+  });
+  
+  const createItemMutation = useCreateInventoryItem({
+    onSuccess: () => {
+      queryClient.invalidateQueries(['inventory']);
+      setCreateItemDialogOpen(false);
+      setSuccess('Inventory item created successfully');
+    },
+    onError: (error) => {
+      setError(error.message || 'Failed to create inventory item');
+    }
+  });
+  
+  const removeItemMutation = useDeleteInventoryItem({
+    onSuccess: () => {
+      queryClient.invalidateQueries(['inventory']);
+      setRemoveItemDialogOpen(false);
+      setSuccess('Inventory item removed successfully');
+    },
+    onError: (error) => {
+      setError(error.message || 'Failed to remove inventory item');
+    }
+  });
+
+  // Fetch location autocomplete options when low-stock tab is active
+  useEffect(() => {
+    const fetchLocationOptions = async () => {
+      if (tabValue === 2 && locationInputValue.trim()) {
+        try {
+          const stores = await storeService.getStoresForAutocomplete(locationInputValue);
+          setLocationOptions(stores);
+        } catch (error) {
+          console.error('Failed to fetch location options:', error);
+          setLocationOptions([]);
+        }
+      } else {
+        setLocationOptions([]);
+      }
+    };
+
+    fetchLocationOptions();
+  }, [tabValue, locationInputValue]);
+
+  // Fetch store options for inventory creation
+  useEffect(() => {
+    const fetchStoreOptions = async () => {
+      if (createItemDialogOpen) {
+        try {
+          const stores = await storeService.getStores();
+          setStoreOptions(stores.map(store => ({
+            value: store.id,
+            label: `${store.name} - ${store.address}`,
+            store: store
+          })));
+        } catch (error) {
+          console.error('Failed to fetch store options:', error);
+          setStoreOptions([]);
+        }
+      }
+    };
+
+    fetchStoreOptions();
+  }, [createItemDialogOpen]);
+
+  // Store creation function
+  const handleCreateStore = async () => {
+    try {
+      const createdStore = await storeService.createStore(newStore);
+      setStoreOptions(prev => [...prev, {
+        value: createdStore.id,
+        label: `${createdStore.name} - ${createdStore.address}`,
+        store: createdStore
+      }]);
+      setSelectedInventory({
+        ...selectedInventory,
+        storeId: createdStore.id
+      });
+      setStoreDialogOpen(false);
+      setNewStore({ name: '', address: '', phone: '', email: '' });
+      setSuccess(`Store created: ${createdStore.name}`);
+    } catch (error) {
+      console.error('Store creation failed:', error);
+      setError('Failed to create store. Please try again.');
+    }
+  };
 
   // Check stock mutation (keeping original for compatibility)
   const checkStockMutation = useMutation({
@@ -160,43 +282,31 @@ const InventoryPage = () => {
 
   const reservations = reservationsData?.data || [];
   const lowStockItems = lowStockData?.data || [];
-  const totalProducts = productsData?.total || 0;
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
-    setPage(0);
-  };
-
-  const handleChangePage = (event, newPage) => {
-    setPage(newPage);
-  };
-
-  const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
-
-  const handleMenuClick = (event, product) => {
-    setAnchorEl(event.currentTarget);
-    setSelectedProduct(product);
   };
 
   const handleMenuClose = () => {
     setAnchorEl(null);
-    setSelectedProduct(null);
+  };
+
+  const handleMenuOpen = (event, product) => {
+    setSelectedProduct(product);
+    setSelectedInventory(product);
+    setAnchorEl(event.currentTarget);
   };
 
   const handleCheckStock = () => {
-    if (selectedProduct) {
-      checkStockMutation.mutate(selectedProduct.id);
+    if (selectedInventory) {
+      checkStockMutation.mutate(selectedInventory.id);
     }
-    handleMenuClose();
   };
 
   const handleReserveInventory = () => {
-    if (selectedProduct && reservationData.quantity > 0) {
+    if (selectedInventory && reservationData.quantity > 0) {
       reserveInventoryMutation.mutate({
-        productId: selectedProduct.id,
+        inventoryId: selectedInventory.id,
         quantity: reservationData.quantity,
         orderId: reservationData.orderId,
         notes: reservationData.notes
@@ -207,7 +317,7 @@ const InventoryPage = () => {
   };
 
   const handleReleaseInventory = () => {
-    if (selectedProduct && releaseData.quantity > 0) {
+    if (selectedInventory && releaseData.quantity > 0) {
       releaseInventoryMutation.mutate({
         reservationId: releaseData.reservationId,
         quantity: releaseData.quantity,
@@ -219,9 +329,9 @@ const InventoryPage = () => {
   };
 
   const handleAdjustInventory = () => {
-    if (selectedProduct && adjustmentData.quantity !== 0) {
+    if (selectedInventory && adjustmentData.quantity !== 0) {
       updateQuantityMutation.mutate({
-        id: selectedProduct.id,
+        id: selectedInventory.id,
         change: adjustmentData.type === 'ADD' ? adjustmentData.quantity : -adjustmentData.quantity,
         reason: adjustmentData.reason || 'Manual adjustment'
       });
@@ -299,7 +409,6 @@ const InventoryPage = () => {
             variant="outlined" 
             startIcon={<RefreshIcon />}
             onClick={() => {
-              refetchProducts();
               queryClient.invalidateQueries(['inventory-reservations']);
               queryClient.invalidateQueries(['inventory-low-stock']);
             }}
@@ -330,92 +439,96 @@ const InventoryPage = () => {
 
       {/* Stock Overview Tab */}
       {tabValue === 0 && (
-        <Paper sx={{ width: '100%', overflow: 'hidden' }}>
-          <TableContainer>
-            <Table stickyHeader>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Product</TableCell>
-                  <TableCell>SKU</TableCell>
-                  <TableCell align="right">Current Stock</TableCell>
-                  <TableCell align="right">Reserved</TableCell>
-                  <TableCell align="right">Available</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell align="right">Value</TableCell>
-                  <TableCell align="center">Actions</TableCell>
+  <Paper sx={{ width: '100%', overflow: 'hidden' }}>
+    <TableContainer>
+      <Table stickyHeader>
+        <TableHead>
+          <TableRow>
+            <TableCell>Product</TableCell>
+            <TableCell>SKU</TableCell>
+            <TableCell align="right">Current Stock</TableCell>
+            <TableCell align="right">Reserved</TableCell>
+            <TableCell align="right">Available</TableCell>
+            <TableCell>Status</TableCell>
+            <TableCell align="right">Value</TableCell>
+            <TableCell align="center">Actions</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {inventoryLoading ? (
+            <TableRow>
+              <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
+                <CircularProgress />
+              </TableCell>
+            </TableRow>
+          ) : inventoryItems.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
+                <Typography variant="body1" color="text.secondary">
+                  No inventory items found
+                </Typography>
+              </TableCell>
+            </TableRow>
+          ) : (
+            (Array.isArray(inventoryItems) ? inventoryItems : [])
+              .filter(item => item && typeof item === 'object' && item.id)
+              .map((item) => {
+                if (!item || typeof item !== 'object' || !item.id) return null;
+                
+                // Safely extract and convert values with fallbacks
+                const currentStock = item.quantity != null ? Number(item.quantity) : 0;
+                const reserved = item.reserved != null ? Number(item.reserved) : 0;
+                const available = item.available != null && Number.isFinite(Number(item.available))
+                  ? Number(item.available)
+                  : Math.max(0, currentStock - reserved);
+                const sellingPrice = item.selling_price != null ? Number(item.selling_price) : 0;
+                const stockValue = currentStock * sellingPrice;
+                const productName = item.name || 'Unnamed Product';
+                const sku = item.sku || 'N/A';
+              return (
+                <TableRow key={item.id} hover>
+                  <TableCell>
+                    <Typography variant="body2" fontWeight="medium">
+                      {productName}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>{sku}</TableCell>
+                  <TableCell align="right">{currentStock}</TableCell>
+                  <TableCell align="right">{reserved}</TableCell>
+                  <TableCell align="right">{available}</TableCell>
+                  <TableCell>
+                    <Chip
+                      label={getStockStatusText(available)}
+                      color={getStockStatusColor(available)}
+                      size="small"
+                      variant="outlined"
+                    />
+                  </TableCell>
+                  <TableCell align="right">
+                    {formatCurrency(stockValue)}
+                  </TableCell>
+                  <TableCell align="center">
+                    <IconButton
+                      size="small"
+                      onClick={(e) => {
+                        setSelectedInventory(item);
+                        handleMenuOpen(e, item);
+                      }}
+                      aria-label="actions"
+                    >
+                      <MoreVertIcon />
+                    </IconButton>
+                  </TableCell>
                 </TableRow>
-              </TableHead>
-              <TableBody>
-                {productsLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
-                      <CircularProgress />
-                    </TableCell>
-                  </TableRow>
-                ) : products.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
-                      <Typography variant="body1" color="text.secondary">
-                        No products found
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  products.map((product) => {
-                    const currentStock = product.stockQuantity || 0;
-                    const reserved = product.reservedQuantity || 0;
-                    const available = currentStock - reserved;
-                    const stockValue = currentStock * (product.price || 0);
-
-                    return (
-                      <TableRow key={product.id} hover>
-                        <TableCell>
-                          <Typography variant="body2" fontWeight="medium">
-                            {product.name}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>{product.sku}</TableCell>
-                        <TableCell align="right">{currentStock}</TableCell>
-                        <TableCell align="right">{reserved}</TableCell>
-                        <TableCell align="right">{available}</TableCell>
-                        <TableCell>
-                          <Chip
-                            label={getStockStatusText(available)}
-                            color={getStockStatusColor(available)}
-                            size="small"
-                            variant="outlined"
-                          />
-                        </TableCell>
-                        <TableCell align="right">
-                          {formatCurrency(stockValue)}
-                        </TableCell>
-                        <TableCell align="center">
-                          <IconButton
-                            size="small"
-                            onClick={(e) => handleMenuClick(e, product)}
-                          >
-                            <MoreVertIcon />
-                          </IconButton>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-          
-          <TablePagination
-            rowsPerPageOptions={[5, 10, 25, 50]}
-            component="div"
-            count={totalProducts}
-            rowsPerPage={rowsPerPage}
-            page={page}
-            onPageChange={handleChangePage}
-            onRowsPerPageChange={handleChangeRowsPerPage}
-          />
-        </Paper>
-      )}
+              );
+            })
+          )}
+        </TableBody>
+      </Table>
+    </TableContainer>
+    {/* Pagination can be added here if inventoryItems supports it */}
+  </Paper>
+)}
 
       {/* Reservations Tab */}
       {tabValue === 1 && (
@@ -469,6 +582,89 @@ const InventoryPage = () => {
         <Box>
           <Typography variant="h6" sx={{ mb: 2 }}>Low Stock Alerts</Typography>
           
+          {/* Location and Threshold Filters */}
+          <Paper sx={{ p: 2, mb: 3 }}>
+            <Grid container spacing={2} alignItems="center">
+              <Grid item xs={12} sm={6} md={4}>
+                <TextField
+                  fullWidth
+                  label="Store Location"
+                  placeholder="Search store locations..."
+                  value={locationInputValue}
+                  onChange={(e) => setLocationInputValue(e.target.value)}
+                  select={locationOptions.length > 0}
+                  SelectProps={{
+                    native: false,
+                  }}
+                  helperText="Filter by store location"
+                >
+                  <MenuItem value="">
+                    <em>All Locations</em>
+                  </MenuItem>
+                  {locationOptions.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Grid>
+              
+              <Grid item xs={12} sm={6} md={3}>
+                <TextField
+                  fullWidth
+                  type="number"
+                  label="Stock Threshold"
+                  value={lowStockThreshold}
+                  onChange={(e) => setLowStockThreshold(Math.max(0, parseInt(e.target.value) || 0))}
+                  inputProps={{ min: 0, max: 1000 }}
+                  helperText="Items below this quantity"
+                />
+              </Grid>
+              
+              <Grid item xs={12} sm={12} md={5}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Button
+                    variant="outlined"
+                    onClick={() => {
+                      setSelectedLocation(locationInputValue);
+                      // Trigger refetch of low stock items with new filters
+                      queryClient.invalidateQueries(['inventory-low-stock']);
+                    }}
+                    disabled={lowStockLoading}
+                  >
+                    Apply Filters
+                  </Button>
+                  <Button
+                    variant="text"
+                    onClick={() => {
+                      setLocationInputValue('');
+                      setSelectedLocation('');
+                      setLowStockThreshold(10);
+                      queryClient.invalidateQueries(['inventory-low-stock']);
+                    }}
+                    disabled={lowStockLoading}
+                  >
+                    Clear
+                  </Button>
+                  {(selectedLocation || lowStockThreshold !== 10) && (
+                    <Chip
+                      label={`Filtered: ${selectedLocation || 'All'} | Threshold: ${lowStockThreshold}`}
+                      onDelete={() => {
+                        setLocationInputValue('');
+                        setSelectedLocation('');
+                        setLowStockThreshold(10);
+                        queryClient.invalidateQueries(['inventory-low-stock']);
+                      }}
+                      size="small"
+                      color="primary"
+                      variant="outlined"
+                    />
+                  )}
+                </Box>
+              </Grid>
+            </Grid>
+          </Paper>
+          
           {lowStockLoading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
               <CircularProgress />
@@ -489,15 +685,13 @@ const InventoryPage = () => {
                       primary={item.name}
                       secondary={`SKU: ${item.sku} | Current Stock: ${item.stockQuantity}`}
                     />
-                    <ListItemSecondaryAction>
-                      <InventoryErrorBoundary>
-                        <InventoryStatus
-                          quantity={inventoryItems.find(inv => inv.product_id === item.id)?.quantity}
-                          lowStockThreshold={inventoryItems.find(inv => inv.product_id === item.id)?.low_stock_threshold}
-                          showQuantity={true}
-                        />
-                      </InventoryErrorBoundary>
-                    </ListItemSecondaryAction>
+                    <InventoryErrorBoundary>
+                      <InventoryStatus
+                        quantity={inventoryItems.find(inv => inv.product_id === item.id)?.quantity}
+                        lowStockThreshold={inventoryItems.find(inv => inv.product_id === item.id)?.low_stock_threshold}
+                        showQuantity={true}
+                      />
+                    </InventoryErrorBoundary>
                   </ListItem>
                   {index < lowStockItems.length - 1 && <Divider />}
                 </React.Fragment>
@@ -659,11 +853,11 @@ const InventoryPage = () => {
       <Dialog open={releaseDialogOpen} onClose={() => setReleaseDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Release Inventory</DialogTitle>
         <DialogContent>
-          {selectedProduct && (
+          {selectedInventory && (
             <Box sx={{ mb: 2 }}>
-              <Typography variant="h6">{selectedProduct.name}</Typography>
+              <Typography variant="h6">{selectedInventory.name}</Typography>
               <Typography variant="body2" color="text.secondary">
-                Reserved: {selectedProduct.reservedQuantity || 0}
+                Current Stock: {selectedInventory.stockQuantity || 0}
               </Typography>
             </Box>
           )}
@@ -713,11 +907,11 @@ const InventoryPage = () => {
       <Dialog open={adjustmentDialogOpen} onClose={() => setAdjustmentDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Adjust Inventory</DialogTitle>
         <DialogContent>
-          {selectedProduct && (
+          {selectedInventory && (
             <Box sx={{ mb: 2 }}>
-              <Typography variant="h6">{selectedProduct.name}</Typography>
+              <Typography variant="h6">{selectedInventory.name}</Typography>
               <Typography variant="body2" color="text.secondary">
-                Current Stock: {selectedProduct.stockQuantity || 0}
+                Current Stock: {selectedInventory.stockQuantity || 0}
               </Typography>
             </Box>
           )}
@@ -783,9 +977,9 @@ const InventoryPage = () => {
       <Dialog open={historyDialogOpen} onClose={() => setHistoryDialogOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle>Inventory History</DialogTitle>
         <DialogContent>
-          {selectedProduct && (
+          {selectedInventory && (
             <Typography variant="h6" sx={{ mb: 2 }}>
-              {selectedProduct.name}
+              {selectedInventory.name}
             </Typography>
           )}
           
@@ -844,9 +1038,69 @@ const InventoryPage = () => {
             </Typography>
             
             <Grid container spacing={3}>
-              {/* Basic Information */}
+              {/* Product Lookup */}
               <Grid item xs={12}>
                 <Typography variant="h6" sx={{ mb: 2, color: 'primary.main' }}>
+                  Product Lookup
+                </Typography>
+              </Grid>
+              
+              <Grid item xs={12}>
+  <Autocomplete
+    fullWidth
+    options={productOptions}
+    loading={productLookupLoading}
+    value={selectedInventory?.productOption || null}
+    inputValue={productLookupValue}
+    onInputChange={async (event, value, reason) => {
+      setProductLookupValue(value);
+      if (reason === 'input' && value.trim().length > 1) {
+        setProductLookupLoading(true);
+        try {
+          const results = await productService.getProducts({ q: value });
+          setProductOptions(results);
+        } catch (e) {
+          setProductOptions([]);
+        } finally {
+          setProductLookupLoading(false);
+        }
+      }
+    }}
+    onChange={(event, newValue) => {
+      if (newValue) {
+        setSelectedInventory({
+          ...selectedInventory,
+          productOption: newValue,
+          name: newValue.name,
+          sku: newValue.sku,
+          productId: newValue.id // invisible to user, sent to backend
+        });
+      }
+    }}
+    getOptionLabel={(option) => option.name ? `${option.name} – ${option.sku}` : ''}
+    renderInput={(params) => (
+      <TextField
+        {...params}
+        label="Product Lookup (SKU or Barcode)"
+        placeholder="Type to search by SKU or barcode"
+        InputProps={{
+          ...params.InputProps,
+          endAdornment: (
+            <>
+              {productLookupLoading ? <CircularProgress size={20} /> : null}
+              {params.InputProps.endAdornment}
+            </>
+          ),
+        }}
+        helperText="Search and select a product to link inventory item."
+      />
+    )}
+  />
+</Grid>
+
+              {/* Basic Information */}
+              <Grid item xs={12}>
+                <Typography variant="h6" sx={{ mb: 2, mt: 2, color: 'primary.main' }}>
                   Basic Information
                 </Typography>
               </Grid>
@@ -941,13 +1195,41 @@ const InventoryPage = () => {
               </Grid>
               
               <Grid item xs={12} sm={6}>
+                <FormControl fullWidth>
+                  <InputLabel>Store Location</InputLabel>
+                  <Select
+                    value={selectedInventory?.storeId || ''}
+                    onChange={(e) => setSelectedInventory({ ...selectedInventory, storeId: e.target.value })}
+                    label="Store Location"
+                  >
+                    <MenuItem value="">
+                      <em>Select a store</em>
+                    </MenuItem>
+                    {storeOptions.map((option) => (
+                      <MenuItem key={option.value} value={option.value}>
+                        {option.label}
+                      </MenuItem>
+                    ))}
+                    <Divider />
+                    <MenuItem onClick={() => setStoreDialogOpen(true)}>
+                      <AddIcon sx={{ mr: 1 }} fontSize="small" />
+                      Create New Store
+                    </MenuItem>
+                  </Select>
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, ml: 1.5 }}>
+                    Select the physical store location
+                  </Typography>
+                </FormControl>
+              </Grid>
+              
+              <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
                   label="Storage Location"
                   placeholder="e.g., Warehouse A, Shelf B-3"
                   value={selectedInventory?.location || ''}
                   onChange={(e) => setSelectedInventory({ ...selectedInventory, location: e.target.value })}
-                  helperText="Physical storage location"
+                  helperText="Physical storage location within store"
                 />
               </Grid>
               
@@ -997,13 +1279,16 @@ const InventoryPage = () => {
           </Button>
           <Button 
             onClick={() => {
-              if (selectedInventory?.name && selectedInventory?.sku) {
+              if (selectedInventory?.productId && selectedInventory?.name && selectedInventory?.sku) {
                 createItemMutation.mutate({
-                  ...selectedInventory,
-                  // Ensure numeric fields are properly formatted
+                  productId: selectedInventory.productId,
+                  sku: selectedInventory.sku, // Add SKU to the request payload
                   quantity: selectedInventory.quantity || 0,
                   minStockLevel: selectedInventory.minStockLevel || 0,
                   maxStockLevel: selectedInventory.maxStockLevel || 0,
+                  location: selectedInventory.location || '',
+                  storeId: selectedInventory.storeId || '',
+                  notes: selectedInventory.notes || '',
                 });
               }
             }} 
@@ -1039,6 +1324,102 @@ const InventoryPage = () => {
             color="error"
           >
             Remove
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Create Store Dialog */}
+      <Dialog open={storeDialogOpen} onClose={() => setStoreDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <AddIcon />
+            Create New Store
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              Create a new physical store location for inventory management.
+            </Typography>
+            
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Store Name"
+                  placeholder="e.g., Main Warehouse, Downtown Store"
+                  value={newStore.name}
+                  onChange={(e) => setNewStore({ ...newStore, name: e.target.value })}
+                  required
+                  error={!newStore.name}
+                  helperText={!newStore.name ? "Store name is required" : ""}
+                />
+              </Grid>
+              
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Address"
+                  placeholder="Full store address"
+                  value={newStore.address}
+                  onChange={(e) => setNewStore({ ...newStore, address: e.target.value })}
+                  required
+                  error={!newStore.address}
+                  helperText={!newStore.address ? "Address is required" : ""}
+                />
+              </Grid>
+              
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Phone"
+                  placeholder="Store phone number"
+                  value={newStore.phone}
+                  onChange={(e) => setNewStore({ ...newStore, phone: e.target.value })}
+                  helperText="Optional contact number"
+                />
+              </Grid>
+              
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Email"
+                  type="email"
+                  placeholder="Store email address"
+                  value={newStore.email}
+                  onChange={(e) => setNewStore({ ...newStore, email: e.target.value })}
+                  helperText="Optional contact email"
+                />
+              </Grid>
+            </Grid>
+            
+            {/* Validation Summary */}
+            {(!newStore.name || !newStore.address) && (
+              <Alert severity="warning" sx={{ mt: 2 }}>
+                <AlertTitle>Required Fields Missing</AlertTitle>
+                Please fill in the store name and address before creating the store.
+              </Alert>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button 
+            onClick={() => {
+              setStoreDialogOpen(false);
+              setNewStore({ name: '', address: '', phone: '', email: '' });
+            }}
+            size="large"
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleCreateStore}
+            variant="contained"
+            size="large"
+            disabled={!newStore.name || !newStore.address}
+            startIcon={<AddIcon />}
+          >
+            Create Store
           </Button>
         </DialogActions>
       </Dialog>

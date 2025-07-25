@@ -34,7 +34,10 @@ func (s *Server) Start() error {
 	s.grpcSrv = grpc.NewServer()
 
 	// Register store service
-	storeService := service.NewStoreService(s.database)
+	storeService, err := service.NewStoreService(s.database, s.config)
+	if err != nil {
+		return fmt.Errorf("failed to create store service: %w", err)
+	}
 	storev1.RegisterStoreServiceServer(s.grpcSrv, storeService)
 
 	// Start listening

@@ -16,10 +16,18 @@ const ProductsPage = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
 
-  // Fetch products
-  const { data: products = [], isLoading: productsLoading } = useQuery({
+  // Fetch products with proper data extraction
+  const { data: products, isLoading: productsLoading } = useQuery({
     queryKey: ['products'],
     queryFn: () => productService.getProducts(),
+    select: (data) => {
+      // Ensure we always return an array, even if data is missing or malformed
+      if (!data) return [];
+      if (Array.isArray(data)) return data;
+      if (Array.isArray(data.products)) return data.products;
+      if (Array.isArray(data.data?.products)) return data.data.products;
+      return [];
+    },
   });
 
   // Fetch inventory items to join with products using the new hook
@@ -40,8 +48,17 @@ const ProductsPage = () => {
   const productsWithInventory = useMemo(() => {
     return products.map(product => {
       const inventory = inventoryMap.get(product.id);
+      // Ensure we have a numeric price field for the table and formatting
+      const sellingPrice = product.selling_price ?? product.sellingPrice ?? product.price;
+      let priceNumber = 0;
+      if (typeof sellingPrice === 'number') {
+        priceNumber = sellingPrice;
+      } else if (typeof sellingPrice === 'string') {
+        priceNumber = parseFloat(sellingPrice);
+      }
       return {
         ...product,
+        price: priceNumber,
         inventory: inventory || null,
         stockQty: inventory?.quantity || 0,
         inStock: inventory ? inventory.quantity > 0 : false,
@@ -80,7 +97,13 @@ const ProductsPage = () => {
       field: 'price', 
       headerName: 'Price', 
       width: 120,
-      valueFormatter: (params) => `$${params.value.toFixed(2)}`,
+      valueFormatter: (params) => {
+        const val = params.value;
+        if (val === undefined || val === null || Number.isNaN(val)) {
+          return '—';
+        }
+        return `$${Number(val).toFixed(2)}`;
+      },
     },
     { 
       field: 'category', 

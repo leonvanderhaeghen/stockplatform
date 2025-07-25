@@ -3,8 +3,6 @@ package services
 import (
 	"context"
 	"time"
-
-	supplierv1 "github.com/leonvanderhaeghen/stockplatform/services/supplierSvc/api/gen/go/proto/supplier/v1"
 )
 
 // ProductService defines the interface for product operations
@@ -106,9 +104,10 @@ type InventoryService interface {
 type StoreService interface {
 	// ListStores lists all stores with pagination
 	ListStores(ctx context.Context, limit, offset int) (interface{}, error)
-	
 	// GetStore retrieves a store by ID
 	GetStore(ctx context.Context, id string) (interface{}, error)
+	// CreateStore creates a new store
+	CreateStore(ctx context.Context, name, address string) (interface{}, error)
 }
 
 // OrderService defines the interface for order operations

@@ -12,6 +12,7 @@ require (
 	github.com/leonvanderhaeghen/stockplatform/services/inventorySvc v0.0.0-20250617235535-5a86d542f1f1
 	github.com/leonvanderhaeghen/stockplatform/services/orderSvc v0.0.0-20250617235535-5a86d542f1f1
 	github.com/leonvanderhaeghen/stockplatform/services/productSvc v0.0.0-20250617235535-5a86d542f1f1
+	github.com/leonvanderhaeghen/stockplatform/services/storeSvc v0.0.0-20250617235535-5a86d542f1f1
 	github.com/leonvanderhaeghen/stockplatform/services/supplierSvc v0.0.0-20250617235535-5a86d542f1f1
 	github.com/leonvanderhaeghen/stockplatform/services/userSvc v0.0.0-20250617235535-5a86d542f1f1
 	github.com/spf13/viper v1.20.1

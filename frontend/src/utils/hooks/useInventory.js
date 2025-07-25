@@ -17,7 +17,13 @@ const INVENTORY_QUERY_KEYS = {
 export const useInventoryItems = (filters = {}) => {
   return useQuery({
     queryKey: INVENTORY_QUERY_KEYS.LIST(filters),
-    queryFn: () => inventoryService.getInventoryItems(filters),
+    queryFn: async () => {
+      const response = await inventoryService.getInventoryItems(filters);
+      // Handle both response formats: { data: [...] } and direct array
+      if (Array.isArray(response)) return response;
+      if (response && Array.isArray(response.data)) return response.data;
+      return [];
+    },
     keepPreviousData: true,
   });
 };

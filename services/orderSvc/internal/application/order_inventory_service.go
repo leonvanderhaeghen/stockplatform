@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	inventoryclient "github.com/leonvanderhaeghen/stockplatform/pkg/clients/inventory"
-	inventorypb "github.com/leonvanderhaeghen/stockplatform/services/inventorySvc/api/gen/go/proto/inventory/v1"
 	"github.com/leonvanderhaeghen/stockplatform/services/orderSvc/internal/domain"
 	"go.uber.org/zap"
 )
@@ -52,9 +51,7 @@ func (s *OrderInventoryService) CreateOrderWithInventoryCheck(
 ) (*domain.Order, error) {
 	// Check inventory for all items
 	for _, item := range input.Items {
-		inventory, err := s.inventoryClient.GetInventoryByProductID(ctx, &inventorypb.GetInventoryByProductIDRequest{
-			ProductId: item.ProductID,
-		})
+		inventory, err := s.inventoryClient.GetInventoryByProductID(ctx, item.ProductID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to check inventory for product %s: %w", item.ProductID, err)
 		}

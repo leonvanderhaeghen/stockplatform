@@ -38,18 +38,17 @@ func NewStoreService(db *database.Database, cfg *config.Config) (*StoreService, 
 // CreateStore creates a new store
 func (s *StoreService) CreateStore(ctx context.Context, req *storev1.CreateStoreRequest) (*storev1.CreateStoreResponse, error) {
 	store := &models.Store{
-		ID:            uuid.New().String(),
-		Name:          req.Name,
-		Description:   req.Description,
-		Address:       convertAddressFromProto(req.Address),
-		Phone:         req.Phone,
-		Email:         req.Email,
-		ManagerUserID: req.ManagerUserId,
-		IsActive:      true,
-		Hours:         convertStoreHoursFromProto(req.Hours),
-		Metadata:      req.Metadata,
-		CreatedAt:     time.Now(),
-		UpdatedAt:     time.Now(),
+		ID:          uuid.New().String(),
+		Name:        req.Name,
+		Description: req.Description,
+		Address:     convertAddressFromProto(req.Address),
+		Phone:       req.Phone,
+		Email:       req.Email,
+		IsActive:    true,
+		Hours:       convertStoreHoursFromProto(req.Hours),
+		Metadata:    req.Metadata,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
 	}
 
 	collection := s.db.GetCollection("stores")
@@ -312,17 +311,16 @@ func (s *StoreService) ExportStoreProducts(ctx context.Context, req *storev1.Exp
 func convertStoreToProto(store *models.Store) *storev1.Store {
 	return &storev1.Store{
 		Id:            store.ID,
-		Name:          store.Name,
-		Description:   store.Description,
-		Address:       convertAddressToProto(&store.Address),
-		Phone:         store.Phone,
-		Email:         store.Email,
-		ManagerUserId: store.ManagerUserID,
-		IsActive:      store.IsActive,
-		Hours:         convertStoreHoursToProto(&store.Hours),
-		Metadata:      store.Metadata,
-		CreatedAt:     timestamppb.New(store.CreatedAt),
-		UpdatedAt:     timestamppb.New(store.UpdatedAt),
+		Name:        store.Name,
+		Description: store.Description,
+		Address:     convertAddressToProto(&store.Address),
+		Phone:       store.Phone,
+		Email:       store.Email,
+		IsActive:    store.IsActive,
+		Hours:       convertStoreHoursToProto(&store.Hours),
+		Metadata:    store.Metadata,
+		CreatedAt:   timestamppb.New(store.CreatedAt),
+		UpdatedAt:   timestamppb.New(store.UpdatedAt),
 	}
 }
 

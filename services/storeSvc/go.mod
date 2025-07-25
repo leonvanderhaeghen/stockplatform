@@ -5,7 +5,7 @@ go 1.23
 require (
 	github.com/google/uuid v1.6.0
 	go.mongodb.org/mongo-driver v1.17.4
-	google.golang.org/grpc v1.58.3
+	google.golang.org/grpc v1.64.0
 	google.golang.org/protobuf v1.31.0
 )
 

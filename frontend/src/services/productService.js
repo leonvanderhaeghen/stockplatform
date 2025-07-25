@@ -4,6 +4,15 @@ import api from './api';
 const PRODUCTS_BASE = '/products';
 
 const productService = {
+  // Helper to normalize list responses which may be array or wrapped in { data: [] } or { items: [] }
+  _extractList: (resData) => {
+    if (Array.isArray(resData)) return resData;
+    if (resData && Array.isArray(resData.items)) return resData.items;
+    if (resData && Array.isArray(resData.data)) return resData.data;
+    if (resData && Array.isArray(resData.products)) return resData.products;
+    if (resData && resData.data && Array.isArray(resData.data.products)) return resData.data.products;
+    return [];
+  },
   /**
    * Get all products with optional filters
    * @param {Object} params - Query parameters for filtering and pagination
@@ -17,8 +26,18 @@ const productService = {
    * @returns {Promise<Array>} List of products
    */
   getProducts: async (params = {}) => {
-    const { data } = await api.get(PRODUCTS_BASE, { params });
-    return data;
+    // Normalize search parameters: backend expects 'q'
+    const normalizedParams = { ...params };
+    if (normalizedParams.search && !normalizedParams.q) {
+      normalizedParams.q = normalizedParams.search;
+      delete normalizedParams.search;
+    }
+    if (normalizedParams.query && !normalizedParams.q) {
+      normalizedParams.q = normalizedParams.query;
+      delete normalizedParams.query;
+    }
+    const { data } = await api.get(PRODUCTS_BASE, { params: normalizedParams });
+    return productService._extractList(data);
   },
 
   /**
@@ -28,7 +47,7 @@ const productService = {
    */
   getProduct: async (id) => {
     const { data } = await api.get(`${PRODUCTS_BASE}/${id}`);
-    return data;
+    return productService._extractList(data);
   },
 
   /**
@@ -54,7 +73,7 @@ const productService = {
    */
   createProduct: async (productData) => {
     const { data } = await api.post(PRODUCTS_BASE, productData);
-    return data;
+    return productService._extractList(data);
   },
 
   /**
@@ -66,7 +85,7 @@ const productService = {
    */
   updateProduct: async (id, productData) => {
     const { data } = await api.put(`${PRODUCTS_BASE}/${id}`, productData);
-    return data;
+    return productService._extractList(data);
   },
 
   /**
@@ -87,7 +106,7 @@ const productService = {
    */
   searchProducts: async (query) => {
     const { data } = await api.get(`${PRODUCTS_BASE}/search`, { params: { q: query } });
-    return data;
+    return productService._extractList(data);
   },
   
   /**
@@ -96,7 +115,7 @@ const productService = {
    */
   getCategories: async () => {
     const { data } = await api.get(`${PRODUCTS_BASE}/categories`);
-    return data;
+    return productService._extractList(data);
   },
 };
 

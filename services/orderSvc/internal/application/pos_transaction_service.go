@@ -6,7 +6,6 @@ import (
 	"math/rand"
 
 	inventoryclient "github.com/leonvanderhaeghen/stockplatform/pkg/clients/inventory"
-	inventorypb "github.com/leonvanderhaeghen/stockplatform/services/inventorySvc/api/gen/go/proto/inventory/v1"
 	"github.com/leonvanderhaeghen/stockplatform/services/orderSvc/internal/domain"
 )
 

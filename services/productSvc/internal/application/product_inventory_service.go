@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	inventoryclient "github.com/leonvanderhaeghen/stockplatform/pkg/clients/inventory"
-	inventorypb "github.com/leonvanderhaeghen/stockplatform/services/inventorySvc/api/gen/go/proto/inventory/v1"
 	"github.com/leonvanderhaeghen/stockplatform/services/productSvc/internal/domain"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.uber.org/zap"

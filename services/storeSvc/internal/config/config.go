@@ -36,12 +36,12 @@ type ServicesConfig struct {
 func Load() (*Config, error) {
 	cfg := &Config{
 		Server: ServerConfig{
-			Port: getEnv("SERVER_PORT", "8085"),
+			Port: getEnv("GRPC_PORT", getEnv("SERVER_PORT", "50058")),
 			Host: getEnv("SERVER_HOST", "0.0.0.0"),
 		},
 		Database: DatabaseConfig{
-			URI:      getEnv("MONGODB_URI", "mongodb://localhost:27017"),
-			Database: getEnv("MONGODB_DATABASE", "storedb"),
+			URI:      getEnv("MONGO_URI", "mongodb://localhost:27017"),
+			Database: getEnv("DATABASE_NAME", "storedb"),
 		},
 		Services: ServicesConfig{
 			ProductServiceAddr:   getEnv("PRODUCT_SERVICE_ADDR", "localhost:8081"),

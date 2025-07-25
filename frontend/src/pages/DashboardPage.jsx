@@ -171,7 +171,10 @@ const DashboardPage = () => {
       field: 'category', 
       headerName: 'Category', 
       flex: 1,
-      valueGetter: (params) => params.row.category?.name || 'N/A',
+      valueGetter: (params) => {
+        if (!params || !params.row) return 'N/A';
+        return params.row?.category?.name ?? 'N/A';
+      },
     },
     { 
       field: 'stock', 
@@ -183,7 +186,10 @@ const DashboardPage = () => {
       field: 'price', 
       headerName: 'Price', 
       width: 120,
-      valueFormatter: (params) => formatCurrency(params.value || 0),
+      valueFormatter: (params) => {
+        const value = params?.value;
+        return formatCurrency(value != null ? value : 0);
+      },
     },
   ];
 
@@ -192,19 +198,34 @@ const DashboardPage = () => {
       field: 'orderId', 
       headerName: 'Order ID', 
       width: 120,
-      valueGetter: (params) => params.row.orderId || params.row._id || params.row.id,
+      valueGetter: (params) => {
+        if (!params) return '';
+        if (params.value) return params.value;
+        if (params.row?._id) return params.row._id;
+        if (params.row?.id) return params.row.id;
+        return '';
+      },
     },
     { 
       field: 'customer', 
       headerName: 'Customer', 
       flex: 1,
-      valueGetter: (params) => params.row.customer?.name || params.row.customerName || 'N/A',
+      valueGetter: (params) => {
+        if (!params || !params.row) return 'N/A';
+        if (params.row?.customer?.name) return params.row.customer.name;
+        if (params.row?.customerName) return params.row.customerName;
+        return 'N/A';
+      },
     },
     { 
       field: 'amount', 
       headerName: 'Amount', 
       width: 120,
-      valueFormatter: (params) => formatCurrency(params.row.total || params.row.amount || 0),
+      valueFormatter: (params) => {
+        if (!params || !params.row) return formatCurrency(0);
+        const amount = params.row?.total ?? params.row?.amount;
+        return formatCurrency(amount != null ? amount : 0);
+      },
     },
     { 
       field: 'status', 

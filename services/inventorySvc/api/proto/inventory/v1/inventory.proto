@@ -91,6 +91,9 @@ service InventoryService {
   
   // AdjustInventoryForOrder adjusts inventory based on order operations (called by order service)
   rpc AdjustInventoryForOrder(AdjustInventoryForOrderRequest) returns (AdjustInventoryForOrderResponse);
+  
+  // GetInventoryHistory retrieves the history of changes for a specific inventory item
+  rpc GetInventoryHistory(GetInventoryHistoryRequest) returns (GetInventoryHistoryResponse);
 }
 
 // InventoryItem represents a product's inventory information
@@ -512,7 +515,34 @@ message CancelPickupRequest {
 // CancelPickupResponse is the response for canceling an in-store pickup
 message CancelPickupResponse {
   bool success = 1;
-  string cancelled_at = 2;
+  string message = 2;
+}
+
+// GetInventoryHistoryRequest is the request for retrieving inventory item history
+message GetInventoryHistoryRequest {
+  string inventory_id = 1;  // ID of the inventory item
+  int32 limit = 2;          // Maximum number of history entries to return
+  int32 offset = 3;         // Offset for pagination
+}
+
+// InventoryHistoryEntry represents a single entry in the inventory history
+message InventoryHistoryEntry {
+  string id = 1;
+  string inventory_id = 2;
+  string change_type = 3;  // e.g., QUANTITY_CHANGE, STATUS_UPDATE, etc.
+  string description = 4;  // Human-readable description of the change
+  int32 quantity_before = 5;
+  int32 quantity_after = 6;
+  string reference_id = 7;  // e.g., order ID, transfer ID, etc.
+  string reference_type = 8; // e.g., ORDER, TRANSFER, ADJUSTMENT, etc.
+  string performed_by = 9;  // User ID who performed the change
+  string created_at = 10;   // Timestamp of the change
+}
+
+// GetInventoryHistoryResponse is the response containing inventory history
+message GetInventoryHistoryResponse {
+  repeated InventoryHistoryEntry entries = 1;
+  int32 total = 2;  // Total number of history entries available
 }
 
 // AdjustInventoryForOrderRequest is the request for adjusting inventory based on order operations

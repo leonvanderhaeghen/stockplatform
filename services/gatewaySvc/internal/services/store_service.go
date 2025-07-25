@@ -80,3 +80,21 @@ func (s *StoreServiceImpl) GetStore(ctx context.Context, id string) (interface{}
 
 	return resp.GetStore(), nil
 }
+
+// CreateStore creates a new store
+func (s *StoreServiceImpl) CreateStore(ctx context.Context, name, address string) (interface{}, error) {
+    s.logger.Debug("CreateStore", zap.String("name", name), zap.String("address", address))
+
+    req := &storev1.CreateStoreRequest{
+        Name:    name,
+        Address: &storev1.Address{Street: address},
+    }
+
+    resp, err := s.client.CreateStore(ctx, req)
+    if err != nil {
+        s.logger.Error("Failed to create store", zap.Error(err))
+        return nil, fmt.Errorf("failed to create store: %w", err)
+    }
+
+    return resp.GetStore(), nil
+}

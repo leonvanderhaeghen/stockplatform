@@ -6,7 +6,6 @@ import (
 
 	"go.uber.org/zap"
 
-	supplierv1 "github.com/leonvanderhaeghen/stockplatform/services/supplierSvc/api/gen/go/proto/supplier/v1"
 	supplierclient "github.com/leonvanderhaeghen/stockplatform/pkg/clients/supplier"
 )
 

@@ -1,13 +1,21 @@
 import api from './api';
 
 const storeService = {
+  // Helper to normalize list responses which may come as array or {items: []}
+  _extractList: (data) => {
+    if (Array.isArray(data)) return data;
+    if (data && Array.isArray(data.items)) return data.items;
+    if (data && Array.isArray(data.data)) return data.data;
+    return [];
+  },
+
   // Get all stores with pagination
   getStores: async (params = {}) => {
     const { limit = 50, offset = 0 } = params;
     const response = await api.get('/stores', {
       params: { limit, offset }
     });
-    return response.data;
+    return storeService._extractList(response.data);
   },
 
   // Get a specific store by ID
@@ -25,19 +33,23 @@ const storeService = {
         search: searchTerm 
       }
     });
-    
-    // Transform the response for autocomplete usage
-    if (response.data && Array.isArray(response.data)) {
-      return response.data.map(store => ({
-        id: store.id,
-        name: store.name,
-        address: store.address,
-        label: `${store.name} - ${store.address}`,
-        value: store.id
-      }));
-    }
-    
-    return [];
+
+    const list = storeService._extractList(response.data);
+
+    return list.map(store => ({
+      id: store.id,
+      name: store.name,
+      address: store.address,
+      label: `${store.name} - ${store.address}`,
+      value: store.id
+    }));
+  }
+  ,
+
+  // Create a new store
+  createStore: async (storeData) => {
+    const response = await api.post('/stores', storeData);
+    return response.data;
   }
 };
 
