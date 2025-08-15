@@ -1,165 +1,355 @@
-import api from './api';
+import axios from 'axios';
 
-// Base path for inventory endpoints (relative to the API base URL which already includes /v1)
-const INVENTORY_BASE = '/inventory';
+const API_BASE_URL = '/api/v1';
+
+// Create axios instance with default configuration
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Add request interceptor to include token
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Add response interceptor to handle errors
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
 
 const inventoryService = {
-  // Get all inventory items with optional filters
-  getInventoryItems: async (params = {}) => {
-    const response = await api.get(INVENTORY_BASE, { params });
-    // Handle both response formats: { data: [...] } and direct array
-    return Array.isArray(response.data) ? response.data : (response.data?.data || []);
+  // List inventory with filtering and pagination
+  listInventory: async (params = {}) => {
+    const response = await api.get('/inventory', { params });
+    // Normalize response: backend returns { data: [...], success: true }
+    // Frontend expects { items: [...] }
+    const payload = response.data;
+    return {
+      items: payload.data || [],
+      success: payload.success
+    };
   },
 
-  // Get a single inventory item by ID
-  getInventoryItem: async (id) => {
-    const { data } = await api.get(`${INVENTORY_BASE}/${id}`);
-    return data;
+  // Backward-compatible alias
+  getInventory: async (params = {}) => {
+    return inventoryService.listInventory(params);
   },
 
-  // Create a new inventory item
+  // Get inventory item by ID
+  getInventoryItemById: async (itemId) => {
+    const response = await api.get(`/inventory/${itemId}`);
+    // Normalize response for single item
+    const payload = response.data;
+    return payload.data || payload;
+  },
+
+  // Get inventory items by product ID
+  getInventoryItemsByProductId: async (productId, params = {}) => {
+    const response = await api.get(`/inventory/product/${productId}`, { params });
+    // Normalize response
+    const payload = response.data;
+    return {
+      items: payload.data || [],
+      success: payload.success
+    };
+  },
+
+  // Get inventory item by SKU
+  getInventoryItemBySKU: async (sku) => {
+    const response = await api.get(`/inventory/sku/${sku}`);
+    return response.data;
+  },
+
+  // Create new inventory item
   createInventoryItem: async (itemData) => {
-    const { data } = await api.post(INVENTORY_BASE, itemData);
-    return data;
+    const response = await api.post('/inventory', itemData);
+    return response.data;
   },
 
-  // Update an existing inventory item
-  updateInventoryItem: async (id, itemData) => {
-    const { data } = await api.put(`${INVENTORY_BASE}/${id}`, itemData);
-    return data;
+  // Update inventory item
+  updateInventoryItem: async (itemId, itemData) => {
+    const response = await api.put(`/inventory/${itemId}`, itemData);
+    return response.data;
   },
 
-  // Update inventory quantity (add/subtract)
-  updateInventoryQuantity: async (id, change, reason = '') => {
-    const { data } = await api.patch(`${INVENTORY_BASE}/${id}/quantity`, {
-      change,
-      reason,
-    });
-    return data;
+  // Delete inventory item
+  deleteInventoryItem: async (itemId) => {
+    const response = await api.delete(`/inventory/${itemId}`);
+    return response.data;
   },
 
-  // Delete an inventory item
-  deleteInventoryItem: async (id) => {
-    await api.delete(`${INVENTORY_BASE}/${id}`);
-    return id;
+  // Stock Management
+  // Add stock to inventory item
+  addStock: async (itemId, stockOrQty, maybeReason) => {
+    const stockData =
+      typeof stockOrQty === 'number'
+        ? { quantity: stockOrQty, reason: maybeReason }
+        : stockOrQty;
+    const response = await api.post(`/inventory/${itemId}/stock/add`, stockData);
+    return response.data;
   },
 
-  // Get inventory history for an item
-  getInventoryHistory: async (id) => {
-    const { data } = await api.get(`${INVENTORY_BASE}/${id}/history`);
-    return data;
+  // Remove stock from inventory item
+  removeStock: async (itemId, stockOrQty, maybeReason) => {
+    const stockData =
+      typeof stockOrQty === 'number'
+        ? { quantity: stockOrQty, reason: maybeReason }
+        : stockOrQty;
+    const response = await api.post(`/inventory/${itemId}/stock/remove`, stockData);
+    return response.data;
   },
 
-  // Get low stock items
-  getLowStockItems: async (threshold = 10, location = '') => {
-    const params = { threshold };
-    if (location) {
-      params.location = location;
-    }
-    const { data } = await api.get(`${INVENTORY_BASE}/low-stock`, { params });
-    return data;
+  // Adjust stock levels
+  adjustStock: async (itemId, adjustmentData) => {
+    const response = await api.post(`/inventory/${itemId}/stock/adjust`, adjustmentData);
+    return response.data;
   },
 
-  /**
-   * Reserve inventory for an order
-   * @param {Object} reservationData - Reservation data
-   * @param {Array} reservationData.items - Array of items to reserve
-   * @param {string} reservationData.items[].productId - Product ID
-   * @param {number} reservationData.items[].quantity - Quantity to reserve
-   * @param {string} reservationData.orderId - Order ID for the reservation
-   * @param {string} [reservationData.notes] - Optional reservation notes
-   * @returns {Promise<Object>} Reservation result
-   */
-  reserveInventory: async (reservationData) => {
-    try {
-      const response = await api.post(`${INVENTORY_BASE}/reserve`, reservationData);
-      return response.data.data || response.data;
-    } catch (error) {
-      console.error('Error reserving inventory:', error);
-      throw error;
-    }
+  // Bulk stock operations
+  bulkStockUpdate: async (updates) => {
+    const response = await api.post('/inventory/stock/bulk-update', { updates });
+    return response.data;
   },
 
-  /**
-   * Release reserved inventory
-   * @param {Object} releaseData - Release data
-   * @param {Array} releaseData.items - Array of items to release
-   * @param {string} releaseData.items[].productId - Product ID
-   * @param {number} releaseData.items[].quantity - Quantity to release
-   * @param {string} releaseData.orderId - Order ID for the release
-   * @param {string} [releaseData.reason] - Reason for release
-   * @param {string} [releaseData.notes] - Optional release notes
-   * @returns {Promise<Object>} Release result
-   */
-  releaseInventory: async (releaseData) => {
-    try {
-      const response = await api.post(`${INVENTORY_BASE}/release`, releaseData);
-      return response.data.data || response.data;
-    } catch (error) {
-      console.error('Error releasing inventory:', error);
-      throw error;
-    }
+  // Get stock movements/history
+  getStockMovements: async (itemId, params = {}) => {
+    const response = await api.get(`/inventory/${itemId}/movements`, { params });
+    return response.data;
   },
 
-  /**
-   * Get inventory reservations
-   * @param {Object} params - Query parameters
-   * @param {string} [params.orderId] - Filter by order ID
-   * @param {string} [params.productId] - Filter by product ID
-   * @param {string} [params.status] - Filter by reservation status
-   * @param {number} [params.page] - Page number for pagination
-   * @param {number} [params.limit] - Number of items per page
-   * @returns {Promise<Object>} Paginated list of reservations
-   */
+  // Inventory Reservations (for POS and order processing)
+  // Create inventory reservation
+  createReservation: async (reservationData) => {
+    const response = await api.post('/inventory/reservations', reservationData);
+    return response.data;
+  },
+
+  // Get reservations
   getReservations: async (params = {}) => {
-    try {
-      const response = await api.get(`${INVENTORY_BASE}/reservations`, { params });
-      return response.data.data || response.data;
-    } catch (error) {
-      console.error('Error fetching reservations:', error);
-      throw error;
-    }
+    const response = await api.get('/inventory/reservations', { params });
+    return response.data;
   },
 
-  /**
-   * Get inventory movements/transactions
-   * @param {Object} params - Query parameters
-   * @param {string} [params.productId] - Filter by product ID
-   * @param {string} [params.type] - Filter by movement type (IN, OUT, ADJUSTMENT, RESERVE, RELEASE)
-   * @param {string} [params.startDate] - Filter movements from this date
-   * @param {string} [params.endDate] - Filter movements until this date
-   * @param {number} [params.page] - Page number for pagination
-   * @param {number} [params.limit] - Number of items per page
-   * @returns {Promise<Object>} Paginated list of inventory movements
-   */
-  getInventoryMovements: async (params = {}) => {
-    try {
-      const response = await api.get(`${INVENTORY_BASE}/movements`, { params });
-      return response.data.data || response.data;
-    } catch (error) {
-      console.error('Error fetching inventory movements:', error);
-      throw error;
-    }
+  // Backward-compatible alias
+  getInventoryReservations: async (params = {}) => {
+    return inventoryService.getReservations(params);
   },
 
-  /**
-   * Perform bulk inventory update
-   * @param {Object} bulkData - Bulk update data
-   * @param {Array} bulkData.updates - Array of inventory updates
-   * @param {string} bulkData.updates[].productId - Product ID
-   * @param {number} bulkData.updates[].quantity - New quantity
-   * @param {string} [bulkData.updates[].reason] - Reason for update
-   * @param {string} [bulkData.notes] - Optional bulk update notes
-   * @returns {Promise<Object>} Bulk update result
-   */
-  bulkUpdateInventory: async (bulkData) => {
-    try {
-      const response = await api.post(`${INVENTORY_BASE}/bulk-update`, bulkData);
-      return response.data.data || response.data;
-    } catch (error) {
-      console.error('Error performing bulk inventory update:', error);
-      throw error;
-    }
+  // Get reservation by ID
+  getReservationById: async (reservationId) => {
+    const response = await api.get(`/inventory/reservations/${reservationId}`);
+    return response.data;
+  },
+
+  // Update reservation
+  updateReservation: async (reservationId, reservationData) => {
+    const response = await api.put(`/inventory/reservations/${reservationId}`, reservationData);
+    return response.data;
+  },
+
+  // Cancel reservation
+  cancelReservation: async (reservationId) => {
+    const response = await api.delete(`/inventory/reservations/${reservationId}`);
+    return response.data;
+  },
+
+  // Confirm/fulfill reservation
+  fulfillReservation: async (reservationId, fulfillmentData) => {
+    const response = await api.post(`/inventory/reservations/${reservationId}/fulfill`, fulfillmentData);
+    return response.data;
+  },
+
+  // POS-specific inventory operations (using consolidated endpoints)
+  // Check inventory availability for POS
+  checkPOSAvailability: async (items, storeId) => {
+    const response = await api.post('/inventory/availability', {
+      items,
+      storeId,
+      source: 'POS'
+    });
+    return response.data;
+  },
+
+  // Reserve inventory for POS transaction
+  reserveForPOS: async (items, orderId, storeId) => {
+    const response = await api.post('/inventory/reservations', {
+      items,
+      orderId,
+      storeId,
+      source: 'POS',
+      type: 'POS_TRANSACTION'
+    });
+    return response.data;
+  },
+
+  // Complete POS inventory deduction
+  completePOSDeduction: async (reservationId, deductionData) => {
+    const response = await api.post(`/inventory/reservations/${reservationId}/fulfill`, {
+      ...deductionData,
+      source: 'POS'
+    });
+    return response.data;
+  },
+
+  // Direct POS stock deduction (for quick transactions)
+  directPOSDeduction: async (items, storeId, reason = 'POS Sale') => {
+    const response = await api.post('/inventory/stock/deduct', {
+      items,
+      storeId,
+      source: 'POS',
+      reason
+    });
+    return response.data;
+  },
+
+  // Low Stock Management
+  // Get low stock items
+  getLowStockItems: async (params = {}) => {
+    const response = await api.get('/inventory/low-stock', { params });
+    return response.data;
+  },
+
+  // Update low stock thresholds
+  updateLowStockThreshold: async (itemId, threshold) => {
+    const response = await api.put(`/inventory/${itemId}/threshold`, { threshold });
+    return response.data;
+  },
+
+  // Get stock alerts
+  getStockAlerts: async (params = {}) => {
+    const response = await api.get('/inventory/alerts', { params });
+    return response.data;
+  },
+
+  // Mark alert as resolved
+  resolveStockAlert: async (alertId) => {
+    const response = await api.put(`/inventory/alerts/${alertId}/resolve`);
+    return response.data;
+  },
+
+  // Inventory Analytics
+  // Get inventory analytics
+  getInventoryAnalytics: async (params = {}) => {
+    const response = await api.get('/inventory/analytics', { params });
+    return response.data;
+  },
+
+  // Convenience alias used by Dashboard
+  getInventoryStats: async (params = {}) => {
+    return inventoryService.getInventoryAnalytics(params);
+  },
+
+  // Get inventory turnover rates
+  getInventoryTurnover: async (params = {}) => {
+    const response = await api.get('/inventory/analytics/turnover', { params });
+    return response.data;
+  },
+
+  // Get inventory valuation
+  getInventoryValuation: async (params = {}) => {
+    const response = await api.get('/inventory/analytics/valuation', { params });
+    return response.data;
+  },
+
+  // Location-based Inventory
+  // Get inventory by location/store
+  getInventoryByLocation: async (locationId, params = {}) => {
+    const response = await api.get(`/inventory/location/${locationId}`, { params });
+    return response.data;
+  },
+
+  // Transfer stock between locations
+  transferStock: async (transferData) => {
+    const response = await api.post('/inventory/transfers', transferData);
+    return response.data;
+  },
+
+  // Get transfer history
+  getTransferHistory: async (params = {}) => {
+    const response = await api.get('/inventory/transfers', { params });
+    return response.data;
+  },
+
+  // Get transfer by ID
+  getTransferById: async (transferId) => {
+    const response = await api.get(`/inventory/transfers/${transferId}`);
+    return response.data;
+  },
+
+  // Update transfer status
+  updateTransferStatus: async (transferId, status, notes) => {
+    const response = await api.put(`/inventory/transfers/${transferId}/status`, {
+      status,
+      notes
+    });
+    return response.data;
+  },
+
+  // Inventory Audits
+  // Create inventory audit
+  createAudit: async (auditData) => {
+    const response = await api.post('/inventory/audits', auditData);
+    return response.data;
+  },
+
+  // Get audits
+  getAudits: async (params = {}) => {
+    const response = await api.get('/inventory/audits', { params });
+    return response.data;
+  },
+
+  // Get audit by ID
+  getAuditById: async (auditId) => {
+    const response = await api.get(`/inventory/audits/${auditId}`);
+    return response.data;
+  },
+
+  // Update audit
+  updateAudit: async (auditId, auditData) => {
+    const response = await api.put(`/inventory/audits/${auditId}`, auditData);
+    return response.data;
+  },
+
+  // Complete audit
+  completeAudit: async (auditId, results) => {
+    const response = await api.post(`/inventory/audits/${auditId}/complete`, results);
+    return response.data;
+  },
+
+  // Search inventory
+  searchInventory: async (query, params = {}) => {
+    const response = await api.get('/inventory/search', {
+      params: { q: query, ...params }
+    });
+    return response.data;
+  },
+
+  // Export inventory data
+  exportInventory: async (format = 'csv', params = {}) => {
+    const response = await api.get('/inventory/export', {
+      params: { format, ...params },
+      responseType: 'blob'
+    });
+    return response.data;
   },
 };
 

@@ -354,6 +354,7 @@ func (s *InventoryService) AddStock(ctx context.Context, id string, quantity int
 	}
 
 	return nil
+}
 
 // RemoveStock decreases the quantity of an inventory item
 func (s *InventoryService) RemoveStock(ctx context.Context, id string, quantity int32) error {
@@ -404,6 +405,7 @@ func (s *InventoryService) RemoveStock(ctx context.Context, id string, quantity 
 	}
 
 	return nil
+}
 
 // ReserveStock reserves stock for an order
 func (s *InventoryService) ReserveStock(ctx context.Context, id string, quantity int32) error {

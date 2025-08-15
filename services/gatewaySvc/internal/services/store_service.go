@@ -7,7 +7,6 @@ import (
 	"go.uber.org/zap"
 
 	storeclient "github.com/leonvanderhaeghen/stockplatform/pkg/clients/store"
-	storev1 "github.com/leonvanderhaeghen/stockplatform/services/storeSvc/api/gen/go/api/proto/store/v1"
 )
 
 // StoreServiceImpl implements the StoreService interface
@@ -32,69 +31,43 @@ func NewStoreService(storeServiceAddr string, logger *zap.Logger) (StoreService,
 
 // ListStores lists all stores with pagination
 func (s *StoreServiceImpl) ListStores(ctx context.Context, limit, offset int) (interface{}, error) {
-	s.logger.Debug("ListStores",
-		zap.Int("limit", limit),
-		zap.Int("offset", offset),
-	)
+	s.logger.Debug("ListStores", zap.Int("limit", limit), zap.Int("offset", offset))
 
-	// Create the request for listing stores
-	req := &storev1.ListStoresRequest{
-		Limit:  int32(limit),
-		Offset: int32(offset),
-	}
-
-	// Call the gRPC method
-	resp, err := s.client.ListStores(ctx, req)
+	resp, err := s.client.ListStores(ctx, int32(limit), int32(offset))
 	if err != nil {
-		s.logger.Error("Failed to list stores",
-			zap.Int("limit", limit),
-			zap.Int("offset", offset),
-			zap.Error(err),
-		)
+		s.logger.Error("Failed to list stores", zap.Error(err))
 		return nil, fmt.Errorf("failed to list stores: %w", err)
 	}
 
-	return resp.GetStores(), nil
+	return resp, nil
 }
 
 // GetStore retrieves a store by ID
 func (s *StoreServiceImpl) GetStore(ctx context.Context, id string) (interface{}, error) {
-	s.logger.Debug("GetStore",
-		zap.String("id", id),
-	)
+	s.logger.Debug("GetStore", zap.String("id", id))
 
-	// Create the request for getting a store
-	req := &storev1.GetStoreRequest{
-		Id: id,
-	}
-
-	// Call the gRPC method
-	resp, err := s.client.GetStore(ctx, req)
+	resp, err := s.client.GetStore(ctx, id)
 	if err != nil {
-		s.logger.Error("Failed to get store",
-			zap.String("id", id),
-			zap.Error(err),
-		)
+		s.logger.Error("Failed to get store", zap.String("id", id), zap.Error(err))
 		return nil, fmt.Errorf("failed to get store: %w", err)
 	}
 
-	return resp.GetStore(), nil
+	return resp, nil
 }
 
 // CreateStore creates a new store
-func (s *StoreServiceImpl) CreateStore(ctx context.Context, name, address string) (interface{}, error) {
-    s.logger.Debug("CreateStore", zap.String("name", name), zap.String("address", address))
+func (s *StoreServiceImpl) CreateStore(ctx context.Context, name, description, street, city, state, country, postalCode, phone, email string) (interface{}, error) {
+	s.logger.Debug("CreateStore",
+		zap.String("name", name),
+		zap.String("description", description),
+		zap.String("street", street),
+		zap.String("city", city))
 
-    req := &storev1.CreateStoreRequest{
-        Name:    name,
-        Address: &storev1.Address{Street: address},
-    }
+	resp, err := s.client.CreateStore(ctx, name, description, street, city, state, country, postalCode, phone, email)
+	if err != nil {
+		s.logger.Error("Failed to create store", zap.Error(err))
+		return nil, fmt.Errorf("failed to create store: %w", err)
+	}
 
-    resp, err := s.client.CreateStore(ctx, req)
-    if err != nil {
-        s.logger.Error("Failed to create store", zap.Error(err))
-        return nil, fmt.Errorf("failed to create store: %w", err)
-    }
-
-    return resp.GetStore(), nil
+	return resp, nil
 }

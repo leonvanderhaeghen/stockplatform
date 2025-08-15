@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
 	userclient "github.com/leonvanderhaeghen/stockplatform/pkg/clients/user"
@@ -47,30 +48,34 @@ func (a *AuthClient) Close() error {
 
 // ValidateToken validates a JWT token with the user service
 func (a *AuthClient) ValidateToken(ctx context.Context, token string) (*UserClaims, error) {
-	resp, err := a.client.ValidateToken(ctx, token)
+	user, valid, err := a.client.ValidateToken(ctx, token)
 	if err != nil {
 		a.logger.Warn("Token validation failed", zap.Error(err))
 		return nil, fmt.Errorf("token validation failed: %w", err)
 	}
 
+	if !valid || user == nil {
+		return nil, fmt.Errorf("invalid token")
+	}
+
 	return &UserClaims{
-		UserID:    resp.UserId,
-		Email:     resp.Email,
-		Role:      resp.Role,
-		FirstName: resp.FirstName,
-		LastName:  resp.LastName,
+		UserID:    user.ID,
+		Email:     user.Email,
+		Role:      user.Role,
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
 	}, nil
 }
 
 // CheckPermission checks if a user has a specific permission
 func (a *AuthClient) CheckPermission(ctx context.Context, role, permission string) (bool, error) {
-	resp, err := a.client.CheckPermission(ctx, role, permission)
+	hasPermission, err := a.client.CheckPermission(ctx, role, permission)
 	if err != nil {
 		a.logger.Warn("Permission check failed", zap.Error(err))
 		return false, fmt.Errorf("permission check failed: %w", err)
 	}
 
-	return resp.HasPermission, nil
+	return hasPermission, nil
 }
 
 // ExtractTokenFromContext extracts JWT token from gRPC metadata

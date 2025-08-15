@@ -30,7 +30,9 @@ func (s *InventoryServer) CheckAvailability(ctx context.Context, req *inventoryv
 	// Get location info
 	location, err := s.locationService.GetLocation(ctx, locationID)
 	if err != nil {
-		logger.Error("Failed to get location", zap.Error(err), zap.String("location_id", locationID))
+		logger.Error("Failed to get location", 
+			zap.Error(err), 
+			zap.String("location_id", locationID))
 		return nil, status.Errorf(codes.NotFound, "location not found: %v", err)
 	}
 

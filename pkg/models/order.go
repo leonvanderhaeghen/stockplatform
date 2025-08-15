@@ -39,11 +39,14 @@ const (
 
 // Address represents a shipping or billing address
 type Address struct {
-	Street   string `json:"street"`
-	City     string `json:"city"`
-	State    string `json:"state"`
-	ZipCode  string `json:"zip_code"`
-	Country  string `json:"country"`
+	Street     string  `json:"street" bson:"street"`
+	City       string  `json:"city" bson:"city"`
+	State      string  `json:"state" bson:"state"`
+	ZipCode    string  `json:"zip_code" bson:"zip_code"`     // Used by suppliers and orders
+	PostalCode string  `json:"postal_code" bson:"postal_code"` // Used by stores  
+	Country    string  `json:"country" bson:"country"`
+	Latitude   float64 `json:"latitude" bson:"latitude"`
+	Longitude  float64 `json:"longitude" bson:"longitude"`
 }
 
 // CreateOrderResponse represents the response from creating an order

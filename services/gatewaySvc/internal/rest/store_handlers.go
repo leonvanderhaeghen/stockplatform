@@ -52,21 +52,30 @@ func (s *Server) getStore(c *gin.Context) {
 
 // createStore handles creating a new store
 func (s *Server) createStore(c *gin.Context) {
-    var req struct {
-        Name    string `json:"name" binding:"required"`
-        Address string `json:"address" binding:"required"`
-    }
+	var req struct {
+		Name        string `json:"name" binding:"required"`
+		Description string `json:"description"`
+		Street      string `json:"street" binding:"required"`
+		City        string `json:"city" binding:"required"`
+		State       string `json:"state" binding:"required"`
+		Country     string `json:"country" binding:"required"`
+		PostalCode  string `json:"postal_code" binding:"required"`
+		Phone       string `json:"phone"`
+		Email       string `json:"email"`
+	}
 
-    if err := c.ShouldBindJSON(&req); err != nil {
-        respondWithError(c, http.StatusBadRequest, "Invalid request payload")
-        return
-    }
+	if err := c.ShouldBindJSON(&req); err != nil {
+		respondWithError(c, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
 
-    store, err := s.storeSvc.CreateStore(c.Request.Context(), req.Name, req.Address)
-    if err != nil {
-        genericErrorHandler(c, err, s.logger, "Create store")
-        return
-    }
+	store, err := s.storeSvc.CreateStore(c.Request.Context(),
+		req.Name, req.Description, req.Street, req.City, req.State,
+		req.Country, req.PostalCode, req.Phone, req.Email)
+	if err != nil {
+		genericErrorHandler(c, err, s.logger, "Create store")
+		return
+	}
 
-    respondWithSuccess(c, http.StatusCreated, store)
+	respondWithSuccess(c, http.StatusCreated, store)
 }

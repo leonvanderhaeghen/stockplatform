@@ -1,0 +1,287 @@
+openapi: 3.0.3
+info:
+  title: StockPlatform Gateway API
+  description: |
+    Comprehensive REST API for the StockPlatform microservices architecture.
+    
+    This API provides unified access to all StockPlatform services through a centralized gateway.
+    The API is organized into the following domains:
+    
+    ## Authentication & Users
+    - **Authentication**: User registration, login, and JWT token management
+    - **User Management**: User profiles, addresses, and account management
+    - **Admin User Management**: Administrative user operations (admin only)
+    
+    ## Products & Inventory
+    - **Products**: Product catalog and category management
+    - **Inventory**: Stock management, adjustments, and reservations
+    
+    ## Orders & Sales  
+    - **Orders**: Order lifecycle management and tracking
+    - **Point of Sale**: POS transactions, inventory checks, and pickup operations
+    
+    ## Operations
+    - **Suppliers**: Supplier management and integration adapters
+    - **Stores**: Store locations and operating hours management
+    - **Admin Operations**: System monitoring, metrics, and analytics (admin only)
+    
+    ## Security
+    All endpoints require JWT authentication unless specified otherwise.
+    Admin-only endpoints require ADMIN role permissions.
+    
+    ## Error Handling
+    The API uses standard HTTP status codes and returns consistent error responses.
+    
+    ## Rate Limiting
+    API requests are rate-limited to prevent abuse and ensure fair usage.
+    
+  version: 1.0.0
+  termsOfService: https://stockplatform.com/terms
+  contact:
+    name: StockPlatform API Support
+    email: support@stockplatform.com
+    url: https://stockplatform.com/support
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Development server
+  - url: https://staging-api.stockplatform.com
+    description: Staging server
+  - url: https://api.stockplatform.com
+    description: Production server
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT Bearer token authentication. 
+        
+        To authenticate, include the JWT token in the Authorization header:
+        ```
+        Authorization: Bearer <your-jwt-token>
+        ```
+        
+        Obtain a JWT token by calling the `/api/v1/auth/login` endpoint.
+
+  responses:
+    BadRequest:
+      description: Bad request - Invalid input parameters
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Invalid request parameters"
+
+    Unauthorized:
+      description: Unauthorized - Missing or invalid authentication token
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Authentication required"
+
+    Forbidden:
+      description: Forbidden - Insufficient permissions
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Insufficient permissions"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Resource not found"
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Internal server error"
+
+security:
+  - BearerAuth: []
+
+paths:
+  # Health Check Endpoint (no authentication required)
+  /health:
+    get:
+      summary: Health check
+      description: Check if the gateway service is healthy
+      security: []
+      tags:
+        - System
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "healthy"
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  # Authentication Endpoints
+  /api/v1/auth/register:
+    $ref: './auth.yaml#/paths/~1api~1v1~1auth~1register'
+  /api/v1/auth/login:
+    $ref: './auth.yaml#/paths/~1api~1v1~1auth~1login'
+
+  # User Management Endpoints
+  /api/v1/users/me:
+    $ref: './users.yaml#/paths/~1api~1v1~1users~1me'
+  /api/v1/users/me/password:
+    $ref: './users.yaml#/paths/~1api~1v1~1users~1me~1password'
+  /api/v1/users/me/addresses:
+    $ref: './users.yaml#/paths/~1api~1v1~1users~1me~1addresses'
+  /api/v1/users/me/addresses/{id}:
+    $ref: './users.yaml#/paths/~1api~1v1~1users~1me~1addresses~1{id}'
+  /api/v1/users/me/addresses/{id}/default:
+    $ref: './users.yaml#/paths/~1api~1v1~1users~1me~1addresses~1{id}~1default'
+
+  # Product Management Endpoints
+  /api/v1/products:
+    $ref: './products.yaml#/paths/~1api~1v1~1products'
+  /api/v1/products/{id}:
+    $ref: './products.yaml#/paths/~1api~1v1~1products~1{id}'
+  /api/v1/products/categories:
+    $ref: './products.yaml#/paths/~1api~1v1~1products~1categories'
+  /api/v1/products/categories/{id}:
+    $ref: './products.yaml#/paths/~1api~1v1~1categories~1{id}'
+
+  # Order Management Endpoints
+  /api/v1/orders:
+    $ref: './orders.yaml#/paths/~1api~1v1~1orders'
+  /api/v1/orders/{id}:
+    $ref: './orders.yaml#/paths/~1api~1v1~1orders~1{id}'
+  /api/v1/orders/{id}/status:
+    $ref: './orders.yaml#/paths/~1api~1v1~1orders~1{id}~1status'
+  /api/v1/orders/{id}/payments:
+    $ref: './orders.yaml#/paths/~1api~1v1~1orders~1{id}~1payments'
+  /api/v1/orders/{id}/tracking:
+    $ref: './orders.yaml#/paths/~1api~1v1~1orders~1{id}~1tracking'
+  /api/v1/orders/{id}/cancel:
+    $ref: './orders.yaml#/paths/~1api~1v1~1orders~1{id}~1cancel'
+  # Note: POS orders are now created through standard /api/v1/orders endpoint with source parameter
+
+  # Inventory Management Endpoints
+  /api/v1/inventory:
+    $ref: './inventory.yaml#/paths/~1api~1v1~1inventory'
+  /api/v1/inventory/{id}:
+    $ref: './inventory.yaml#/paths/~1api~1v1~1inventory~1{id}'
+  /api/v1/inventory/product/{productId}:
+    $ref: './inventory.yaml#/paths/~1api~1v1~1inventory~1product~1{productId}'
+  /api/v1/inventory/sku/{sku}:
+    $ref: './inventory.yaml#/paths/~1api~1v1~1inventory~1sku~1{sku}'
+  /api/v1/inventory/{id}/stock:
+    $ref: './inventory.yaml#/paths/~1api~1v1~1inventory~1{id}~1stock'
+  /api/v1/inventory/reservations:
+    $ref: './inventory.yaml#/paths/~1api~1v1~1inventory~1reservations'
+  /api/v1/inventory/low-stock:
+    $ref: './inventory.yaml#/paths/~1api~1v1~1inventory~1low-stock'
+  # Note: All POS operations are now consolidated into standard endpoints:
+  # - POS inventory check: GET /api/v1/inventory (with availability query params)
+  # - POS inventory reserve: POST /api/v1/inventory/reservations (with source parameter) 
+  # - POS inventory deduct: POST /api/v1/inventory/{id}/stock/remove (with source parameter)
+  # - Pickup completion: PUT /api/v1/orders/{id}/status (status="PICKUP_COMPLETED")
+
+  # Supplier Management Endpoints
+  /api/v1/suppliers:
+    $ref: './suppliers.yaml#/paths/~1api~1v1~1suppliers'
+  /api/v1/suppliers/{id}:
+    $ref: './suppliers.yaml#/paths/~1api~1v1~1suppliers~1{id}'
+  /api/v1/suppliers/adapters:
+    $ref: './suppliers.yaml#/paths/~1api~1v1~1suppliers~1adapters'
+  /api/v1/suppliers/adapters/{adapterId}/capabilities:
+    $ref: './suppliers.yaml#/paths/~1api~1v1~1suppliers~1adapters~1{adapterId}~1capabilities'
+  /api/v1/suppliers/adapters/{adapterId}/test:
+    $ref: './suppliers.yaml#/paths/~1api~1v1~1suppliers~1adapters~1{adapterId}~1test'
+  /api/v1/suppliers/{id}/sync/products:
+    $ref: './suppliers.yaml#/paths/~1api~1v1~1suppliers~1{id}~1sync~1products'
+  /api/v1/suppliers/{id}/sync/inventory:
+    $ref: './suppliers.yaml#/paths/~1api~1v1~1suppliers~1{id}~1sync~1inventory'
+
+  # Store Management Endpoints
+  /api/v1/stores:
+    $ref: './stores.yaml#/paths/~1api~1v1~1stores'
+  /api/v1/stores/{id}:
+    $ref: './stores.yaml#/paths/~1api~1v1~1stores~1{id}'
+  /api/v1/stores/{id}/hours:
+    $ref: './stores.yaml#/paths/~1api~1v1~1stores~1{id}~1hours'
+  /api/v1/stores/nearby:
+    $ref: './stores.yaml#/paths/~1api~1v1~1stores~1nearby'
+
+  # Admin Endpoints (Admin Role Required)
+  /api/v1/admin/users:
+    $ref: './admin.yaml#/paths/~1api~1v1~1admin~1users'
+  /api/v1/admin/users/{id}:
+    $ref: './admin.yaml#/paths/~1api~1v1~1admin~1users~1{id}'
+  /api/v1/admin/users/{id}/activate:
+    $ref: './admin.yaml#/paths/~1api~1v1~1admin~1users~1{id}~1activate'
+  /api/v1/admin/users/{id}/deactivate:
+    $ref: './admin.yaml#/paths/~1api~1v1~1admin~1users~1{id}~1deactivate'
+  /api/v1/admin/orders:
+    $ref: './admin.yaml#/paths/~1api~1v1~1admin~1orders'
+  /api/v1/admin/system/health:
+    $ref: './admin.yaml#/paths/~1api~1v1~1admin~1system~1health'
+  /api/v1/admin/system/metrics:
+    $ref: './admin.yaml#/paths/~1api~1v1~1admin~1system~1metrics'
+  /api/v1/admin/analytics/sales:
+    $ref: './admin.yaml#/paths/~1api~1v1~1admin~1analytics~1sales'
+  /api/v1/admin/analytics/inventory:
+    $ref: './admin.yaml#/paths/~1api~1v1~1admin~1analytics~1inventory'
+
+tags:
+  - name: System
+    description: System health and status endpoints
+  - name: Authentication
+    description: User authentication and authorization
+  - name: User Management
+    description: User profile and account management
+  - name: Products
+    description: Product catalog and category management
+  - name: Orders
+    description: Order lifecycle and management
+  - name: Inventory
+    description: Inventory and stock management
+  - name: Suppliers
+    description: Supplier management and integrations
+  - name: Stores
+    description: Store locations and management
+  - name: Admin
+    description: Administrative operations (admin only)
+
+externalDocs:
+  description: StockPlatform Developer Documentation
+  url: https://docs.stockplatform.com

@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+	"fmt"
 
 	inventoryv1 "github.com/leonvanderhaeghen/stockplatform/services/inventorySvc/api/gen/go/proto/inventory/v1"
 	"go.uber.org/zap"
@@ -143,8 +144,8 @@ func (s *InventoryServer) CancelPickup(ctx context.Context, req *inventoryv1.Can
 	logger.Info("CancelPickup request completed successfully")
 
 	return &inventoryv1.CancelPickupResponse{
-		Success:     true,
-		CancelledAt: time.Now().Format(time.RFC3339),
+		Success: true,
+		Message: fmt.Sprintf("Pickup reservation cancelled at %s", time.Now().Format(time.RFC3339)),
 	}, nil
 }
 

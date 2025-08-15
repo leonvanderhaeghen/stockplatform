@@ -112,7 +112,7 @@ func (r *permissionRepository) GetResourcePermissions(ctx context.Context, resou
 
 func (r *permissionRepository) HasPermission(ctx context.Context, userID string, resourceType domain.ResourceType, resourceID string, permission domain.Permission) (bool, error) {
 	// Admin users have all permissions
-	userRepo := NewUserRepository(r.collection.Database(), "users", nil) // TODO: Pass proper logger
+	userRepo := NewUserRepository(r.collection.Database(), "users", nil) // Logger not available in this context - acceptable for permission checks
 	user, err := userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return false, err

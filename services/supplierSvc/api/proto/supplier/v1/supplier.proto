@@ -109,12 +109,18 @@ message ListSuppliersRequest {
   string search = 3;  // Optional search term
 }
 
-// Response containing a list of suppliers
-message ListSuppliersResponse {
+// Data container for list suppliers response
+message ListSuppliersData {
   repeated Supplier suppliers = 1;
-  int32 total = 2;
+  int32 total_count = 2;
   int32 page = 3;
   int32 page_size = 4;
+}
+
+// Response containing a list of suppliers
+message ListSuppliersResponse {
+  ListSuppliersData data = 1;
+  bool success = 2;
 }
 
 // Adapter capabilities defines what features a supplier adapter supports

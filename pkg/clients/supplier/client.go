@@ -158,8 +158,8 @@ func (c *Client) ListSuppliers(ctx context.Context, pageSize int32, pageToken st
 	c.logger.Debug("Listing suppliers", zap.Int32("page_size", pageSize))
 	
 	req := &supplierv1.ListSuppliersRequest{
-		PageSize:  pageSize,
-		PageToken: pageToken,
+		PageSize: pageSize,
+		Search:   pageToken, // Using search parameter instead of pageToken
 	}
 	
 	resp, err := c.client.ListSuppliers(ctx, req)

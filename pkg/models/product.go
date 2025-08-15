@@ -10,7 +10,8 @@ type Product struct {
 	SKU         string     `json:"sku"`
 	Price       float64    `json:"price"`
 	Cost        float64    `json:"cost"`
-	Category    string     `json:"category"`
+	CategoryIDs []string   `json:"category_ids"`
+	Categories  []Category `json:"categories,omitempty"`
 	Brand       string     `json:"brand"`
 	Weight      float64    `json:"weight"`
 	Dimensions  *Dimensions `json:"dimensions,omitempty"`

@@ -9,9 +9,7 @@ import (
 	userclient "github.com/leonvanderhaeghen/stockplatform/pkg/clients/user"
 )
 
-var (
-	_ = userv1.UserService_ServiceDesc // Ensure the service is linked
-)
+
 
 // UserServiceImpl implements the UserService interface
 type UserServiceImpl struct {
@@ -46,17 +44,8 @@ func (s *UserServiceImpl) RegisterUser(
 		zap.String("role", role),
 	)
 
-	// Create the request
-	req := &userv1.RegisterUserRequest{
-		Email:     email,
-		Password:  password,
-		FirstName: firstName,
-		LastName:  lastName,
-		Role:      role,
-	}
-
-	// Call the gRPC service
-	resp, err := s.client.RegisterUser(ctx, req)
+	// Call the gRPC service via client abstraction
+	resp, err := s.client.RegisterUser(ctx, email, password, firstName, lastName, role)
 	if err != nil {
 		s.logger.Error("Failed to register user",
 			zap.String("email", email),
@@ -65,7 +54,7 @@ func (s *UserServiceImpl) RegisterUser(
 		return nil, fmt.Errorf("failed to register user: %w", err)
 	}
 
-	return resp.GetUser(), nil
+	return resp, nil
 }
 
 // AuthenticateUser authenticates a user
@@ -77,14 +66,8 @@ func (s *UserServiceImpl) AuthenticateUser(
 		zap.String("email", email),
 	)
 
-	// Create the request
-	req := &userv1.AuthenticateUserRequest{
-		Email:    email,
-		Password: password,
-	}
-
-	// Call the gRPC service
-	resp, err := s.client.AuthenticateUser(ctx, req)
+	// Call the gRPC service via client abstraction
+	resp, err := s.client.AuthenticateUser(ctx, email, password)
 	if err != nil {
 		s.logger.Error("Failed to authenticate user",
 			zap.String("email", email),
@@ -105,11 +88,7 @@ func (s *UserServiceImpl) GetUserByID(
 		zap.String("userID", userID),
 	)
 
-	req := &userv1.GetUserRequest{
-		Id: userID,
-	}
-
-	resp, err := s.client.GetUser(ctx, req)
+	resp, err := s.client.GetUser(ctx, userID)
 	if err != nil {
 		s.logger.Error("Failed to get user by ID",
 			zap.String("userID", userID),
@@ -118,7 +97,7 @@ func (s *UserServiceImpl) GetUserByID(
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 
-	return resp.GetUser(), nil
+	return resp, nil
 }
 
 // UpdateUserProfile updates a user's profile
@@ -132,14 +111,7 @@ func (s *UserServiceImpl) UpdateUserProfile(
 		zap.String("lastName", lastName),
 	)
 
-	req := &userv1.UpdateUserProfileRequest{
-		Id:        userID,
-		FirstName: firstName,
-		LastName:  lastName,
-		Phone:     phone,
-	}
-
-	_, err := s.client.UpdateUserProfile(ctx, req)
+	_, err := s.client.UpdateUserProfile(ctx, userID, firstName, lastName, phone)
 	if err != nil {
 		s.logger.Error("Failed to update user profile",
 			zap.String("userID", userID),
@@ -160,13 +132,7 @@ func (s *UserServiceImpl) ChangeUserPassword(
 		zap.String("userID", userID),
 	)
 
-	req := &userv1.ChangeUserPasswordRequest{
-		Id:              userID,
-		CurrentPassword: currentPassword,
-		NewPassword:     newPassword,
-	}
-
-	_, err := s.client.ChangeUserPassword(ctx, req)
+	err := s.client.ChangeUserPassword(ctx, userID, currentPassword, newPassword)
 	if err != nil {
 		s.logger.Error("Failed to change user password",
 			zap.String("userID", userID),
@@ -187,11 +153,7 @@ func (s *UserServiceImpl) GetUserAddresses(
 		zap.String("userID", userID),
 	)
 
-	req := &userv1.GetUserAddressesRequest{
-		UserId: userID,
-	}
-
-	resp, err := s.client.GetUserAddresses(ctx, req)
+	addresses, err := s.client.GetUserAddresses(ctx, userID)
 	if err != nil {
 		s.logger.Error("Failed to get user addresses",
 			zap.String("userID", userID),
@@ -200,7 +162,7 @@ func (s *UserServiceImpl) GetUserAddresses(
 		return nil, fmt.Errorf("failed to get user addresses: %w", err)
 	}
 
-	return resp.GetAddresses(), nil
+	return addresses, nil
 }
 
 // CreateUserAddress creates a new address for a user
@@ -212,23 +174,9 @@ func (s *UserServiceImpl) CreateUserAddress(
 	s.logger.Debug("CreateUserAddress",
 		zap.String("userID", userID),
 		zap.String("name", name),
-		zap.String("city", city),
-		zap.String("country", country),
 	)
 
-	req := &userv1.CreateUserAddressRequest{
-		UserId:     userID,
-		Name:       name,
-		Street:     street,
-		City:       city,
-		State:      state,
-		PostalCode: postalCode,
-		Country:    country,
-		Phone:      phone,
-		IsDefault:  isDefault,
-	}
-
-	resp, err := s.client.CreateUserAddress(ctx, req)
+	address, err := s.client.CreateUserAddress(ctx, userID, name, street, city, state, postalCode, country, phone, isDefault)
 	if err != nil {
 		s.logger.Error("Failed to create user address",
 			zap.String("userID", userID),
@@ -237,7 +185,7 @@ func (s *UserServiceImpl) CreateUserAddress(
 		return nil, fmt.Errorf("failed to create user address: %w", err)
 	}
 
-	return resp.GetAddress(), nil
+	return address, nil
 }
 
 // GetUserDefaultAddress gets the default address for a user
@@ -249,11 +197,7 @@ func (s *UserServiceImpl) GetUserDefaultAddress(
 		zap.String("userID", userID),
 	)
 
-	req := &userv1.GetUserDefaultAddressRequest{
-		UserId: userID,
-	}
-
-	resp, err := s.client.GetUserDefaultAddress(ctx, req)
+	address, err := s.client.GetUserDefaultAddress(ctx, userID)
 	if err != nil {
 		s.logger.Error("Failed to get user default address",
 			zap.String("userID", userID),
@@ -262,7 +206,7 @@ func (s *UserServiceImpl) GetUserDefaultAddress(
 		return nil, fmt.Errorf("failed to get user default address: %w", err)
 	}
 
-	return resp.GetAddress(), nil
+	return address, nil
 }
 
 // UpdateUserAddress updates an address for a user
@@ -276,20 +220,7 @@ func (s *UserServiceImpl) UpdateUserAddress(
 		zap.String("userID", userID),
 	)
 
-	req := &userv1.UpdateUserAddressRequest{
-		Id:          addressID,
-		UserId:      userID,
-		Name:        name,
-		Street:      street,
-		City:        city,
-		State:       state,
-		PostalCode:  postalCode,
-		Country:     country,
-		Phone:       phone,
-		IsDefault:   isDefault,
-	}
-
-	_, err := s.client.UpdateUserAddress(ctx, req)
+	err := s.client.UpdateUserAddress(ctx, addressID, userID, name, street, city, state, postalCode, country, phone, isDefault)
 	if err != nil {
 		s.logger.Error("Failed to update user address",
 			zap.String("addressID", addressID),
@@ -312,12 +243,7 @@ func (s *UserServiceImpl) DeleteUserAddress(
 		zap.String("userID", userID),
 	)
 
-	req := &userv1.DeleteUserAddressRequest{
-		Id:     addressID,
-		UserId: userID,
-	}
-
-	_, err := s.client.DeleteUserAddress(ctx, req)
+	err := s.client.DeleteUserAddress(ctx, addressID, userID)
 	if err != nil {
 		s.logger.Error("Failed to delete user address",
 			zap.String("addressID", addressID),
@@ -340,12 +266,7 @@ func (s *UserServiceImpl) SetDefaultUserAddress(
 		zap.String("userID", userID),
 	)
 
-	req := &userv1.SetDefaultUserAddressRequest{
-		Id:     addressID,
-		UserId: userID,
-	}
-
-	_, err := s.client.SetDefaultUserAddress(ctx, req)
+	err := s.client.SetDefaultUserAddress(ctx, addressID, userID)
 	if err != nil {
 		s.logger.Error("Failed to set default user address",
 			zap.String("addressID", addressID),
@@ -377,17 +298,12 @@ func (s *UserServiceImpl) ListUsers(
 	
 	s.logger.Debug("ListUsers", logFields...)
 
-	req := &userv1.ListUsersRequest{
-		Role:   role,
-		Limit:  int32(limit),
-		Offset: int32(offset),
-	}
-
+	// Fix type conversion issues - convert parameters to expected types
+	activeValue := false
 	if active != nil {
-		req.Active = *active
+		activeValue = *active
 	}
-
-	resp, err := s.client.ListUsers(ctx, req)
+	resp, err := s.client.ListUsers(ctx, role, activeValue, int32(limit), int32(offset))
 	if err != nil {
 		s.logger.Error("Failed to list users",
 			zap.Error(err),
@@ -395,23 +311,14 @@ func (s *UserServiceImpl) ListUsers(
 		return nil, fmt.Errorf("failed to list users: %w", err)
 	}
 
-	return resp.GetUsers(), nil
+	return resp, nil
 }
 
-// ActivateUser activates a user (admin only)
-func (s *UserServiceImpl) ActivateUser(
-	ctx context.Context,
-	userID string,
-) error {
-	s.logger.Debug("ActivateUser",
-		zap.String("userID", userID),
-	)
+// ActivateUser activates a user account
+func (s *UserServiceImpl) ActivateUser(ctx context.Context, userID string) error {
+	s.logger.Debug("ActivateUser", zap.String("userID", userID))
 
-	req := &userv1.ActivateUserRequest{
-		Id: userID,
-	}
-
-	_, err := s.client.ActivateUser(ctx, req)
+	err := s.client.ActivateUser(ctx, userID)
 	if err != nil {
 		s.logger.Error("Failed to activate user",
 			zap.String("userID", userID),
@@ -423,20 +330,11 @@ func (s *UserServiceImpl) ActivateUser(
 	return nil
 }
 
-// DeactivateUser deactivates a user (admin only)
-func (s *UserServiceImpl) DeactivateUser(
-	ctx context.Context,
-	userID string,
-) error {
-	s.logger.Debug("DeactivateUser",
-		zap.String("userID", userID),
-	)
+// DeactivateUser deactivates a user account
+func (s *UserServiceImpl) DeactivateUser(ctx context.Context, userID string) error {
+	s.logger.Debug("DeactivateUser", zap.String("userID", userID))
 
-	req := &userv1.DeactivateUserRequest{
-		Id: userID,
-	}
-
-	_, err := s.client.DeactivateUser(ctx, req)
+	err := s.client.DeactivateUser(ctx, userID)
 	if err != nil {
 		s.logger.Error("Failed to deactivate user",
 			zap.String("userID", userID),

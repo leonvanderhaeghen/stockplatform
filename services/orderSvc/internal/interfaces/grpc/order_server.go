@@ -57,21 +57,33 @@ func (s *OrderServer) CreateOrder(ctx context.Context, req *orderv1.CreateOrderR
 		})
 	}
 
-	// Convert proto addresses to domain addresses
-	shippingAddr := domain.Address{
-		Street:     req.ShippingAddress.Street,
-		City:       req.ShippingAddress.City,
-		State:      req.ShippingAddress.State,
-		PostalCode: req.ShippingAddress.PostalCode,
-		Country:    req.ShippingAddress.Country,
+	// Convert proto addresses to domain addresses (with nil checks for POS orders)
+	var shippingAddr domain.Address
+	if req.ShippingAddress != nil {
+		shippingAddr = domain.Address{
+			Street:     req.ShippingAddress.Street,
+			City:       req.ShippingAddress.City,
+			State:      req.ShippingAddress.State,
+			PostalCode: req.ShippingAddress.PostalCode,
+			Country:    req.ShippingAddress.Country,
+		}
+	} else {
+		// For POS orders or orders without shipping address
+		shippingAddr = domain.Address{}
 	}
 
-	billingAddr := domain.Address{
-		Street:     req.BillingAddress.Street,
-		City:       req.BillingAddress.City,
-		State:      req.BillingAddress.State,
-		PostalCode: req.BillingAddress.PostalCode,
-		Country:    req.BillingAddress.Country,
+	var billingAddr domain.Address
+	if req.BillingAddress != nil {
+		billingAddr = domain.Address{
+			Street:     req.BillingAddress.Street,
+			City:       req.BillingAddress.City,
+			State:      req.BillingAddress.State,
+			PostalCode: req.BillingAddress.PostalCode,
+			Country:    req.BillingAddress.Country,
+		}
+	} else {
+		// For POS orders or orders without billing address
+		billingAddr = domain.Address{}
 	}
 
 	order, err := s.service.CreateOrder(ctx, req.UserId, items, shippingAddr, billingAddr)

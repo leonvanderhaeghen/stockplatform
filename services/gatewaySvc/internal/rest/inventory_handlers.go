@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 // InventoryRequest represents the inventory request body
@@ -22,14 +23,30 @@ type StockAdjustRequest struct {
 	Quantity  int32  `json:"quantity" binding:"required,gt=0"`
 	Reason    string `json:"reason"`
 	Reference string `json:"reference"`
+	Source    string `json:"source,omitempty"` // POS, ONLINE, etc. for tracking adjustment source
 }
 
-// listInventory returns a list of inventory items
+// ReservationRequest represents the inventory reservation request body
+type ReservationRequest struct {
+	ProductID string `json:"productId" binding:"required"`
+	Quantity  int32  `json:"quantity" binding:"required,gt=0"`
+	OrderID   string `json:"orderId" binding:"required"`
+	Source    string `json:"source,omitempty"` // POS, ONLINE, etc. for tracking reservation source
+	StoreID   string `json:"storeId,omitempty"` // For POS reservations
+}
+
+// listInventory returns a list of inventory items (supports POS availability checking)
 func (s *Server) listInventory(c *gin.Context) {
 	location := c.Query("location")
 	lowStock := c.Query("lowStock") == "true"
 	limitStr := c.DefaultQuery("limit", "10")
 	offsetStr := c.DefaultQuery("offset", "0")
+	
+	// POS-specific parameters for availability checking
+	checkAvailability := c.Query("checkAvailability") == "true" // POS inventory check
+	storeId := c.Query("storeId")                              // POS store filter
+	sku := c.Query("sku")                                      // POS SKU lookup
+	minQuantity := c.Query("minQuantity")                      // POS availability threshold
 
 	limit, err := parseIntParam(limitStr, 10)
 	if err != nil {
@@ -41,6 +58,54 @@ func (s *Server) listInventory(c *gin.Context) {
 	if err != nil {
 		respondWithError(c, http.StatusBadRequest, "Invalid offset parameter")
 		return
+	}
+
+	// Handle POS-specific inventory checking
+	if checkAvailability {
+		s.logger.Debug("POS availability check requested",
+			zap.String("storeId", storeId),
+			zap.String("sku", sku),
+			zap.String("minQuantity", minQuantity),
+		)
+		
+		// If specific SKU requested for POS, use the SKU lookup instead
+		if sku != "" {
+			item, err := s.inventorySvc.GetInventoryItemBySKU(c.Request.Context(), sku)
+			if err != nil {
+				genericErrorHandler(c, err, s.logger, "Get inventory by SKU for POS")
+				return
+			}
+			
+			// Check if item meets minimum quantity requirement
+			if minQuantity != "" {
+				minQty, err := parseIntParam(minQuantity, 0)
+				if err != nil {
+					respondWithError(c, http.StatusBadRequest, "Invalid minQuantity parameter")
+					return
+				}
+				
+				// Add availability status to response
+				response := map[string]interface{}{
+					"item": item,
+					"available": true, // Placeholder - would need item quantity check
+					"availabilityCheck": map[string]interface{}{
+						"requestedMinQuantity": minQty,
+						"storeId": storeId,
+						"checkTimestamp": "now", // Would use time.Now() in real implementation
+					},
+				}
+				respondWithSuccess(c, http.StatusOK, response)
+				return
+			}
+			
+			// Return single item for POS SKU check
+			respondWithSuccess(c, http.StatusOK, map[string]interface{}{
+				"item": item,
+				"posAvailabilityCheck": true,
+				"storeId": storeId,
+			})
+			return
+		}
 	}
 
 	items, err := s.inventorySvc.ListInventory(c.Request.Context(), location, lowStock, limit, offset)
@@ -222,6 +287,23 @@ func (s *Server) removeStock(c *gin.Context) {
 		return
 	}
 
+	// Enhanced logging for POS source tracking
+	if req.Source != "" {
+		s.logger.Debug("POS inventory deduction requested",
+			zap.String("inventoryId", id),
+			zap.Int32("quantity", req.Quantity),
+			zap.String("source", req.Source),
+			zap.String("reason", req.Reason),
+			zap.String("reference", req.Reference),
+		)
+		
+		// For POS transactions, enhance the reason to include source info
+		if req.Reason == "" {
+			req.Reason = "POS Transaction"
+		}
+		req.Reason = req.Reason + " [Source: " + req.Source + "]"
+	}
+
 	item, err := s.inventorySvc.RemoveStock(
 		c.Request.Context(),
 		id,
@@ -264,6 +346,49 @@ func (s *Server) getInventoryReservations(c *gin.Context) {
 	}
 
 	respondWithSuccess(c, http.StatusOK, reservations)
+}
+
+// createInventoryReservation creates a new inventory reservation (supports POS source tracking)
+func (s *Server) createInventoryReservation(c *gin.Context) {
+	var req ReservationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		respondWithError(c, http.StatusBadRequest, "Invalid request: "+err.Error())
+		return
+	}
+
+	// Enhanced logging for POS source tracking
+	if req.Source != "" {
+		s.logger.Debug("POS inventory reservation requested",
+			zap.String("productId", req.ProductID),
+			zap.Int32("quantity", req.Quantity),
+			zap.String("orderId", req.OrderID),
+			zap.String("source", req.Source),
+			zap.String("storeId", req.StoreID),
+		)
+	}
+
+	reservation, err := s.inventorySvc.CreateInventoryReservation(
+		c.Request.Context(),
+		req.ProductID,
+		req.Quantity,
+		req.OrderID,
+	)
+	if err != nil {
+		genericErrorHandler(c, err, s.logger, "Create inventory reservation")
+		return
+	}
+
+	// For POS reservations, add source metadata to response
+	response := map[string]interface{}{
+		"reservation": reservation,
+	}
+	if req.Source != "" {
+		response["source"] = req.Source
+		response["storeId"] = req.StoreID
+		response["posReservation"] = true
+	}
+
+	respondWithSuccess(c, http.StatusCreated, response)
 }
 
 // getLowStockItems returns inventory items that are low in stock

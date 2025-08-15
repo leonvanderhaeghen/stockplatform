@@ -40,6 +40,8 @@ message Product {
   google.protobuf.Timestamp created_at = 18;
   google.protobuf.Timestamp updated_at = 19;
   google.protobuf.Timestamp deleted_at = 20;  // For soft deletes
+  // Enriched categories returned to clients (server should populate from category_ids)
+  repeated Category categories = 21;
 }
 
 // Request to create a new product

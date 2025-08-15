@@ -1,314 +1,245 @@
-import React, { createContext, useContext, useMemo } from 'react';
-import { 
-  Routes,
-  Route,
-  Navigate,
-  useLocation
-} from 'react-router-dom';
-import { ThemeProvider, StyledEngineProvider } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
-import Box from '@mui/material/Box';
-import CircularProgress from '@mui/material/CircularProgress';
-import Typography from '@mui/material/Typography';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { CssBaseline, Box } from '@mui/material';
 import { SnackbarProvider } from 'notistack';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { ThemeProvider as EmotionThemeProvider } from '@emotion/react';
 
-// Layout
-import MainLayout from './components/layout/MainLayout';
+// Core Layout & Navigation
+import AppLayout from './components/layout/AppLayout';
+import AuthGuard from './components/auth/AuthGuard';
+import RoleGuard from './components/auth/RoleGuard';
 
-// Pages
-import DashboardPage from './pages/DashboardPage';
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
-import UnauthorizedPage from './pages/UnauthorizedPage';
-import NotFoundPage from './pages/NotFoundPage';
+// Authentication Context
+import { AuthProvider } from './hooks/useAuth';
 
-// Product Pages
-import ProductsPage from './components/products/ProductsCRUD';
-import CategoriesPage from './pages/CategoriesPage';
+// Authentication Pages
+import LoginPage from './pages/auth/LoginPage';
+import RegisterPage from './pages/auth/RegisterPage';
 
-// Inventory Pages
-import InventoryPage from './pages/InventoryPage';
-import InventoryLevelsPage from './pages/inventory/InventoryLevelsPage';
-import StockTransfersPage from './pages/inventory/StockTransfersPage';
-import StockAdjustmentsPage from './pages/inventory/StockAdjustmentsPage';
+// Customer Pages
+import DashboardPage from './pages/dashboard/DashboardPage';
+import ProductsPage from './pages/products/ProductsPage';
+import OrdersPage from './pages/orders/OrdersPage';
+import ProfilePage from './pages/profile/ProfilePage';
 
-// Order Pages
-import OrdersPage from './pages/OrdersPage';
-import CreateOrderPage from './pages/CreateOrderPage';
-import ReturnsPage from './pages/ReturnsPage';
+// Staff/Admin Pages
+import InventoryPage from './pages/inventory/InventoryPage';
+import SuppliersPage from './pages/suppliers/SuppliersPage';
+import StoresPage from './pages/stores/StoresPage';
+import AdminPage from './pages/admin/AdminPage';
+import POSPage from './pages/pos/POSPage';
+import CategoriesPage from './pages/categories/CategoriesPage';
 
-// User & Customer Pages
-import UsersPage from './components/users/UsersCRUD';
-import CustomersPage from './pages/CustomersPage';
+// Error Pages
+import NotFoundPage from './pages/error/NotFoundPage';
+import UnauthorizedPage from './pages/error/UnauthorizedPage';
 
-// Supplier Pages
-import SuppliersPage from './pages/SuppliersPage';
-
-// POS Pages
-import POSPage from './pages/POSPage';
-
-// Admin Pages
-import AdminPage from './pages/AdminPage';
-
-// Report Pages
-import ReportsPage from './pages/ReportsPage';
-import SalesReportsPage from './pages/reports/SalesReportsPage';
-import InventoryReportsPage from './pages/reports/InventoryReportsPage';
-import CustomerReportsPage from './pages/reports/CustomerReportsPage';
-
-// Components
-import ProtectedRoute from './components/common/ProtectedRoute';
-
-// Theme
-import theme from './theme';
-
-// Hooks
-import useAuth from './utils/hooks/useAuth';
-
-// Create auth context
-export const AuthContext = createContext();
-
-const AuthProvider = ({ children }) => {
-  const auth = useAuth();
-  
-  // Memoize the context value to prevent unnecessary re-renders
-  const contextValue = useMemo(
-    () => {
-      console.log('Auth context updated:', {
-        isAuthenticated: auth.isAuthenticated,
-        isLoading: auth.isLoading,
-        user: auth.user,
-        hasError: !!auth.error
-      });
-      
-      if (auth.user) {
-        logUserInfo(auth.user);
-      }
-      
-      return {
-        isAuthenticated: auth.isAuthenticated,
-        isLoading: auth.isLoading,
-        user: auth.user,
-        login: auth.login,
-        logout: auth.logout,
-        error: auth.error,
-      };
+// Create React Query client with optimized configuration
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
     },
-    [auth.isAuthenticated, auth.isLoading, auth.user, auth.login, auth.logout, auth.error]
-  );
+    mutations: {
+      retry: 1,
+    },
+  },
+});
 
-  if (auth.isLoading) {
-    return (
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh',
-        flexDirection: 'column',
-        gap: 2
-      }}>
-        <CircularProgress />
-        <Typography>Loading application...</Typography>
-      </Box>
-    );
-  }
+// Create Material-UI theme with StockPlatform branding
+const theme = createTheme({
+  palette: {
+    mode: 'light',
+    primary: {
+      main: '#1976d2',
+      light: '#42a5f5',
+      dark: '#1565c0',
+    },
+    secondary: {
+      main: '#dc004e',
+      light: '#ff5983',
+      dark: '#9a0036',
+    },
+    background: {
+      default: '#f5f5f5',
+      paper: '#ffffff',
+    },
+    success: {
+      main: '#2e7d32',
+    },
+    warning: {
+      main: '#ed6c02',
+    },
+    error: {
+      main: '#d32f2f',
+    },
+  },
+  typography: {
+    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+    h4: {
+      fontWeight: 600,
+    },
+    h5: {
+      fontWeight: 600,
+    },
+    h6: {
+      fontWeight: 600,
+    },
+  },
+  components: {
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          textTransform: 'none',
+          borderRadius: 8,
+        },
+      },
+    },
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          borderRadius: 12,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+        },
+      },
+    },
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          borderRadius: 8,
+        },
+      },
+    },
+  },
+});
 
+function App() {
   return (
-    <AuthContext.Provider value={contextValue}>
-      {children}
-    </AuthContext.Provider>
-  );
-};
-
-// Public route component (for login/register pages)
-const PublicRoute = ({ children }) => {
-  const { isAuthenticated, isLoading } = useContext(AuthContext);
-  const location = useLocation();
-
-  // Show loading state while checking auth status
-  if (isLoading) {
-    return (
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh' 
-      }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
-  // If authenticated, redirect to home or intended page
-  if (isAuthenticated) {
-    const from = (location.state?.from?.pathname || '/').startsWith('/login') 
-      ? '/' 
-      : location.state?.from?.pathname || '/';
-    return <Navigate to={from} state={{ from: location }} replace />;
-  }
-
-  // If not authenticated, render the public route
-  return children;
-};
-
-// Wrap the app with all the providers
-const AppWrapper = () => {
-  return (
-    <StyledEngineProvider injectFirst>
+    <QueryClientProvider client={queryClient}>
       <ThemeProvider theme={theme}>
-        <EmotionThemeProvider theme={theme}>
-          <CssBaseline />
-          <LocalizationProvider dateAdapter={AdapterDateFns}>
-            <SnackbarProvider
-              maxSnack={3}
-              anchorOrigin={{
-                vertical: 'top',
-                horizontal: 'right',
-              }}
-              autoHideDuration={3000}
-            >
-              <AuthProvider>
-                <AppRoutes />
-              </AuthProvider>
-            </SnackbarProvider>
-          </LocalizationProvider>
-        </EmotionThemeProvider>
+        <CssBaseline />
+        <LocalizationProvider dateAdapter={AdapterDateFns}>
+          <SnackbarProvider 
+            maxSnack={3} 
+            anchorOrigin={{
+              vertical: 'top',
+              horizontal: 'right',
+            }}
+            autoHideDuration={5000}
+          >
+            <AuthProvider>
+              <Router>
+                <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+                  <Routes>
+                  {/* Public Routes */}
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/register" element={<RegisterPage />} />
+                  <Route path="/unauthorized" element={<UnauthorizedPage />} />
+                  
+                  {/* Protected Routes */}
+                  <Route 
+                    path="/*" 
+                    element={
+                      <AuthGuard>
+                        <AppLayout>
+                          <Routes>
+                            {/* Dashboard - All authenticated users */}
+                            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                            <Route path="/dashboard" element={<DashboardPage />} />
+                            
+                            {/* Customer Routes */}
+                            <Route path="/products" element={<ProductsPage />} />
+                            <Route path="/my-orders" element={<OrdersPage userView={true} />} />
+                            <Route path="/profile" element={<ProfilePage />} />
+                            
+                            {/* Staff/Admin Routes */}
+                            <Route 
+                              path="/inventory" 
+                              element={
+                                <RoleGuard allowedRoles={['STAFF', 'ADMIN']}>
+                                  <InventoryPage />
+                                </RoleGuard>
+                              } 
+                            />
+                            <Route 
+                              path="/orders" 
+                              element={
+                                <RoleGuard allowedRoles={['STAFF', 'ADMIN']}>
+                                  <OrdersPage userView={false} />
+                                </RoleGuard>
+                              } 
+                            />
+                            <Route 
+                              path="/pos" 
+                              element={
+                                <RoleGuard allowedRoles={['STAFF', 'ADMIN']}>
+                                  <POSPage />
+                                </RoleGuard>
+                              } 
+                            />
+                            <Route 
+                              path="/suppliers" 
+                              element={
+                                <RoleGuard allowedRoles={['STAFF', 'ADMIN']}>
+                                  <SuppliersPage />
+                                </RoleGuard>
+                              } 
+                            />
+                            <Route 
+                              path="/stores" 
+                              element={
+                                <RoleGuard allowedRoles={['STAFF', 'ADMIN']}>
+                                  <StoresPage />
+                                </RoleGuard>
+                              } 
+                            />
+                            <Route 
+                              path="/categories" 
+                              element={
+                                <RoleGuard allowedRoles={['STAFF', 'ADMIN']}>
+                                  <CategoriesPage />
+                                </RoleGuard>
+                              } 
+                            />
+                            
+                            {/* Admin Only Routes */}
+                            <Route 
+                              path="/admin" 
+                              element={
+                                <RoleGuard allowedRoles={['ADMIN']}>
+                                  <AdminPage />
+                                </RoleGuard>
+                              } 
+                            />
+                            
+                            {/* 404 Page */}
+                            <Route path="*" element={<NotFoundPage />} />
+                          </Routes>
+                        </AppLayout>
+                      </AuthGuard>
+                    } 
+                  />
+                </Routes>
+              </Box>
+            </Router>
+          </AuthProvider>
+        </SnackbarProvider>
+        </LocalizationProvider>
+        
+        {/* React Query Devtools - only in development */}
+        {process.env.NODE_ENV === 'development' && (
+          <ReactQueryDevtools initialIsOpen={false} />
+        )}
       </ThemeProvider>
-    </StyledEngineProvider>
+    </QueryClientProvider>
   );
-};
+}
 
-// Define role-based access control
-export const ROLES = {
-  ADMIN: 'ADMIN',
-  MANAGER: 'MANAGER',
-  USER: 'USER',
-  CUSTOMER: 'CUSTOMER',
-};
-
-// Debug function to log user info
-const logUserInfo = (user) => {
-  console.log('Current user info:', {
-    id: user?.id,
-    email: user?.email,
-    role: user?.role,
-    isAuthenticated: !!user
-  });
-};
-
-// Define the main routes
-const AppRoutes = () => {
-  // Get the current location for navigation
-  const location = useLocation();
-  
-  // Only use the location state if it's not the login page to prevent loops
-  const getLocationState = () => {
-    if (location.pathname === '/login') {
-      return { from: { pathname: '/' } };
-    }
-    return { from: location };
-  };
-  
-  return (
-    <Routes>
-      {/* Public routes */}
-      <Route 
-        path="/login" 
-        element={
-          <PublicRoute>
-            <LoginPage />
-          </PublicRoute>
-        } 
-      />
-      <Route 
-        path="/register" 
-        element={
-          <PublicRoute>
-            <RegisterPage />
-          </PublicRoute>
-        } 
-      />
-      
-      {/* Protected routes */}
-      <Route element={
-        <ProtectedRoute 
-          allowedRoles={[]} // Allow all authenticated users
-          redirectTo="/login"
-          state={getLocationState()}
-        />
-      }>
-        <Route element={<MainLayout />}>
-          <Route index element={<DashboardPage />} />
-          <Route path="dashboard" element={<DashboardPage />} />
-          
-          {/* Admin only routes */}
-          <Route element={
-            <ProtectedRoute 
-              allowedRoles={[ROLES.ADMIN]} 
-              redirectTo="/unauthorized"
-            />
-          }>
-            <Route path="users" element={<UsersPage />} />
-            <Route path="admin" element={<AdminPage />} />
-          </Route>
-          
-          {/* Manager and Admin routes */}
-          <Route element={
-            <ProtectedRoute 
-              allowedRoles={[ROLES.ADMIN, ROLES.MANAGER]} 
-              redirectTo="/unauthorized"
-            />
-          }>
-            {/* Product Routes */}
-            <Route path="products">
-              <Route index element={<ProductsPage />} />
-              <Route path="categories" element={<CategoriesPage />} />
-            </Route>
-
-            {/* Inventory Routes */}
-            <Route path="inventory">
-              <Route index element={<InventoryPage />} />
-              <Route path="levels" element={<InventoryLevelsPage />} />
-              <Route path="transfers" element={<StockTransfersPage />} />
-              <Route path="adjustments" element={<StockAdjustmentsPage />} />
-            </Route>
-
-            {/* Customer Routes */}
-            <Route path="customers" element={<CustomersPage />} />
-
-            {/* Supplier Routes */}
-            <Route path="suppliers" element={<SuppliersPage />} />
-
-            {/* POS Routes */}
-            <Route path="pos" element={<POSPage />} />
-
-            {/* Report Routes */}
-            <Route path="reports">
-              <Route index element={<ReportsPage />} />
-              <Route path="sales" element={<SalesReportsPage />} />
-              <Route path="inventory" element={<InventoryReportsPage />} />
-              <Route path="customers" element={<CustomerReportsPage />} />
-            </Route>
-          </Route>
-          
-          {/* All authenticated users */}
-          <Route path="orders">
-            <Route index element={<OrdersPage />} />
-            <Route path="new" element={<CreateOrderPage />} />
-          </Route>
-          <Route path="returns" element={<ReturnsPage />} />
-        </Route>
-      </Route>
-      
-      {/* Error pages */}
-      <Route path="/unauthorized" element={<UnauthorizedPage />} />
-      <Route path="*" element={<NotFoundPage />} />
-    </Routes>
-  );
-};
-
-// Main App component
-export default AppWrapper;
+export default App;

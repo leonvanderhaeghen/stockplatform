@@ -1,91 +1,167 @@
-import api from './api';
+import axios from 'axios';
 
-// Base path for category endpoints
-const CATEGORIES_BASE = '/products/categories';
+const API_BASE_URL = '/api/v1';
+
+// Create axios instance with default configuration
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Add request interceptor to include token
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+/**
+ * Category service for managing product categories
+ * Handles API communication with the backend category endpoints
+ */
 
 const categoryService = {
   /**
    * Get all categories
-   * @param {Object} params - Query parameters for filtering and pagination
-   * @param {string} params.query - Search query string
-   * @param {boolean} params.active - Filter by active status
-   * @param {number} params.limit - Maximum number of results to return
-   * @param {number} params.offset - Number of results to skip
-   * @returns {Promise<Array>} List of categories
+   * @returns {Promise} List of categories
    */
-  getCategories: async (params = {}) => {
-    try {
-      console.log('Fetching categories from:', CATEGORIES_BASE, 'with params:', params);
-      const response = await api.get(CATEGORIES_BASE, { params });
-      console.log('Raw categories response:', response);
-      
-      // Return the data property if it exists, otherwise return the full response
-      // This handles both { data: [...] } and direct array responses
-      const data = response.data !== undefined ? response.data : response;
-      console.log('Processed categories data:', data);
-      
-      return data || [];
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-      console.error('Error details:', error.response?.data || error.message);
-      return [];
-    }
+  getCategories: async () => {
+    const response = await api.get('/products/categories');
+    const payload = response.data;
+    // Normalize to an array of categories regardless of envelope shape
+    // API returns { data: [...], success: true }
+    return payload.data || [];
   },
 
   /**
-   * Get a single category by ID
+   * Get category by ID
    * @param {string} id - Category ID
-   * @returns {Promise<Object>} Category details
+   * @returns {Promise} Category details
    */
-  getCategory: async (id) => {
-    const { data } = await api.get(`${CATEGORIES_BASE}/${id}`);
-    return data;
+  getCategoryById: async (id) => {
+    const response = await api.get(`/products/categories/${id}`);
+    return response.data;
   },
 
   /**
    * Create a new category
    * @param {Object} categoryData - Category data
    * @param {string} categoryData.name - Category name
-   * @param {string} [categoryData.description] - Category description
-   * @param {string} [categoryData.parentId] - Parent category ID
-   * @param {boolean} [categoryData.isActive=true] - Whether the category is active
-   * @returns {Promise<Object>} Created category details
+   * @param {string} categoryData.description - Category description
+   * @param {string} [categoryData.parent_id] - Parent category ID (optional)
+   * @param {boolean} [categoryData.is_active] - Whether category is active (default: true)
+   * @returns {Promise} Created category
    */
   createCategory: async (categoryData) => {
-    const { data } = await api.post(CATEGORIES_BASE, categoryData);
-    return data;
+    const response = await api.post('/products/categories', categoryData);
+    return response.data;
   },
 
   /**
    * Update an existing category
    * @param {string} id - Category ID
    * @param {Object} categoryData - Updated category data
-   * @returns {Promise<Object>} Updated category details
+   * @returns {Promise} Updated category
    */
   updateCategory: async (id, categoryData) => {
-    const { data } = await api.put(`${CATEGORIES_BASE}/${id}`, categoryData);
-    return data;
+    const response = await api.put(`/products/categories/${id}`, categoryData);
+    return response.data;
   },
 
   /**
    * Delete a category
    * @param {string} id - Category ID
-   * @returns {Promise<Object>} Deletion status
+   * @returns {Promise} Deletion confirmation
    */
   deleteCategory: async (id) => {
-    const { data } = await api.delete(`${CATEGORIES_BASE}/${id}`);
-    return data;
+    const response = await api.delete(`/products/categories/${id}`);
+    return response.data;
   },
 
   /**
-   * Search categories by query
-   * @param {string} query - Search query string
-   * @returns {Promise<Array>} List of matching categories
+   * Get categories in tree/hierarchical format
+   * @returns {Promise} Hierarchical category structure
    */
-  searchCategories: async (query) => {
-    const { data } = await api.get(`${CATEGORIES_BASE}/search`, { params: { q: query } });
-    return data;
-  },
+  getCategoryTree: async () => {
+    const categories = await categoryService.getCategories();
+    return buildCategoryTree(categories);
+  }
+};
+
+/**
+ * Build hierarchical category tree from flat category list
+ * @param {Array} categories - Flat list of categories
+ * @returns {Array} Hierarchical category tree
+ */
+const buildCategoryTree = (categories) => {
+  const categoryMap = {};
+  const rootCategories = [];
+
+  // Create a map of categories by ID
+  categories.forEach(category => {
+    categoryMap[category.id] = { ...category, children: [] };
+  });
+
+  // Build the tree structure
+  categories.forEach(category => {
+    if (category.parent_id && categoryMap[category.parent_id]) {
+      // Add as child to parent
+      categoryMap[category.parent_id].children.push(categoryMap[category.id]);
+    } else {
+      // Add as root category
+      rootCategories.push(categoryMap[category.id]);
+    }
+  });
+
+  return rootCategories;
+};
+
+/**
+ * Get breadcrumb path for a category
+ * @param {string} categoryId - Category ID
+ * @param {Array} categories - All categories
+ * @returns {Array} Breadcrumb path from root to category
+ */
+export const getCategoryBreadcrumb = (categoryId, categories) => {
+  const categoryMap = {};
+  categories.forEach(cat => categoryMap[cat.id] = cat);
+
+  const breadcrumb = [];
+  let currentCategory = categoryMap[categoryId];
+
+  while (currentCategory) {
+    breadcrumb.unshift(currentCategory);
+    currentCategory = currentCategory.parent_id ? categoryMap[currentCategory.parent_id] : null;
+  }
+
+  return breadcrumb;
+};
+
+/**
+ * Get all descendants of a category
+ * @param {string} categoryId - Parent category ID
+ * @param {Array} categories - All categories
+ * @returns {Array} All descendant categories
+ */
+export const getCategoryDescendants = (categoryId, categories) => {
+  const descendants = [];
+  const directChildren = categories.filter(cat => cat.parent_id === categoryId);
+
+  directChildren.forEach(child => {
+    descendants.push(child);
+    descendants.push(...getCategoryDescendants(child.id, categories));
+  });
+
+  return descendants;
 };
 
 export default categoryService;

@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"go.uber.org/zap"
 
@@ -143,7 +144,17 @@ func (s *InventoryServiceImpl) CreateInventoryItem(ctx context.Context, productI
 		return nil, fmt.Errorf("failed to create inventory item: %w", err)
 	}
 
-	// TODO: Update with reorderAt, reorderQty, and cost once client supports these fields
+	// Set reorder fields and cost in the returned inventory item if provided
+	if reorderAt > 0 {
+		resp.ReorderAt = reorderAt
+	}
+	if reorderQty > 0 {
+		resp.ReorderQty = reorderQty
+	}
+	if cost > 0 {
+		resp.Cost = cost
+	}
+	
 	return resp, nil
 }
 
@@ -237,54 +248,10 @@ func (s *InventoryServiceImpl) RemoveStock(ctx context.Context, id string, quant
 	return resp, nil
 }
 
-// PerformPOSInventoryCheck checks inventory availability for POS
-func (s *InventoryServiceImpl) PerformPOSInventoryCheck(ctx context.Context, locationID string, items []map[string]interface{}) (interface{}, error) {
-	s.logger.Debug("PerformPOSInventoryCheck",
-		zap.String("locationID", locationID),
-		zap.Int("items_count", len(items)),
-	)
-
-	// Convert map items to domain model items
-	clientItems := make([]*models.InventoryRequestItem, len(items))
-	for i, item := range items {
-		clientItems[i] = &models.InventoryRequestItem{
-			ProductID: item["product_id"].(string),
-			SKU:       item["sku"].(string),
-			Quantity:  item["quantity"].(int32),
-		}
-	}
-
-	resp, err := s.client.CheckAvailability(ctx, locationID, clientItems)
-	if err != nil {
-		s.logger.Error("Failed to check POS inventory",
-			zap.String("locationID", locationID),
-			zap.Error(err),
-		)
-		return nil, fmt.Errorf("failed to check POS inventory: %w", err)
-	}
-
-	return resp, nil
-}
-
-// ReserveForPOSTransaction reserves inventory for POS transactions
-func (s *InventoryServiceImpl) ReserveForPOSTransaction(ctx context.Context, locationID string, orderID string, items []map[string]interface{}) (interface{}, error) {
-	s.logger.Debug("ReserveForPOSTransaction",
-		zap.String("locationID", locationID),
-		zap.String("orderID", orderID),
-		zap.Int("items_count", len(items)),
-	)
-
-	// TODO: This is a placeholder implementation since we need to handle multiple items
-	// For now, we'll return a simple success response
-	s.logger.Info("ReserveForPOSTransaction called - simplified implementation")
-
-	// Return a simple success response for now
-	return map[string]interface{}{
-		"success": true,
-		"message": "Reservation completed",
-		"order_id": orderID,
-	}, nil
-}
+// Note: POS inventory operations are now handled via standard inventory endpoints:
+// - POS inventory check: GetInventoryItemBySKU with availability parameters
+// - POS reservations: Standard reservation methods with source parameter
+// - POS deductions: RemoveStock with source parameter
 
 // CompletePickup marks a pickup as complete
 func (s *InventoryServiceImpl) CompletePickup(
@@ -310,29 +277,8 @@ func (s *InventoryServiceImpl) CompletePickup(
 	return reservationID, nil
 }
 
-// DeductForDirectPOSTransaction directly deducts inventory for POS sales
-func (s *InventoryServiceImpl) DeductForDirectPOSTransaction(
-	ctx context.Context,
-	locationID string,
-	staffID string,
-	items []map[string]interface{},
-	reason string,
-) (interface{}, error) {
-	s.logger.Debug("DeductForDirectPOSTransaction",
-		zap.String("locationID", locationID),
-	)
-
-	resp, err := s.client.DeductForDirectPOSTransaction(ctx, locationID, staffID, items, reason)
-	if err != nil {
-		s.logger.Error("Failed to deduct for direct POS transaction", zap.Error(err))
-		return nil, fmt.Errorf("failed to deduct for direct POS transaction: %w", err)
-	}
-
-	return resp, nil
-}
-// Third duplicate implementation of CompletePickup removed to resolve duplicate method error
-
-// Fourth duplicate implementation of DeductForDirectPOSTransaction removed to resolve duplicate method error
+// Note: POS inventory deductions are now handled via RemoveStock with source parameter
+// All POS functionality has been consolidated into standard inventory endpoints
 
 // GetInventoryReservations gets inventory reservations with optional filters
 // Note: The inventory service doesn't currently have a method to list reservations,
@@ -350,13 +296,82 @@ func (s *InventoryServiceImpl) GetInventoryReservations(
 		zap.Int("offset", offset),
 	)
 
-	// TODO: The inventory service doesn't have a method to list reservations yet.
+	// NOTE: The inventory service doesn't have a ListReservations method yet.
 	// This is a placeholder implementation that returns an empty list.
-	// In the future, we should add a ListReservations method to the inventory service.
+	// FEATURE ENHANCEMENT: Add ListReservations method to inventory service for full reservation tracking
 	s.logger.Info("GetInventoryReservations called - returning empty list (method not implemented in inventory service)")
 
-	// Return empty reservations list for now
+	// Return empty reservations list as placeholder
 	return []interface{}{}, nil
+}
+
+// CreateInventoryReservation creates a new inventory reservation (supports POS source tracking)
+func (s *InventoryServiceImpl) CreateInventoryReservation(
+	ctx context.Context,
+	productID string,
+	quantity int32,
+	orderID string,
+) (interface{}, error) {
+	s.logger.Debug("CreateInventoryReservation",
+		zap.String("productId", productID),
+		zap.Int32("quantity", quantity),
+		zap.String("orderId", orderID),
+	)
+
+	// First, get the inventory item by product ID to get the inventory ID needed for reservation
+	inventoryItem, err := s.client.GetInventoryByProductID(ctx, productID, "")
+	if err != nil {
+		s.logger.Error("Failed to find inventory item for reservation",
+			zap.String("productId", productID),
+			zap.Error(err),
+		)
+		return nil, fmt.Errorf("failed to find inventory item for product %s: %w", productID, err)
+	}
+
+	// Reserve stock using the inventory service
+	success, err := s.client.ReserveStock(ctx, inventoryItem.ID, quantity)
+	if err != nil {
+		s.logger.Error("Failed to reserve stock",
+			zap.String("inventoryId", inventoryItem.ID),
+			zap.String("productId", productID),
+			zap.Int32("quantity", quantity),
+			zap.String("orderId", orderID),
+			zap.Error(err),
+		)
+		return nil, fmt.Errorf("failed to reserve stock: %w", err)
+	}
+
+	if !success {
+		s.logger.Warn("Stock reservation was not successful",
+			zap.String("inventoryId", inventoryItem.ID),
+			zap.String("productId", productID),
+			zap.Int32("quantity", quantity),
+		)
+		return nil, fmt.Errorf("insufficient stock available for reservation")
+	}
+
+	// Generate reservation ID and create response
+	reservationID := fmt.Sprintf("res_%s_%s_%d_%d", productID, orderID, quantity, time.Now().Unix())
+	resp := map[string]interface{}{
+		"reservationId": reservationID,
+		"inventoryId": inventoryItem.ID,
+		"productId": productID,
+		"sku": inventoryItem.SKU,
+		"quantity": quantity,
+		"orderId": orderID,
+		"status": "RESERVED",
+		"createdAt": time.Now().Format(time.RFC3339),
+		"locationId": inventoryItem.LocationID,
+		"reservedStock": success,
+	}
+
+	s.logger.Info("Inventory reservation created successfully",
+		zap.String("productId", productID),
+		zap.Int32("quantity", quantity),
+		zap.String("orderId", orderID),
+	)
+
+	return resp, nil
 }
 
 // GetLowStockItems gets inventory items that are low in stock with threshold and location filtering

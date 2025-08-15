@@ -18,11 +18,14 @@ type OrderItemRequest struct {
 // OrderRequest represents the order request body
 type OrderRequest struct {
 	Items        []OrderItemRequest `json:"items" binding:"required,min=1"`
-	AddressID    string             `json:"addressId" binding:"required"`
+	AddressID    string             `json:"addressId"`                    // Optional for POS orders
 	PaymentType  string             `json:"paymentType" binding:"required"`
 	PaymentData  map[string]string  `json:"paymentData"`
-	ShippingType string             `json:"shippingType" binding:"required"`
+	ShippingType string             `json:"shippingType"`                 // Optional for POS orders
 	Notes        string             `json:"notes"`
+	Source       string             `json:"source"`                       // "POS", "ONLINE", "QUICK_POS" - determines order type
+	StoreID      string             `json:"storeId"`                      // Required for POS orders
+	CustomerInfo map[string]string  `json:"customerInfo"`                // For walk-in customers (POS)
 }
 
 // OrderStatusRequest represents the order status update request
@@ -134,6 +137,25 @@ func (s *Server) createOrder(c *gin.Context) {
 		return
 	}
 
+	// Validate request based on source type
+	if req.Source == "POS" || req.Source == "QUICK_POS" {
+		// POS orders require storeId
+		if req.StoreID == "" {
+			respondWithError(c, http.StatusBadRequest, "Store ID is required for POS orders")
+			return
+		}
+	} else {
+		// Online orders require addressId and shippingType
+		if req.AddressID == "" {
+			respondWithError(c, http.StatusBadRequest, "Address ID is required for online orders")
+			return
+		}
+		if req.ShippingType == "" {
+			respondWithError(c, http.StatusBadRequest, "Shipping type is required for online orders")
+			return
+		}
+	}
+
 	// Convert request items to service items
 	items := make([]map[string]interface{}, len(req.Items))
 	for i, item := range req.Items {
@@ -154,6 +176,9 @@ func (s *Server) createOrder(c *gin.Context) {
 		req.PaymentData,
 		req.ShippingType,
 		req.Notes,
+		req.Source,     // POS-specific: "POS", "ONLINE", "QUICK_POS"
+		req.StoreID,    // POS-specific: required for POS orders
+		req.CustomerInfo, // POS-specific: walk-in customer information
 	)
 	if err != nil {
 		genericErrorHandler(c, err, s.logger, "Create order")

@@ -31,34 +31,30 @@ func NewSupplierService(supplierServiceAddr string, logger *zap.Logger) (Supplie
 }
 
 // CreateSupplier creates a new supplier
-func (s *SupplierServiceImpl) CreateSupplier(ctx context.Context, req *supplierv1.CreateSupplierRequest) (*supplierv1.Supplier, error) {
+func (s *SupplierServiceImpl) CreateSupplier(ctx context.Context, name, contactPerson, email, phone, address, city, state, country, postalCode, taxID, website, currency, paymentTerms string, leadTimeDays int32, metadata map[string]string) (interface{}, error) {
 	s.logger.Debug("CreateSupplier", 
-		zap.String("name", req.GetName()),
+		zap.String("name", name),
+		zap.String("email", email),
 	)
 	
-	resp, err := s.client.CreateSupplier(ctx, req)
-	if err != nil {
-		// error handled below
-	}
-	supplier := resp.GetSupplier()
+	resp, err := s.client.CreateSupplier(ctx, name, contactPerson, email, phone, address, city, state, country, postalCode, taxID, website, currency, paymentTerms, leadTimeDays, metadata)
 	if err != nil {
 		s.logger.Error("Failed to create supplier",
-			zap.String("name", req.GetName()),
+			zap.String("name", name),
 			zap.Error(err),
 		)
 		return nil, fmt.Errorf("failed to create supplier: %w", err)
 	}
-	return supplier, nil
+	return resp, nil
 }
 
 // GetSupplier gets a supplier by ID
-func (s *SupplierServiceImpl) GetSupplier(ctx context.Context, id string) (*supplierv1.Supplier, error) {
+func (s *SupplierServiceImpl) GetSupplier(ctx context.Context, id string) (interface{}, error) {
 	s.logger.Debug("GetSupplier",
 		zap.String("id", id),
 	)
 	
-	resp, err := s.client.GetSupplier(ctx, &supplierv1.GetSupplierRequest{Id: id})
-	supplier := resp.GetSupplier()
+	resp, err := s.client.GetSupplier(ctx, id)
 	if err != nil {
 		s.logger.Error("Failed to get supplier",
 			zap.String("id", id),
@@ -66,26 +62,25 @@ func (s *SupplierServiceImpl) GetSupplier(ctx context.Context, id string) (*supp
 		)
 		return nil, fmt.Errorf("failed to get supplier: %w", err)
 	}
-	return supplier, nil
+	return resp, nil
 }
 
 // UpdateSupplier updates a supplier
-func (s *SupplierServiceImpl) UpdateSupplier(ctx context.Context, req *supplierv1.UpdateSupplierRequest) (*supplierv1.Supplier, error) {
+func (s *SupplierServiceImpl) UpdateSupplier(ctx context.Context, id, name, contactPerson, email, phone, address, city, state, country, postalCode, taxID, website, currency, paymentTerms string, leadTimeDays int32, metadata map[string]string) (interface{}, error) {
 	s.logger.Debug("UpdateSupplier",
-		zap.String("id", req.GetId()),
-		zap.String("name", req.GetName()),
+		zap.String("id", id),
+		zap.String("name", name),
 	)
 	
-	resp, err := s.client.UpdateSupplier(ctx, req)
-	supplier := resp.GetSupplier()
+	resp, err := s.client.UpdateSupplier(ctx, id, name, contactPerson, email, phone, address, city, state, country, postalCode, taxID, website, currency, paymentTerms, leadTimeDays, metadata)
 	if err != nil {
 		s.logger.Error("Failed to update supplier",
-			zap.String("id", req.GetId()),
+			zap.String("id", id),
 			zap.Error(err),
 		)
 		return nil, fmt.Errorf("failed to update supplier: %w", err)
 	}
-	return supplier, nil
+	return resp, nil
 }
 
 // DeleteSupplier deletes a supplier by ID
@@ -94,7 +89,7 @@ func (s *SupplierServiceImpl) DeleteSupplier(ctx context.Context, id string) err
 		zap.String("id", id),
 	)
 	
-	_, err := s.client.DeleteSupplier(ctx, &supplierv1.DeleteSupplierRequest{Id: id})
+	err := s.client.DeleteSupplier(ctx, id)
 	if err != nil {
 		s.logger.Error("Failed to delete supplier",
 			zap.String("id", id),
@@ -108,27 +103,25 @@ func (s *SupplierServiceImpl) DeleteSupplier(ctx context.Context, id string) err
 }
 
 // ListSuppliers lists suppliers with pagination and search
-func (s *SupplierServiceImpl) ListSuppliers(ctx context.Context, page, pageSize int32, search string) ([]*supplierv1.Supplier, int32, error) {
+func (s *SupplierServiceImpl) ListSuppliers(ctx context.Context, page, pageSize int32, search string) (interface{}, error) {
 	s.logger.Debug("ListSuppliers",
 		zap.Int32("page", page),
 		zap.Int32("pageSize", pageSize),
 		zap.String("search", search),
 	)
 	
-	resp, err := s.client.ListSuppliers(ctx, &supplierv1.ListSuppliersRequest{
-		Page: page,
-		PageSize: pageSize,
-		Search: search,
-	})
-	suppliers := resp.GetSuppliers()
-	total := resp.GetTotal()
+	// Client interface expects (pageSize, pageToken/search) - adjust parameters
+	resp, err := s.client.ListSuppliers(ctx, pageSize, search)
 	if err != nil {
 		s.logger.Error("Failed to list suppliers",
+			zap.Int32("page", page),
+			zap.Int32("pageSize", pageSize),
+			zap.String("search", search),
 			zap.Error(err),
 		)
-		return nil, 0, fmt.Errorf("failed to list suppliers: %w", err)
+		return nil, fmt.Errorf("failed to list suppliers: %w", err)
 	}
-	return suppliers, total, nil
+	return resp, nil
 }
 
 // Close closes the client connection
@@ -138,30 +131,26 @@ func (s *SupplierServiceImpl) Close() error {
 }
 
 // ListAdapters lists all available supplier adapters
-func (s *SupplierServiceImpl) ListAdapters(ctx context.Context) ([]*supplierv1.SupplierAdapter, error) {
+func (s *SupplierServiceImpl) ListAdapters(ctx context.Context) (interface{}, error) {
 	s.logger.Debug("ListAdapters")
 	
-	req := &supplierv1.ListAdaptersRequest{}
-	adaptersResp, err := s.client.ListAdapters(ctx, req)
-	adapters := adaptersResp.GetAdapters()
+	resp, err := s.client.ListAdapters(ctx)
 	if err != nil {
 		s.logger.Error("Failed to list adapters",
 			zap.Error(err),
 		)
 		return nil, fmt.Errorf("failed to list adapters: %w", err)
 	}
-	return adapters, nil
+	return resp, nil
 }
 
 // GetAdapterCapabilities gets capabilities of a supplier adapter
-func (s *SupplierServiceImpl) GetAdapterCapabilities(ctx context.Context, adapterName string) (*supplierv1.AdapterCapabilities, error) {
+func (s *SupplierServiceImpl) GetAdapterCapabilities(ctx context.Context, adapterName string) (interface{}, error) {
 	s.logger.Debug("GetAdapterCapabilities",
 		zap.String("adapterName", adapterName),
 	)
 	
-	req := &supplierv1.GetAdapterCapabilitiesRequest{AdapterName: adapterName}
-	capResp, err := s.client.GetAdapterCapabilities(ctx, req)
-	capabilities := capResp.GetCapabilities()
+	resp, err := s.client.GetAdapterCapabilities(ctx, adapterName)
 	if err != nil {
 		s.logger.Error("Failed to get adapter capabilities",
 			zap.String("adapterName", adapterName),
@@ -169,7 +158,7 @@ func (s *SupplierServiceImpl) GetAdapterCapabilities(ctx context.Context, adapte
 		)
 		return nil, fmt.Errorf("failed to get adapter capabilities: %w", err)
 	}
-	return capabilities, nil
+	return resp, nil
 }
 
 // TestAdapterConnection tests connection to a supplier adapter
@@ -178,8 +167,7 @@ func (s *SupplierServiceImpl) TestAdapterConnection(ctx context.Context, adapter
 		zap.String("adapterName", adapterName),
 	)
 	
-	req := &supplierv1.TestAdapterConnectionRequest{AdapterName: adapterName, Config: config}
-	_, err := s.client.TestAdapterConnection(ctx, req)
+	resp, err := s.client.TestAdapterConnection(ctx, adapterName, config)
 	if err != nil {
 		s.logger.Error("Failed to test adapter connection",
 			zap.String("adapterName", adapterName),
@@ -187,18 +175,24 @@ func (s *SupplierServiceImpl) TestAdapterConnection(ctx context.Context, adapter
 		)
 		return fmt.Errorf("failed to test adapter connection: %w", err)
 	}
+	
+	// Check if connection test was successful
+	if resp != nil && !resp.Success {
+		return fmt.Errorf("connection test failed: %s", resp.Message)
+	}
+	
 	return nil
 }
 
 // SyncProducts synchronizes products from a supplier
-func (s *SupplierServiceImpl) SyncProducts(ctx context.Context, supplierID string, options *supplierv1.SyncOptions) (string, error) {
+func (s *SupplierServiceImpl) SyncProducts(ctx context.Context, supplierID string, fullSync, dryRun bool, batchSize int32) (string, error) {
 	s.logger.Debug("SyncProducts",
 		zap.String("supplierID", supplierID),
+		zap.Bool("fullSync", fullSync),
+		zap.Bool("dryRun", dryRun),
 	)
 	
-	req := &supplierv1.SyncProductsRequest{SupplierId: supplierID, Options: options}
-	prodResp, err := s.client.SyncProducts(ctx, req)
-	jobID := prodResp.GetJobId()
+	resp, err := s.client.SyncProducts(ctx, supplierID, fullSync, dryRun, batchSize)
 	if err != nil {
 		s.logger.Error("Failed to sync products",
 			zap.String("supplierID", supplierID),
@@ -206,18 +200,23 @@ func (s *SupplierServiceImpl) SyncProducts(ctx context.Context, supplierID strin
 		)
 		return "", fmt.Errorf("failed to sync products: %w", err)
 	}
-	return jobID, nil
+
+	// Extract JobID from response
+	if resp != nil {
+		return resp.JobID, nil
+	}
+	return "", fmt.Errorf("received nil response from sync products")
 }
 
 // SyncInventory synchronizes inventory from a supplier
-func (s *SupplierServiceImpl) SyncInventory(ctx context.Context, supplierID string, options *supplierv1.SyncOptions) (string, error) {
+func (s *SupplierServiceImpl) SyncInventory(ctx context.Context, supplierID string, fullSync, dryRun bool, batchSize int32) (string, error) {
 	s.logger.Debug("SyncInventory",
 		zap.String("supplierID", supplierID),
+		zap.Bool("fullSync", fullSync),
+		zap.Bool("dryRun", dryRun),
 	)
 	
-	req := &supplierv1.SyncInventoryRequest{SupplierId: supplierID, Options: options}
-	invResp, err := s.client.SyncInventory(ctx, req)
-	jobID := invResp.GetJobId()
+	resp, err := s.client.SyncInventory(ctx, supplierID, fullSync, dryRun, batchSize)
 	if err != nil {
 		s.logger.Error("Failed to sync inventory",
 			zap.String("supplierID", supplierID),
@@ -225,5 +224,10 @@ func (s *SupplierServiceImpl) SyncInventory(ctx context.Context, supplierID stri
 		)
 		return "", fmt.Errorf("failed to sync inventory: %w", err)
 	}
-	return jobID, nil
+
+	// Extract JobID from response
+	if resp != nil {
+		return resp.JobID, nil
+	}
+	return "", fmt.Errorf("received nil response from sync inventory")
 }

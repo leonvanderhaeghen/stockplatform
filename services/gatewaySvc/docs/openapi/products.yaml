@@ -1,0 +1,570 @@
+openapi: 3.0.3
+info:
+  title: StockPlatform Product Management API
+  description: Product and category management for the StockPlatform microservices
+  version: 1.0.0
+  contact:
+    name: StockPlatform API Support
+    email: support@stockplatform.com
+
+servers:
+  - url: http://localhost:8080
+    description: Development server
+  - url: https://api.stockplatform.com
+    description: Production server
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique product identifier
+        name:
+          type: string
+          description: Product name
+        description:
+          type: string
+          description: Product description
+        cost_price:
+          type: string
+          description: Cost price as string for precision
+        selling_price:
+          type: string
+          description: Selling price as string for precision
+        currency:
+          type: string
+          description: Currency code
+        sku:
+          type: string
+          description: Stock Keeping Unit
+        barcode:
+          type: string
+          description: Product barcode
+        category_ids:
+          type: array
+          items:
+            type: string
+          description: Associated category IDs
+        supplier_id:
+          type: string
+          description: Supplier ID
+        is_active:
+          type: boolean
+          description: Whether product is active
+        in_stock:
+          type: boolean
+          description: Whether product is in stock
+        stock_qty:
+          type: integer
+          description: Current stock quantity
+        low_stock_at:
+          type: integer
+          description: Low stock threshold
+        image_urls:
+          type: array
+          items:
+            type: string
+            format: uri
+          description: Product image URLs
+        video_urls:
+          type: array
+          items:
+            type: string
+            format: uri
+          description: Product video URLs
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+          description: Additional product metadata
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+
+    Category:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique category identifier
+        name:
+          type: string
+          description: Category name
+        description:
+          type: string
+          description: Category description
+        parent_id:
+          type: string
+          nullable: true
+          description: Parent category ID (null for root categories)
+        is_active:
+          type: boolean
+          description: Whether category is active
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+
+    CreateProductRequest:
+      type: object
+      required:
+        - name
+        - description
+        - costPrice
+        - sellingPrice
+        - currency
+        - sku
+        - categoryIDs
+        - supplierID
+      properties:
+        name:
+          type: string
+          description: Product name
+        description:
+          type: string
+          description: Product description
+        costPrice:
+          type: string
+          description: Cost price as string for precision
+        sellingPrice:
+          type: string
+          description: Selling price as string for precision
+        currency:
+          type: string
+          description: Currency code
+        sku:
+          type: string
+          description: Stock Keeping Unit
+        barcode:
+          type: string
+          description: Product barcode
+        categoryIDs:
+          type: array
+          items:
+            type: string
+          description: Associated category IDs
+        supplierID:
+          type: string
+          description: Supplier ID
+        isActive:
+          type: boolean
+          default: true
+          description: Whether product is active
+        inStock:
+          type: boolean
+          default: true
+          description: Whether product is in stock
+        stockQty:
+          type: integer
+          minimum: 0
+          default: 0
+          description: Initial stock quantity
+        lowStockAt:
+          type: integer
+          minimum: 0
+          default: 10
+          description: Low stock threshold
+        imageURLs:
+          type: array
+          items:
+            type: string
+            format: uri
+          description: Product image URLs
+        videoURLs:
+          type: array
+          items:
+            type: string
+            format: uri
+          description: Product video URLs
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+          description: Additional product metadata
+
+    UpdateProductRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Product name
+        description:
+          type: string
+          description: Product description
+        sku:
+          type: string
+          description: Stock Keeping Unit
+        categories:
+          type: array
+          items:
+            type: string
+          description: Associated category IDs
+        price:
+          type: string
+          description: Product price as string for precision
+        cost:
+          type: string
+          description: Cost price as string for precision
+        active:
+          type: boolean
+          description: Whether product is active
+        images:
+          type: array
+          items:
+            type: string
+            format: uri
+          description: Product image URLs
+        attributes:
+          type: object
+          additionalProperties:
+            type: string
+          description: Product attributes
+
+    CreateCategoryRequest:
+      type: object
+      required:
+        - name
+        - description
+      properties:
+        name:
+          type: string
+          description: Category name
+        description:
+          type: string
+          description: Category description
+        parentID:
+          type: string
+          description: Parent category ID (optional for root categories)
+        isActive:
+          type: boolean
+          default: true
+          description: Whether category is active
+
+    ListProductsResponse:
+      type: object
+      properties:
+        products:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+        total:
+          type: integer
+          description: Total number of products
+        limit:
+          type: integer
+          description: Number of items per page
+        offset:
+          type: integer
+          description: Starting offset
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+
+    SuccessMessage:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Success message
+
+security:
+  - BearerAuth: []
+
+paths:
+  /api/v1/products:
+    get:
+      summary: List products
+      description: List products with filtering options
+      tags:
+        - Products
+      parameters:
+        - name: categoryID
+          in: query
+          description: Filter by category ID
+          schema:
+            type: string
+        - name: query
+          in: query
+          description: Search query for product name or description
+          schema:
+            type: string
+        - name: active
+          in: query
+          description: Filter by active status
+          schema:
+            type: boolean
+        - name: limit
+          in: query
+          description: Number of items per page (default: 10)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: offset
+          in: query
+          description: Starting offset (default: 0)
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: sortBy
+          in: query
+          description: Sort field
+          schema:
+            type: string
+            enum: [name, created_at, updated_at, price]
+            default: created_at
+        - name: ascending
+          in: query
+          description: Sort order (default: false for descending)
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListProductsResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      summary: Create a new product
+      description: Create a new product with the provided details
+      tags:
+        - Products
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProductRequest'
+      responses:
+        '201':
+          description: Product created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          description: Bad request - Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/products/{id}:
+    get:
+      summary: Get a product by ID
+      description: Get a product by its ID
+      tags:
+        - Products
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Product ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      summary: Update a product
+      description: Update an existing product (Note: Limited implementation)
+      tags:
+        - Products
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Product ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProductRequest'
+      responses:
+        '200':
+          description: Product update attempted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '400':
+          description: Bad request - Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '501':
+          description: Not implemented - Update operation not fully supported
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Delete a product
+      description: Delete a product by its ID (Note: Not implemented)
+      tags:
+        - Products
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Product ID
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Product deleted successfully
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '501':
+          description: Not implemented - Delete operation not supported
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/categories:
+    get:
+      summary: List categories
+      description: List all product categories
+      tags:
+        - Categories
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      summary: Create a new category
+      description: Create a new product category
+      tags:
+        - Categories
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCategoryRequest'
+      responses:
+        '201':
+          description: Category created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '400':
+          description: Bad request - Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+tags:
+  - name: Products
+    description: Product management operations
+  - name: Categories
+    description: Product category management operations

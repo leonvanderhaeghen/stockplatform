@@ -48,7 +48,9 @@ func (s *InventoryServer) GetTransfer(ctx context.Context, req *inventoryv1.GetT
 
 	transfer, err := s.transferService.GetTransfer(ctx, req.Id)
 	if err != nil {
-		s.logger.Error("Failed to get inventory transfer", zap.String("id", req.Id), zap.Error(err))
+		s.logger.Error("Failed to get inventory transfer", 
+			zap.String("id", req.Id), 
+			zap.Error(err))
 		return nil, err
 	}
 

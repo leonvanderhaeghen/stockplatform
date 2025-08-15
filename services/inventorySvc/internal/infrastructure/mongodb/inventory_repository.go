@@ -629,9 +629,9 @@ func (r *InventoryRepository) RecordHistory(ctx context.Context, history *domain
 	_, err := r.collection.InsertOne(ctx, history)
 	if err != nil {
 		r.logger.Error("Failed to record inventory history", 
-			zap.String("inventory_id", history.InventoryID,
+			zap.String("inventory_id", history.InventoryID),
 			zap.String("change_type", history.ChangeType),
-			zap.Error(err)),
+			zap.Error(err),
 		)
 		return err
 	}

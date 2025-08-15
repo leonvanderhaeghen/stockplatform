@@ -19,11 +19,15 @@ func convertToProduct(protoProduct *productv1.Product) *models.Product {
 	costPrice, _ := strconv.ParseFloat(protoProduct.CostPrice, 64)
 	sellingPrice, _ := strconv.ParseFloat(protoProduct.SellingPrice, 64)
 
-	// Use first category if multiple categories exist
-	category := ""
-	if len(protoProduct.CategoryIds) > 0 {
-		category = protoProduct.CategoryIds[0]
-	}
+	// Map categories (TODO: Enable after protobuf regeneration)
+	var cats []models.Category
+	// Temporarily disabled until protobuf code includes Categories field
+	// if len(protoProduct.Categories) > 0 {
+	// 	cats = make([]models.Category, len(protoProduct.Categories))
+	// 	for i, pc := range protoProduct.Categories {
+	// 		cats[i] = convertProtoCategory(pc)
+	// 	}
+	// }
 
 	return &models.Product{
 		ID:          protoProduct.Id,
@@ -32,7 +36,8 @@ func convertToProduct(protoProduct *productv1.Product) *models.Product {
 		SKU:         protoProduct.Sku,
 		Price:       sellingPrice,
 		Cost:        costPrice,
-		Category:    category,
+		CategoryIDs: protoProduct.CategoryIds,
+		Categories:  cats,
 		Brand:       "", // Not available in protobuf schema
 		Weight:      0,  // Not available in protobuf schema
 		Dimensions:  nil, // Not available in protobuf schema
@@ -57,7 +62,7 @@ func convertToProtoProduct(product *models.Product) *productv1.Product {
 		SellingPrice: strconv.FormatFloat(product.Price, 'f', 2, 64),
 		Currency:     "USD", // Default currency
 		Sku:          product.SKU,
-		CategoryIds:  []string{product.Category}, // Convert single category to slice
+		CategoryIds:  product.CategoryIDs,
 		SupplierId:   product.SupplierID,
 		IsActive:     product.IsActive,
 		CreatedAt:    timestamppb.New(product.CreatedAt),
@@ -115,4 +120,35 @@ func convertToCreateProductRequest(name, description, sku, supplierID string, co
 		SupplierId:   supplierID,
 		IsActive:     isActive,
 	}
+}
+
+// convertProtoCategory converts protobuf Category to shared models.Category
+func convertProtoCategory(pc *productv1.Category) models.Category {
+	if pc == nil {
+		return models.Category{}
+	}
+	return models.Category{
+		ID:          pc.Id,
+		Name:        pc.Name,
+		Description: pc.Description,
+		ParentID:    pc.ParentId,
+		Level:       pc.Level,
+		Path:        pc.Path,
+		CreatedAt:   convertTimestamp(pc.CreatedAt),
+		UpdatedAt:   convertTimestamp(pc.UpdatedAt),
+	}
+}
+
+// convertToCategories converts slice of protobuf Categories to models.Category slice
+func convertToCategories(protoCategories []*productv1.Category) []*models.Category {
+	if len(protoCategories) == 0 {
+		return nil
+	}
+	
+	categories := make([]*models.Category, len(protoCategories))
+	for i, pc := range protoCategories {
+		cat := convertProtoCategory(pc)
+		categories[i] = &cat
+	}
+	return categories
 }

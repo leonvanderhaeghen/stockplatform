@@ -1,0 +1,669 @@
+openapi: 3.0.3
+info:
+  title: StockPlatform Supplier API
+  description: Supplier management operations for the StockPlatform microservices
+  version: 1.0.0
+  contact:
+    name: StockPlatform API Support
+    email: support@stockplatform.com
+
+servers:
+  - url: http://localhost:8080
+    description: Development server
+  - url: https://api.stockplatform.com
+    description: Production server
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Supplier:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique supplier identifier
+        name:
+          type: string
+          description: Supplier name
+        contact_person:
+          type: string
+          description: Primary contact person
+        email:
+          type: string
+          format: email
+          description: Contact email address
+        phone:
+          type: string
+          description: Contact phone number
+        address:
+          type: string
+          description: Supplier address
+        city:
+          type: string
+          description: City
+        state:
+          type: string
+          description: State or province
+        country:
+          type: string
+          description: Country
+        postal_code:
+          type: string
+          description: Postal code
+        tax_id:
+          type: string
+          description: Tax identification number
+        website:
+          type: string
+          format: uri
+          description: Supplier website
+        currency:
+          type: string
+          description: Default currency code
+        lead_time_days:
+          type: integer
+          description: Default lead time in days
+        payment_terms:
+          type: string
+          description: Payment terms
+        active:
+          type: boolean
+          description: Whether supplier is active
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+
+    CreateSupplierRequest:
+      type: object
+      required:
+        - name
+        - email
+      properties:
+        name:
+          type: string
+          description: Supplier name
+        contact_person:
+          type: string
+          description: Primary contact person
+        email:
+          type: string
+          format: email
+          description: Contact email address
+        phone:
+          type: string
+          description: Contact phone number
+        address:
+          type: string
+          description: Supplier address
+        city:
+          type: string
+          description: City
+        state:
+          type: string
+          description: State or province
+        country:
+          type: string
+          description: Country
+        postal_code:
+          type: string
+          description: Postal code
+        tax_id:
+          type: string
+          description: Tax identification number
+        website:
+          type: string
+          format: uri
+          description: Supplier website
+        currency:
+          type: string
+          description: Default currency code
+        lead_time_days:
+          type: integer
+          minimum: 0
+          description: Default lead time in days
+        payment_terms:
+          type: string
+          description: Payment terms
+
+    UpdateSupplierRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Supplier name
+        contact_person:
+          type: string
+          description: Primary contact person
+        email:
+          type: string
+          format: email
+          description: Contact email address
+        phone:
+          type: string
+          description: Contact phone number
+        address:
+          type: string
+          description: Supplier address
+        city:
+          type: string
+          description: City
+        state:
+          type: string
+          description: State or province
+        country:
+          type: string
+          description: Country
+        postal_code:
+          type: string
+          description: Postal code
+        tax_id:
+          type: string
+          description: Tax identification number
+        website:
+          type: string
+          format: uri
+          description: Supplier website
+        currency:
+          type: string
+          description: Default currency code
+        lead_time_days:
+          type: integer
+          minimum: 0
+          description: Default lead time in days
+        payment_terms:
+          type: string
+          description: Payment terms
+
+    ListSuppliersResponse:
+      type: object
+      properties:
+        suppliers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Supplier'
+        total:
+          type: integer
+          description: Total number of suppliers
+        page:
+          type: integer
+          description: Current page number
+        page_size:
+          type: integer
+          description: Number of items per page
+
+    SupplierAdapter:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Adapter name
+        display_name:
+          type: string
+          description: Human-readable adapter name
+        description:
+          type: string
+          description: Adapter description
+        version:
+          type: string
+          description: Adapter version
+        supported_operations:
+          type: array
+          items:
+            type: string
+          description: List of supported operations
+
+    AdapterCapabilities:
+      type: object
+      properties:
+        capabilities:
+          type: object
+          additionalProperties:
+            type: boolean
+          description: Map of capability names to availability
+
+    SyncOptions:
+      type: object
+      properties:
+        full_sync:
+          type: boolean
+          default: false
+          description: Whether to perform full synchronization
+        batch_size:
+          type: integer
+          minimum: 1
+          maximum: 1000
+          default: 100
+          description: Batch size for synchronization
+        include_inactive:
+          type: boolean
+          default: false
+          description: Whether to include inactive items
+
+    SyncResponse:
+      type: object
+      properties:
+        job_id:
+          type: string
+          description: Synchronization job identifier
+        message:
+          type: string
+          description: Status message
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+
+security:
+  - BearerAuth: []
+
+paths:
+  /api/v1/suppliers:
+    get:
+      summary: List suppliers
+      description: List suppliers with pagination and search
+      tags:
+        - Suppliers
+      parameters:
+        - name: page
+          in: query
+          description: Page number (default: 1)
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: page_size
+          in: query
+          description: Number of items per page (default: 10)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: search
+          in: query
+          description: Search term for supplier name or contact
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListSuppliersResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      summary: Create a new supplier
+      description: Create a new supplier with the provided details
+      tags:
+        - Suppliers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSupplierRequest'
+      responses:
+        '201':
+          description: Supplier created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Supplier'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/suppliers/{id}:
+    get:
+      summary: Get a supplier by ID
+      description: Get a supplier by its ID
+      tags:
+        - Suppliers
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Supplier ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Supplier'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Supplier not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      summary: Update a supplier
+      description: Update an existing supplier with the provided details
+      tags:
+        - Suppliers
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Supplier ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSupplierRequest'
+      responses:
+        '200':
+          description: Supplier updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Supplier'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Supplier not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Delete a supplier
+      description: Delete a supplier by its ID
+      tags:
+        - Suppliers
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Supplier ID
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Supplier deleted successfully
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Supplier not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/suppliers/adapters:
+    get:
+      summary: List supplier adapters
+      description: Get all available supplier adapters
+      tags:
+        - Supplier Adapters
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SupplierAdapter'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/suppliers/adapters/{name}/capabilities:
+    get:
+      summary: Get adapter capabilities
+      description: Get the capabilities of a specific supplier adapter
+      tags:
+        - Supplier Adapters
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: Adapter name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdapterCapabilities'
+        '404':
+          description: Adapter not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/suppliers/adapters/{name}/test:
+    post:
+      summary: Test adapter connection
+      description: Test the connection to a supplier's system using the specified adapter
+      tags:
+        - Supplier Adapters
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: Adapter name
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties:
+                type: string
+              description: Adapter configuration parameters
+      responses:
+        '200':
+          description: Connection test successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Connection successful"
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Adapter not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/suppliers/{id}/sync/products:
+    post:
+      summary: Sync supplier products
+      description: Synchronize products from a supplier using their configured adapter
+      tags:
+        - Supplier Synchronization
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Supplier ID
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncOptions'
+      responses:
+        '202':
+          description: Synchronization job started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Supplier not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/suppliers/{id}/sync/inventory:
+    post:
+      summary: Sync supplier inventory
+      description: Synchronize inventory from a supplier using their configured adapter
+      tags:
+        - Supplier Synchronization
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Supplier ID
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncOptions'
+      responses:
+        '202':
+          description: Synchronization job started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Supplier not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+tags:
+  - name: Suppliers
+    description: Supplier management operations
+  - name: Supplier Adapters
+    description: Supplier adapter management and capabilities
+  - name: Supplier Synchronization
+    description: Data synchronization with supplier systems

@@ -5,7 +5,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
-	userv1 "github.com/leonvanderhaeghen/stockplatform/services/userSvc/api/gen/go/proto/user/v1"
 )
 
 // UserRegisterRequest represents the register request body
@@ -100,45 +99,8 @@ func (s *Server) loginUser(c *gin.Context) {
 		return
 	}
 
-	// Transform the gRPC response to include string role
-	resp, ok := result.(*userv1.AuthenticateUserResponse)
-	if !ok {
-		s.logger.Error("Unexpected response type from user service")
-		respondWithError(c, http.StatusInternalServerError, "Internal server error")
-		return
-	}
-
-	// Convert the role enum to string
-	var roleStr string
-	switch resp.User.Role {
-	case userv1.Role_ROLE_CUSTOMER:
-		roleStr = "CUSTOMER"
-	case userv1.Role_ROLE_ADMIN:
-		roleStr = "ADMIN"
-	case userv1.Role_ROLE_STAFF:
-		roleStr = "STAFF"
-	default:
-		roleStr = "UNKNOWN"
-	}
-
-	// Create a new response with the string role
-	transformedResp := map[string]interface{}{
-		"token": resp.Token,
-		"user": map[string]interface{}{
-			"id":          resp.User.Id,
-			"email":       resp.User.Email,
-			"first_name":  resp.User.FirstName,
-			"last_name":   resp.User.LastName,
-			"role":        roleStr,
-			"phone":       resp.User.Phone,
-			"active":      resp.User.Active,
-			"last_login":  resp.User.LastLogin,
-			"created_at":  resp.User.CreatedAt,
-			"updated_at":  resp.User.UpdatedAt,
-		},
-	}
-
-	respondWithSuccess(c, http.StatusOK, transformedResp)
+	// The service now returns the properly formatted response
+	respondWithSuccess(c, http.StatusOK, result)
 }
 
 // getCurrentUser returns the current authenticated user

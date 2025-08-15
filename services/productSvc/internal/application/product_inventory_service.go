@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	inventoryclient "github.com/leonvanderhaeghen/stockplatform/pkg/clients/inventory"
+	"github.com/leonvanderhaeghen/stockplatform/pkg/models"
 	"github.com/leonvanderhaeghen/stockplatform/services/productSvc/internal/domain"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.uber.org/zap"
@@ -58,12 +59,8 @@ func (s *ProductInventoryService) CreateProductWithInventory(
 		return nil, fmt.Errorf("failed to create product: %w", err)
 	}
 
-	// Then, create inventory for the product
-	_, err = s.inventoryClient.CreateInventory(ctx, &inventorypb.CreateInventoryRequest{
-		ProductId: product.ID.Hex(),
-		Quantity:  initialStock,
-		Sku:       product.SKU,
-	})
+	// Then, create inventory for the product using client abstraction
+	_, err = s.inventoryClient.CreateInventory(ctx, product.ID.Hex(), product.SKU, "", initialStock)
 
 	if err != nil {
 		s.logger.Error("Failed to create inventory", 
@@ -91,17 +88,16 @@ func (s *ProductInventoryService) CreateProductWithInventory(
 func (s *ProductInventoryService) GetProductWithInventory(
 	ctx context.Context,
 	productID string,
-) (*domain.Product, *inventorypb.InventoryItem, error) {
+	locationID string,
+) (*domain.Product, *models.InventoryItem, error) {
 	// Get the product
 	product, err := s.productService.GetProduct(ctx, productID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get product: %w", err)
 	}
 
-	// Get the inventory for this product
-	inventoryResp, err := s.inventoryClient.GetInventoryByProductID(ctx, &inventorypb.GetInventoryByProductIDRequest{
-		ProductId: productID,
-	})
+	// Get the inventory for this product using client abstraction
+	inventoryResp, err := s.inventoryClient.GetInventoryByProductID(ctx, productID, locationID)
 
 	// Handle case where inventory doesn't exist
 	if err != nil {
@@ -111,7 +107,7 @@ func (s *ProductInventoryService) GetProductWithInventory(
 		return product, nil, nil
 	}
 
-	return product, inventoryResp.GetInventory(), nil
+	return product, inventoryResp, nil
 }
 
 // UpdateProductInventory updates a product and its inventory
@@ -120,7 +116,7 @@ func (s *ProductInventoryService) UpdateProductInventory(
 	productID string,
 	productUpdate *domain.Product,
 	stockAdjustment *int32,
-) (*domain.Product, *inventorypb.InventoryItem, error) {
+) (*domain.Product, *models.InventoryItem, error) {
 	// Update the product
 	productUpdate.ID, _ = primitive.ObjectIDFromHex(productID)
 	err := s.productService.UpdateProduct(ctx, productUpdate)
@@ -134,51 +130,40 @@ func (s *ProductInventoryService) UpdateProductInventory(
 		return nil, nil, fmt.Errorf("failed to get updated product: %w", err)
 	}
 
-	var inventory *inventorypb.InventoryItem
+	var inventory *models.InventoryItem
 
 	// If stock adjustment is provided, update the inventory
 	if stockAdjustment != nil {
-		// Get current inventory
-		inventoryResp, err := s.inventoryClient.GetInventoryByProductID(ctx, &inventorypb.GetInventoryByProductIDRequest{
-			ProductId: productID,
-		})
+		// Get current inventory using client abstraction
+		inventoryResp, err := s.inventoryClient.GetInventoryByProductID(ctx, productID, "")
 
 		// If inventory doesn't exist and we have a positive stock adjustment, create it
 		if err != nil && *stockAdjustment > 0 {
-			createResp, err := s.inventoryClient.CreateInventory(ctx, &inventorypb.CreateInventoryRequest{
-				ProductId: productID,
-				Quantity:  *stockAdjustment,
-				Sku:       updatedProduct.SKU,
-			})
+			createResp, err := s.inventoryClient.CreateInventory(ctx, productID, updatedProduct.SKU, "", *stockAdjustment)
 			if err != nil {
 				return nil, nil, fmt.Errorf("failed to create inventory: %w", err)
 			}
-			inventory = createResp.GetInventory()
+			inventory = createResp
 		} else if err == nil {
 			// Update existing inventory
-			newQuantity := inventoryResp.GetInventory().GetQuantity() + *stockAdjustment
+			newQuantity := inventoryResp.Quantity + *stockAdjustment
 			if newQuantity < 0 {
 				return nil, nil, fmt.Errorf("insufficient stock")
 			}
 
-			_, err = s.inventoryClient.UpdateInventory(ctx, &inventorypb.UpdateInventoryRequest{
-				Inventory: &inventorypb.InventoryItem{
-					Id:        inventoryResp.GetInventory().GetId(),
-					ProductId: productID,
-					Quantity:  newQuantity,
-					Sku:       updatedProduct.SKU,
-				},
-			})
+			// Use client abstraction for update - create domain model
+			updatedItem := &models.InventoryItem{
+				ID:        inventoryResp.ID,
+				ProductID: productID,
+				Quantity:  newQuantity,
+				SKU:       updatedProduct.SKU,
+			}
+			_, err = s.inventoryClient.UpdateInventory(ctx, updatedItem)
 			if err != nil {
 				return nil, nil, fmt.Errorf("failed to update inventory: %w", err)
 			}
 
-			inventory = &inventorypb.InventoryItem{
-				Id:        inventoryResp.GetInventory().GetId(),
-				ProductId: productID,
-				Quantity:  newQuantity,
-				Sku:       updatedProduct.SKU,
-			}
+			inventory = updatedItem
 		}
 	}
 

@@ -48,6 +48,22 @@ type ValidateTokenResponse struct {
 	ExpiresAt int64  `json:"expires_at"`
 }
 
+// UserAddress represents a user address in the domain
+type UserAddress struct {
+	ID         string    `json:"id"`
+	UserID     string    `json:"user_id"`
+	Name       string    `json:"name"`
+	Street     string    `json:"street"`
+	City       string    `json:"city"`
+	State      string    `json:"state"`
+	PostalCode string    `json:"postal_code"`
+	Country    string    `json:"country"`
+	Phone      string    `json:"phone"`
+	IsDefault  bool      `json:"is_default"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
+}
+
 // CheckPermissionResponse represents the response from permission check
 type CheckPermissionResponse struct {
 	HasPermission bool   `json:"has_permission"`

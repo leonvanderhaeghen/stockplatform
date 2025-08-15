@@ -388,13 +388,213 @@ func (r *ProductRepository) BulkUpdateVisibility(ctx context.Context, supplierID
 // The following methods are stubs that need to be implemented
 
 func (r *ProductRepository) GetBySupplier(ctx context.Context, supplierID string, opts *domain.ListOptions) ([]*domain.Product, int64, error) {
-	// TODO: Implement GetBySupplier
-	return nil, 0, nil
+	r.logger.Debug("Getting products by supplier",
+		zap.String("supplier_id", supplierID),
+		zap.Any("options", opts))
+
+	// Build filter for supplier ID
+	filter := bson.M{"supplier_id": supplierID}
+
+	// Apply additional filters from options if provided
+	if opts != nil && opts.Filter != nil {
+		// Add search filter if provided
+		if opts.Filter.SearchTerm != "" {
+			filter["$or"] = []bson.M{
+				{"name": bson.M{"$regex": opts.Filter.SearchTerm, "$options": "i"}},
+				{"description": bson.M{"$regex": opts.Filter.SearchTerm, "$options": "i"}},
+				{"sku": bson.M{"$regex": opts.Filter.SearchTerm, "$options": "i"}},
+			}
+		}
+
+		// Add price range filters if specified
+		if opts.Filter.MinPrice > 0 {
+			filter["price"] = bson.M{"$gte": opts.Filter.MinPrice}
+		}
+		if opts.Filter.MaxPrice > 0 {
+			if priceFilter, exists := filter["price"]; exists {
+				priceFilter.(bson.M)["$lte"] = opts.Filter.MaxPrice
+			} else {
+				filter["price"] = bson.M{"$lte": opts.Filter.MaxPrice}
+			}
+		}
+	}
+
+	// Get total count
+	totalCount, err := r.collection.CountDocuments(ctx, filter)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count products by supplier: %w", err)
+	}
+
+	// Build find options with pagination
+	findOptions := options.Find()
+	if opts != nil && opts.Pagination != nil {
+		if opts.Pagination.PageSize > 0 {
+			findOptions.SetLimit(int64(opts.Pagination.PageSize))
+			if opts.Pagination.Page > 1 {
+				skip := (opts.Pagination.Page - 1) * opts.Pagination.PageSize
+				findOptions.SetSkip(int64(skip))
+			}
+		}
+	}
+
+	// Apply sorting
+	if opts != nil && opts.Sort != nil {
+		var sortField string
+		switch opts.Sort.Field {
+		case domain.SortFieldName:
+			sortField = "name"
+		case domain.SortFieldPrice:
+			sortField = "price"
+		case domain.SortFieldCreatedAt:
+			sortField = "created_at"
+		case domain.SortFieldUpdatedAt:
+			sortField = "updated_at"
+		default:
+			sortField = "name" // default to name
+		}
+
+		sortOrder := 1
+		if opts.Sort.Order == domain.SortOrderDesc {
+			sortOrder = -1
+		}
+		findOptions.SetSort(bson.D{{sortField, sortOrder}})
+	} else {
+		// Default sorting by name ascending
+		findOptions.SetSort(bson.D{{"name", 1}})
+	}
+
+	// Execute query
+	cursor, err := r.collection.Find(ctx, filter, findOptions)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to find products by supplier: %w", err)
+	}
+	defer cursor.Close(ctx)
+
+	// Decode results
+	var products []*domain.Product
+	for cursor.Next(ctx) {
+		var product domain.Product
+		if err := cursor.Decode(&product); err != nil {
+			return nil, 0, fmt.Errorf("failed to decode product: %w", err)
+		}
+		products = append(products, &product)
+	}
+
+	if err := cursor.Err(); err != nil {
+		return nil, 0, fmt.Errorf("cursor error: %w", err)
+	}
+
+	r.logger.Debug("Successfully retrieved products by supplier",
+		zap.String("supplier_id", supplierID),
+		zap.Int("count", len(products)),
+		zap.Int64("total", totalCount))
+
+	return products, totalCount, nil
 }
 
 func (r *ProductRepository) GetByCategory(ctx context.Context, categoryID string, opts *domain.ListOptions) ([]*domain.Product, int64, error) {
-	// TODO: Implement GetByCategory
-	return nil, 0, nil
+	r.logger.Debug("Getting products by category",
+		zap.String("category_id", categoryID),
+		zap.Any("options", opts))
+
+	// Build filter for category ID
+	filter := bson.M{"category_id": categoryID}
+
+	// Apply additional filters from options if provided
+	if opts != nil && opts.Filter != nil {
+		// Add search filter if provided
+		if opts.Filter.SearchTerm != "" {
+			filter["$or"] = []bson.M{
+				{"name": bson.M{"$regex": opts.Filter.SearchTerm, "$options": "i"}},
+				{"description": bson.M{"$regex": opts.Filter.SearchTerm, "$options": "i"}},
+				{"sku": bson.M{"$regex": opts.Filter.SearchTerm, "$options": "i"}},
+			}
+		}
+
+		// Add price range filters if specified
+		if opts.Filter.MinPrice > 0 {
+			filter["price"] = bson.M{"$gte": opts.Filter.MinPrice}
+		}
+		if opts.Filter.MaxPrice > 0 {
+			if priceFilter, exists := filter["price"]; exists {
+				priceFilter.(bson.M)["$lte"] = opts.Filter.MaxPrice
+			} else {
+				filter["price"] = bson.M{"$lte": opts.Filter.MaxPrice}
+			}
+		}
+	}
+
+	// Get total count
+	totalCount, err := r.collection.CountDocuments(ctx, filter)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count products by category: %w", err)
+	}
+
+	// Build find options with pagination
+	findOptions := options.Find()
+	if opts != nil && opts.Pagination != nil {
+		if opts.Pagination.PageSize > 0 {
+			findOptions.SetLimit(int64(opts.Pagination.PageSize))
+			if opts.Pagination.Page > 1 {
+				skip := (opts.Pagination.Page - 1) * opts.Pagination.PageSize
+				findOptions.SetSkip(int64(skip))
+			}
+		}
+	}
+
+	// Apply sorting
+	if opts != nil && opts.Sort != nil {
+		var sortField string
+		switch opts.Sort.Field {
+		case domain.SortFieldName:
+			sortField = "name"
+		case domain.SortFieldPrice:
+			sortField = "price"
+		case domain.SortFieldCreatedAt:
+			sortField = "created_at"
+		case domain.SortFieldUpdatedAt:
+			sortField = "updated_at"
+		default:
+			sortField = "name" // default to name
+		}
+
+		sortOrder := 1
+		if opts.Sort.Order == domain.SortOrderDesc {
+			sortOrder = -1
+		}
+		findOptions.SetSort(bson.D{{sortField, sortOrder}})
+	} else {
+		// Default sorting by name ascending
+		findOptions.SetSort(bson.D{{"name", 1}})
+	}
+
+	// Execute query
+	cursor, err := r.collection.Find(ctx, filter, findOptions)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to find products by category: %w", err)
+	}
+	defer cursor.Close(ctx)
+
+	// Decode results
+	var products []*domain.Product
+	for cursor.Next(ctx) {
+		var product domain.Product
+		if err := cursor.Decode(&product); err != nil {
+			return nil, 0, fmt.Errorf("failed to decode product: %w", err)
+		}
+		products = append(products, &product)
+	}
+
+	if err := cursor.Err(); err != nil {
+		return nil, 0, fmt.Errorf("cursor error: %w", err)
+	}
+
+	r.logger.Debug("Successfully retrieved products by category",
+		zap.String("category_id", categoryID),
+		zap.Int("count", len(products)),
+		zap.Int64("total", totalCount))
+
+	return products, totalCount, nil
 }
 
 // BulkUpdateStock is deprecated - inventory operations are handled by inventorySvc

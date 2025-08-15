@@ -1,15 +1,15 @@
 {
-  "short_name": "Stock Platform",
-  "name": "Stock Platform - Inventory Management System",
+  "short_name": "StockPlatform",
+  "name": "StockPlatform - Inventory Management System",
   "icons": [
     {
-      "src": "logo.svg",
-      "sizes": "192x192",
-      "type": "image/svg+xml"
+      "src": "favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
     }
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#61DAFB",
+  "theme_color": "#1976d2",
   "background_color": "#ffffff"
 }

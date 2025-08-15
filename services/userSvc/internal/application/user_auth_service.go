@@ -6,6 +6,7 @@ import (
 	"time"
 
 	orderclient "github.com/leonvanderhaeghen/stockplatform/pkg/clients/order"
+	"github.com/leonvanderhaeghen/stockplatform/pkg/models"
 	"github.com/leonvanderhaeghen/stockplatform/services/userSvc/internal/domain"
 	"go.uber.org/zap"
 )
@@ -70,15 +71,17 @@ func (s *UserAuthService) AuthenticateUser(
 	return user, token, nil
 }
 
-// GetUserOrders retrieves orders for a specific user
+// GetUserOrders retrieves orders for the authenticated user
 func (s *UserAuthService) GetUserOrders(
 	ctx context.Context,
 	userID string,
-) ([]*orderpb.Order, error) {
-	// Call the order service to get user orders
-	resp, err := s.orderClient.GetUserOrders(ctx, &orderpb.GetUserOrdersRequest{
-		UserId: userID,
-	})
+) ([]*models.Order, error) {
+	// Call the order service to get user orders using client abstraction
+	// Use default pagination for user auth service context
+	limit := int32(50)  // Default limit for user orders
+	offset := int32(0)  // Start from beginning
+	
+	orders, err := s.orderClient.GetUserOrders(ctx, userID, limit, offset)
 	if err != nil {
 		s.logger.Error("Failed to get user orders",
 			zap.String("user_id", userID),
@@ -87,7 +90,7 @@ func (s *UserAuthService) GetUserOrders(
 		return nil, fmt.Errorf("failed to get user orders: %w", err)
 	}
 
-	return resp.Orders, nil
+	return orders, nil
 }
 
 // UpdateUserProfile updates user profile and handles related operations

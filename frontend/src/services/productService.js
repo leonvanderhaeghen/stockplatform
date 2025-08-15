@@ -1,121 +1,231 @@
-import api from './api';
+import axios from 'axios';
 
-// Base path for product endpoints (relative to the API base URL which already includes /v1)
-const PRODUCTS_BASE = '/products';
+const API_BASE_URL = '/api/v1';
+
+// Create axios instance with default configuration
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Add request interceptor to include token
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Add response interceptor to handle errors
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
 
 const productService = {
-  // Helper to normalize list responses which may be array or wrapped in { data: [] } or { items: [] }
-  _extractList: (resData) => {
-    if (Array.isArray(resData)) return resData;
-    if (resData && Array.isArray(resData.items)) return resData.items;
-    if (resData && Array.isArray(resData.data)) return resData.data;
-    if (resData && Array.isArray(resData.products)) return resData.products;
-    if (resData && resData.data && Array.isArray(resData.data.products)) return resData.data.products;
-    return [];
-  },
-  /**
-   * Get all products with optional filters
-   * @param {Object} params - Query parameters for filtering and pagination
-   * @param {string} params.categoryId - Filter by category ID
-   * @param {string} params.query - Search query string
-   * @param {boolean} params.active - Filter by active status
-   * @param {number} params.limit - Maximum number of results to return
-   * @param {number} params.offset - Number of results to skip
-   * @param {string} params.sortBy - Field to sort by
-   * @param {boolean} params.ascending - Sort in ascending order
-   * @returns {Promise<Array>} List of products
-   */
-  getProducts: async (params = {}) => {
-    // Normalize search parameters: backend expects 'q'
-    const normalizedParams = { ...params };
-    if (normalizedParams.search && !normalizedParams.q) {
-      normalizedParams.q = normalizedParams.search;
-      delete normalizedParams.search;
+  // List products with filtering and pagination
+  listProducts: async (params = {}) => {
+    const response = await api.get('/products', { params });
+    // Normalize response to ensure consistent structure
+    if (response.data && typeof response.data === 'object' && response.data.data) {
+      // Backend returns { data: [...], total: number, success: boolean }
+      return {
+        data: Array.isArray(response.data.data) ? response.data.data : [],
+        total: response.data.total || 0,
+        success: response.data.success || true
+      };
     }
-    if (normalizedParams.query && !normalizedParams.q) {
-      normalizedParams.q = normalizedParams.query;
-      delete normalizedParams.query;
-    }
-    const { data } = await api.get(PRODUCTS_BASE, { params: normalizedParams });
-    return productService._extractList(data);
+    // Fallback: assume direct array or wrap in expected structure
+    return {
+      data: Array.isArray(response.data) ? response.data : [],
+      total: Array.isArray(response.data) ? response.data.length : 0,
+      success: true
+    };
   },
 
-  /**
-   * Get a single product by ID
-   * @param {string} id - Product ID
-   * @returns {Promise<Object>} Product details
-   */
-  getProduct: async (id) => {
-    const { data } = await api.get(`${PRODUCTS_BASE}/${id}`);
-    return productService._extractList(data);
+  // Get product by ID
+  getProductById: async (productId) => {
+    const response = await api.get(`/products/${productId}`);
+    return response.data;
   },
 
-  /**
-   * Create a new product
-   * @param {Object} productData - Product data
-   * @param {string} productData.name - Product name
-   * @param {string} productData.description - Product description
-   * @param {string} productData.costPrice - Cost price as a string (e.g., "10.99")
-   * @param {string} productData.sellingPrice - Selling price as a string (e.g., "19.99")
-   * @param {string} productData.currency - Currency code (e.g., "USD")
-   * @param {string} productData.sku - Stock Keeping Unit
-   * @param {string} productData.barcode - Barcode
-   * @param {Array<string>} productData.categoryIds - Array of category IDs
-   * @param {string} productData.supplierId - Supplier ID
-   * @param {boolean} productData.isActive - Whether the product is active
-   * @param {boolean} productData.inStock - Whether the product is in stock
-   * @param {number} productData.stockQty - Current stock quantity
-   * @param {number} productData.lowStockAt - Threshold for low stock alert
-   * @param {Array<string>} productData.imageUrls - Array of image URLs
-   * @param {Array<string>} productData.videoUrls - Array of video URLs
-   * @param {Object} productData.metadata - Additional metadata as key-value pairs
-   * @returns {Promise<Object>} Created product details
-   */
+  // Create new product (Staff/Admin only)
   createProduct: async (productData) => {
-    const { data } = await api.post(PRODUCTS_BASE, productData);
-    return productService._extractList(data);
+    const response = await api.post('/products', productData);
+    return response.data;
   },
 
-  /**
-   * Update an existing product
-   * Note: This is not fully implemented in the backend API
-   * @param {string} id - Product ID
-   * @param {Object} productData - Updated product data
-   * @returns {Promise<Object>} Updated product details
-   */
-  updateProduct: async (id, productData) => {
-    const { data } = await api.put(`${PRODUCTS_BASE}/${id}`, productData);
-    return productService._extractList(data);
+  // Update product (Staff/Admin only)
+  updateProduct: async (productId, productData) => {
+    const response = await api.put(`/products/${productId}`, productData);
+    return response.data;
   },
 
-  /**
-   * Delete a product
-   * Note: This is not implemented in the backend API
-   * @param {string} id - Product ID
-   * @returns {Promise<string>} Deleted product ID
-   */
-  deleteProduct: async (id) => {
-    await api.delete(`${PRODUCTS_BASE}/${id}`);
-    return id;
+  // Delete product (Staff/Admin only)
+  deleteProduct: async (productId) => {
+    const response = await api.delete(`/products/${productId}`);
+    return response.data;
   },
 
-  /**
-   * Search products by query
-   * @param {string} query - Search query string
-   * @returns {Promise<Array>} List of matching products
-   */
-  searchProducts: async (query) => {
-    const { data } = await api.get(`${PRODUCTS_BASE}/search`, { params: { q: query } });
-    return productService._extractList(data);
+  // Search products
+  searchProducts: async (query, params = {}) => {
+    const response = await api.get('/products/search', {
+      params: { q: query, ...params },
+    });
+    return response.data;
   },
-  
-  /**
-   * Get all product categories
-   * @returns {Promise<Array>} List of product categories
-   */
-  getCategories: async () => {
-    const { data } = await api.get(`${PRODUCTS_BASE}/categories`);
-    return productService._extractList(data);
+
+  // Get products by category
+  getProductsByCategory: async (categoryId, params = {}) => {
+    const response = await api.get(`/products/category/${categoryId}`, { params });
+    return response.data;
+  },
+
+  // Upload product image
+  uploadProductImage: async (productId, file) => {
+    const formData = new FormData();
+    formData.append('image', file);
+    
+    const response = await api.post(`/products/${productId}/image`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  // Delete product image
+  deleteProductImage: async (productId, imageId) => {
+    const response = await api.delete(`/products/${productId}/images/${imageId}`);
+    return response.data;
+  },
+
+  // Get product reviews
+  getProductReviews: async (productId, params = {}) => {
+    const response = await api.get(`/products/${productId}/reviews`, { params });
+    return response.data;
+  },
+
+  // Create product review
+  createProductReview: async (productId, reviewData) => {
+    const response = await api.post(`/products/${productId}/reviews`, reviewData);
+    return response.data;
+  },
+
+  // Update product review
+  updateProductReview: async (productId, reviewId, reviewData) => {
+    const response = await api.put(`/products/${productId}/reviews/${reviewId}`, reviewData);
+    return response.data;
+  },
+
+  // Delete product review
+  deleteProductReview: async (productId, reviewId) => {
+    const response = await api.delete(`/products/${productId}/reviews/${reviewId}`);
+    return response.data;
+  },
+
+  // Get product variants
+  getProductVariants: async (productId) => {
+    const response = await api.get(`/products/${productId}/variants`);
+    return response.data;
+  },
+
+  // Create product variant
+  createProductVariant: async (productId, variantData) => {
+    const response = await api.post(`/products/${productId}/variants`, variantData);
+    return response.data;
+  },
+
+  // Update product variant
+  updateProductVariant: async (productId, variantId, variantData) => {
+    const response = await api.put(`/products/${productId}/variants/${variantId}`, variantData);
+    return response.data;
+  },
+
+  // Delete product variant
+  deleteProductVariant: async (productId, variantId) => {
+    const response = await api.delete(`/products/${productId}/variants/${variantId}`);
+    return response.data;
+  },
+
+  // Category Management
+  // List all categories
+  listCategories: async () => {
+    const response = await api.get('/products/categories');
+    return response.data;
+  },
+
+  // Get category by ID
+  getCategoryById: async (categoryId) => {
+    const response = await api.get(`/products/categories/${categoryId}`);
+    return response.data;
+  },
+
+  // Create new category (Staff/Admin only)
+  createCategory: async (categoryData) => {
+    const response = await api.post('/products/categories', categoryData);
+    return response.data;
+  },
+
+  // Update category (Staff/Admin only)
+  updateCategory: async (categoryId, categoryData) => {
+    const response = await api.put(`/products/categories/${categoryId}`, categoryData);
+    return response.data;
+  },
+
+  // Delete category (Staff/Admin only)
+  deleteCategory: async (categoryId) => {
+    const response = await api.delete(`/products/categories/${categoryId}`);
+    return response.data;
+  },
+
+  // Get category hierarchy
+  getCategoryHierarchy: async () => {
+    const response = await api.get('/products/categories/hierarchy');
+    return response.data;
+  },
+
+  // Bulk operations
+  bulkUpdateProducts: async (productUpdates) => {
+    const response = await api.put('/products/bulk', { products: productUpdates });
+    return response.data;
+  },
+
+  bulkDeleteProducts: async (productIds) => {
+    const response = await api.delete('/products/bulk', { data: { productIds } });
+    return response.data;
+  },
+
+  // Get product analytics
+  getProductAnalytics: async (productId, params = {}) => {
+    const response = await api.get(`/products/${productId}/analytics`, { params });
+    return response.data;
+  },
+
+  // Get trending products
+  getTrendingProducts: async (params = {}) => {
+    const response = await api.get('/products/trending', { params });
+    return response.data;
+  },
+
+  // Get featured products
+  getFeaturedProducts: async (params = {}) => {
+    const response = await api.get('/products/featured', { params });
+    return response.data;
   },
 };
 

@@ -2,6 +2,8 @@ package grpc
 
 import (
 	"context"
+	"strings"
+	"unicode/utf8"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
@@ -139,9 +141,24 @@ func (s *SupplierServer) ListSuppliers(ctx context.Context, req *supplierv1.List
 	}
 
 	return &supplierv1.ListSuppliersResponse{
-		Suppliers: pbSuppliers,
-		Total:     total,
+		Data: &supplierv1.ListSuppliersData{
+			Suppliers:  pbSuppliers,
+			TotalCount: total,
+			Page:       req.GetPage(),
+			PageSize:   req.GetPageSize(),
+		},
+		Success: true,
 	}, nil
+}
+
+// sanitizeUTF8 removes or replaces invalid UTF-8 characters from a string
+func sanitizeUTF8(s string) string {
+	if utf8.ValidString(s) {
+		return s
+	}
+	
+	// Replace invalid UTF-8 characters with a replacement character
+	return strings.ToValidUTF8(s, "�")
 }
 
 // domainToPb converts a domain Supplier to a protobuf Supplier
@@ -152,20 +169,20 @@ func domainToPb(s *domain.Supplier) *supplierv1.Supplier {
 
 	return &supplierv1.Supplier{
 		Id:            s.ID.Hex(),
-		Name:          s.Name,
-		ContactPerson: s.ContactPerson,
-		Email:         s.Email,
-		Phone:         s.Phone,
-		Address:       s.Address,
-		City:          s.City,
-		State:         s.State,
-		Country:       s.Country,
-		PostalCode:    s.PostalCode,
-		TaxId:         s.TaxID,
-		Website:       s.Website,
-		Currency:      s.Currency,
+		Name:          sanitizeUTF8(s.Name),
+		ContactPerson: sanitizeUTF8(s.ContactPerson),
+		Email:         sanitizeUTF8(s.Email),
+		Phone:         sanitizeUTF8(s.Phone),
+		Address:       sanitizeUTF8(s.Address),
+		City:          sanitizeUTF8(s.City),
+		State:         sanitizeUTF8(s.State),
+		Country:       sanitizeUTF8(s.Country),
+		PostalCode:    sanitizeUTF8(s.PostalCode),
+		TaxId:         sanitizeUTF8(s.TaxID),
+		Website:       sanitizeUTF8(s.Website),
+		Currency:      sanitizeUTF8(s.Currency),
 		LeadTimeDays:  s.LeadTimeDays,
-		PaymentTerms:  s.PaymentTerms,
+		PaymentTerms:  sanitizeUTF8(s.PaymentTerms),
 		Metadata:      s.Metadata,
 		CreatedAt:     timestamppb.New(s.CreatedAt),
 		UpdatedAt:     timestamppb.New(s.UpdatedAt),

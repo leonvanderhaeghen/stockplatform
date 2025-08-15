@@ -51,13 +51,16 @@ func (s *OrderInventoryService) CreateOrderWithInventoryCheck(
 ) (*domain.Order, error) {
 	// Check inventory for all items
 	for _, item := range input.Items {
-		inventory, err := s.inventoryClient.GetInventoryByProductID(ctx, item.ProductID)
+		// Use default location - in a real system this would come from order context or store ID
+		locationID := "default" // TODO: Get from order store/location context
+		
+		inventory, err := s.inventoryClient.GetInventoryByProductID(ctx, item.ProductID, locationID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to check inventory for product %s: %w", item.ProductID, err)
 		}
 
-		// Check available stock
-		available := inventory.GetInventory().GetQuantity() - inventory.GetInventory().GetReserved()
+		// Check available stock using domain model fields
+		available := inventory.Quantity - inventory.Reserved
 		if available < int32(item.Quantity) {
 			return nil, fmt.Errorf("insufficient stock for product %s: available %d, requested %d",
 				item.ProductID, available, item.Quantity)
@@ -100,11 +103,8 @@ func (s *OrderInventoryService) ProcessOrderFulfillment(
 
 	// Process each item in the order
 	for _, item := range order.Items {
-		// Reserve the inventory for this item
-		_, err := s.inventoryClient.ReserveStock(ctx, &inventorypb.ReserveStockRequest{
-			Id:       item.ProductID,
-			Quantity: int32(item.Quantity),
-		})
+		// Reserve the inventory for this item using client abstraction
+		_, err := s.inventoryClient.ReserveStock(ctx, item.ProductID, int32(item.Quantity))
 		if err != nil {
 			// If we can't reserve stock, update the order status and return an error
 			order.Status = domain.StatusCancelled

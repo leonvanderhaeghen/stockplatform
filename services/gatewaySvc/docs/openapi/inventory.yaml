@@ -1,0 +1,739 @@
+openapi: 3.0.3
+info:
+  title: StockPlatform Inventory Management API
+  description: Inventory tracking and management for the StockPlatform microservices
+  version: 1.0.0
+  contact:
+    name: StockPlatform API Support
+    email: support@stockplatform.com
+
+servers:
+  - url: http://localhost:8080
+    description: Development server
+  - url: https://api.stockplatform.com
+    description: Production server
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    InventoryItem:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique inventory item identifier
+        product_id:
+          type: string
+          description: Associated product ID
+        sku:
+          type: string
+          description: Stock Keeping Unit
+        quantity:
+          type: integer
+          description: Current quantity in stock
+        location:
+          type: string
+          description: Storage location
+        reorder_at:
+          type: integer
+          description: Reorder threshold quantity
+        reorder_qty:
+          type: integer
+          description: Reorder quantity
+        cost:
+          type: number
+          format: float
+          description: Item cost
+        last_updated:
+          type: string
+          format: date-time
+          description: Last update timestamp
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+
+    CreateInventoryItemRequest:
+      type: object
+      required:
+        - productID
+        - sku
+        - quantity
+        - location
+      properties:
+        productID:
+          type: string
+          description: Associated product ID
+        sku:
+          type: string
+          description: Stock Keeping Unit
+        quantity:
+          type: integer
+          minimum: 0
+          description: Initial quantity in stock
+        location:
+          type: string
+          description: Storage location
+        reorderAt:
+          type: integer
+          minimum: 0
+          default: 10
+          description: Reorder threshold quantity
+        reorderQty:
+          type: integer
+          minimum: 1
+          default: 50
+          description: Reorder quantity
+        cost:
+          type: number
+          format: float
+          minimum: 0
+          description: Item cost
+
+    UpdateInventoryItemRequest:
+      type: object
+      properties:
+        productID:
+          type: string
+          description: Associated product ID
+        sku:
+          type: string
+          description: Stock Keeping Unit
+        quantity:
+          type: integer
+          minimum: 0
+          description: Quantity in stock
+        location:
+          type: string
+          description: Storage location
+        reorderAt:
+          type: integer
+          minimum: 0
+          description: Reorder threshold quantity
+        reorderQty:
+          type: integer
+          minimum: 1
+          description: Reorder quantity
+        cost:
+          type: number
+          format: float
+          minimum: 0
+          description: Item cost
+
+    StockAdjustmentRequest:
+      type: object
+      required:
+        - quantity
+        - reason
+      properties:
+        quantity:
+          type: integer
+          description: Quantity to add (positive) or remove (negative)
+        reason:
+          type: string
+          description: Reason for stock adjustment
+        reference:
+          type: string
+          description: Reference number or document
+
+    InventoryReservation:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique reservation identifier
+        order_id:
+          type: string
+          description: Associated order ID
+        product_id:
+          type: string
+          description: Reserved product ID
+        quantity:
+          type: integer
+          description: Reserved quantity
+        status:
+          type: string
+          enum: [ACTIVE, COMPLETED, CANCELLED, EXPIRED]
+          description: Reservation status
+        location_id:
+          type: string
+          description: Location where items are reserved
+        expires_at:
+          type: string
+          format: date-time
+          description: Reservation expiry timestamp
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+
+
+
+    ListInventoryResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/InventoryItem'
+        total:
+          type: integer
+          description: Total number of inventory items
+        limit:
+          type: integer
+          description: Number of items per page
+        offset:
+          type: integer
+          description: Starting offset
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+
+    SuccessMessage:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Success message
+
+security:
+  - BearerAuth: []
+
+paths:
+  /api/v1/inventory:
+    get:
+      summary: List inventory items
+      description: List inventory items with filtering options
+      tags:
+        - Inventory Management
+      parameters:
+        - name: location
+          in: query
+          description: Filter by location
+          schema:
+            type: string
+        - name: lowStock
+          in: query
+          description: Filter by low stock status
+          schema:
+            type: boolean
+        - name: limit
+          in: query
+          description: Number of items per page (default: 10)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: offset
+          in: query
+          description: Starting offset (default: 0)
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListInventoryResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      summary: Create inventory item
+      description: Create a new inventory item
+      tags:
+        - Inventory Management
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInventoryItemRequest'
+      responses:
+        '201':
+          description: Inventory item created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem'
+        '400':
+          description: Bad request - Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/inventory/{id}:
+    get:
+      summary: Get inventory item by ID
+      description: Get an inventory item by its ID
+      tags:
+        - Inventory Management
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Inventory item ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Inventory item not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      summary: Update inventory item
+      description: Update an existing inventory item
+      tags:
+        - Inventory Management
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Inventory item ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateInventoryItemRequest'
+      responses:
+        '200':
+          description: Inventory item updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '400':
+          description: Bad request - Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Inventory item not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Delete inventory item
+      description: Delete an inventory item by its ID
+      tags:
+        - Inventory Management
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Inventory item ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Inventory item deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Inventory item not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/inventory/product/{productId}:
+    get:
+      summary: Get inventory by product ID
+      description: Get inventory items for a specific product
+      tags:
+        - Inventory Management
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          description: Product ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InventoryItem'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/inventory/sku/{sku}:
+    get:
+      summary: Get inventory by SKU
+      description: Get inventory item by SKU
+      tags:
+        - Inventory Management
+      parameters:
+        - name: sku
+          in: path
+          required: true
+          description: Stock Keeping Unit
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Inventory item not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/inventory/{id}/stock/add:
+    post:
+      summary: Add stock
+      description: Add stock to an inventory item
+      tags:
+        - Stock Adjustments
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Inventory item ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StockAdjustmentRequest'
+      responses:
+        '200':
+          description: Stock added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem'
+        '400':
+          description: Bad request - Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Inventory item not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/inventory/{id}/stock/remove:
+    post:
+      summary: Remove stock
+      description: Remove stock from an inventory item
+      tags:
+        - Stock Adjustments
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Inventory item ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StockAdjustmentRequest'
+      responses:
+        '200':
+          description: Stock removed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem'
+        '400':
+          description: Bad request - Invalid input or insufficient stock
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Inventory item not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/inventory/low-stock:
+    get:
+      summary: Get low stock items
+      description: Get inventory items that are low in stock
+      tags:
+        - Inventory Management
+      parameters:
+        - name: location
+          in: query
+          description: Filter by location
+          schema:
+            type: string
+        - name: threshold
+          in: query
+          description: Custom low stock threshold
+          schema:
+            type: integer
+            minimum: 0
+        - name: limit
+          in: query
+          description: Number of items per page (default: 10)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: offset
+          in: query
+          description: Starting offset (default: 0)
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListInventoryResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/inventory/reservations:
+    get:
+      summary: Get inventory reservations
+      description: List inventory reservations with optional filters
+      tags:
+        - Inventory Management
+      parameters:
+        - name: orderId
+          in: query
+          schema:
+            type: string
+          description: Filter by order ID
+        - name: productId
+          in: query
+          schema:
+            type: string
+          description: Filter by product ID
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [RESERVED, FULFILLED, CANCELLED]
+          description: Filter by reservation status
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+          description: Number of items to return
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+          description: Number of items to skip
+      responses:
+        '200':
+          description: List of inventory reservations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reservations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/InventoryReservation'
+    post:
+      summary: Create inventory reservation
+      description: |
+        Create a new inventory reservation (supports POS source tracking).
+        This endpoint consolidates both POS and online reservation functionality.
+        Use the `source` parameter to distinguish between POS and online orders.
+      tags:
+        - Inventory Management
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReservationRequest'
+      responses:
+        '201':
+          description: Reservation created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reservation:
+                    $ref: '#/components/schemas/InventoryReservation'
+                  source:
+                    type: string
+                    description: Source of reservation (POS, ONLINE, etc.)
+                  storeId:
+                    type: string
+                    description: Store ID for POS reservations
+                  posReservation:
+                    type: boolean
+                    description: Whether this is a POS reservation
+        '400':
+          description: Bad request - Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Insufficient stock available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+
+tags:
+  - name: Inventory Management
+    description: Inventory item management operations
+  - name: Stock Adjustments
+    description: Stock addition and removal operations
+  - name: Reservations
+    description: Inventory reservation management

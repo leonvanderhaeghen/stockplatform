@@ -62,22 +62,24 @@ func (h *SupplierHandler) CreateSupplier(c *gin.Context) {
 		return
 	}
 
-	supplier, err := h.svc.CreateSupplier(c.Request.Context(), &supplierv1.CreateSupplierRequest{
-		Name:          req.Name,
-		ContactPerson: req.ContactPerson,
-		Email:         req.Email,
-		Phone:         req.Phone,
-		Address:       req.Address,
-		City:          req.City,
-		State:         req.State,
-		PostalCode:    req.PostalCode,
-		Country:       req.Country,
-		TaxId:         req.TaxID,
-		Website:       req.Website,
-		Currency:      req.Currency,
-		LeadTimeDays:  req.LeadTimeDays,
-		PaymentTerms:  req.PaymentTerms,
-	})
+	supplier, err := h.svc.CreateSupplier(
+		c.Request.Context(),
+		req.Name,
+		req.ContactPerson,
+		req.Email,
+		req.Phone,
+		req.Address,
+		req.City,
+		req.State,
+		req.Country,
+		req.PostalCode,
+		req.TaxID,
+		req.Website,
+		req.Currency,
+		req.PaymentTerms,
+		req.LeadTimeDays,
+		map[string]string{}, // metadata
+	)
 
 	if err != nil {
 		h.logger.Error("Failed to create supplier", zap.Error(err))
@@ -165,23 +167,25 @@ func (h *SupplierHandler) UpdateSupplier(c *gin.Context) {
 		return
 	}
 
-	supplier, err := h.svc.UpdateSupplier(c.Request.Context(), &supplierv1.UpdateSupplierRequest{
-		Id:            id,
-		Name:          req.Name,
-		ContactPerson: req.ContactPerson,
-		Email:         req.Email,
-		Phone:         req.Phone,
-		Address:       req.Address,
-		City:          req.City,
-		State:         req.State,
-		PostalCode:    req.PostalCode,
-		Country:       req.Country,
-		TaxId:         req.TaxID,
-		Website:       req.Website,
-		Currency:      req.Currency,
-		LeadTimeDays:  req.LeadTimeDays,
-		PaymentTerms:  req.PaymentTerms,
-	})
+	supplier, err := h.svc.UpdateSupplier(
+		c.Request.Context(),
+		id,
+		req.Name,
+		req.ContactPerson,
+		req.Email,
+		req.Phone,
+		req.Address,
+		req.City,
+		req.State,
+		req.Country,
+		req.PostalCode,
+		req.TaxID,
+		req.Website,
+		req.Currency,
+		req.PaymentTerms,
+		req.LeadTimeDays,
+		map[string]string{}, // metadata
+	)
 
 	if err != nil {
 		if status.Code(err) == 404 {
@@ -229,10 +233,10 @@ func (h *SupplierHandler) DeleteSupplier(c *gin.Context) {
 
 // ListSuppliersResponse represents the response for listing suppliers
 type ListSuppliersResponse struct {
-	Suppliers []*supplierv1.Supplier `json:"suppliers"`
-	Total     int32                  `json:"total"`
-	Page      int32                  `json:"page"`
-	PageSize  int32                  `json:"page_size"`
+	Suppliers []interface{} `json:"suppliers"`
+	Total     int32         `json:"total"`
+	Page      int32         `json:"page"`
+	PageSize  int32         `json:"page_size"`
 }
 
 // ListSuppliers lists suppliers with pagination and search
@@ -261,19 +265,14 @@ func (h *SupplierHandler) ListSuppliers(c *gin.Context) {
 		pageSize = 10
 	}
 
-	suppliers, total, err := h.svc.ListSuppliers(c.Request.Context(), int32(page), int32(pageSize), search)
+	result, err := h.svc.ListSuppliers(c.Request.Context(), int32(page), int32(pageSize), search)
 	if err != nil {
 		h.logger.Error("Failed to list suppliers", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list suppliers"})
 		return
 	}
 
-	c.JSON(http.StatusOK, ListSuppliersResponse{
-		Suppliers: suppliers,
-		Total:     total,
-		Page:      int32(page),
-		PageSize:  int32(pageSize),
-	})
+	c.JSON(http.StatusOK, result)
 }
 
 // RegisterRoutes registers the supplier handler routes
@@ -443,13 +442,11 @@ func (h *SupplierHandler) SyncProducts(c *gin.Context) {
 		}
 	}
 
-	// Convert relevant fields to protobuf SyncOptions
-	var syncOpts supplierv1.SyncOptions
-	syncOpts.FullSync = req.FullSync
-	syncOpts.BatchSize = req.BatchSize
-	syncOpts.IncludeInactive = req.IncludeInactive
+	fullSync := req.FullSync
+	batchSize := req.BatchSize
+	dryRun := false // Default value
 	
-	jobID, err := h.svc.SyncProducts(c.Request.Context(), supplierID, &syncOpts)
+	jobID, err := h.svc.SyncProducts(c.Request.Context(), supplierID, fullSync, dryRun, batchSize)
 	if err != nil {
 		if status.Code(err) == 404 {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Supplier not found"})
@@ -496,13 +493,11 @@ func (h *SupplierHandler) SyncInventory(c *gin.Context) {
 		}
 	}
 
-	// Convert relevant fields to protobuf SyncOptions
-	var syncOpts supplierv1.SyncOptions
-	syncOpts.FullSync = req.FullSync
-	syncOpts.BatchSize = req.BatchSize
-	syncOpts.IncludeInactive = req.IncludeInactive
+	fullSync := req.FullSync
+	batchSize := req.BatchSize
+	dryRun := false // Default value
 	
-	jobID, err := h.svc.SyncInventory(c.Request.Context(), supplierID, &syncOpts)
+	jobID, err := h.svc.SyncInventory(c.Request.Context(), supplierID, fullSync, dryRun, batchSize)
 	if err != nil {
 		if status.Code(err) == 404 {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Supplier not found"})

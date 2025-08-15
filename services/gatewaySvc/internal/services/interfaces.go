@@ -79,23 +79,15 @@ type InventoryService interface {
 	// Remove stock from an inventory item
 	RemoveStock(ctx context.Context, id string, quantity int32, reason, reference string) (interface{}, error)
 	
-	// POS-related inventory operations
-	
-	// PerformPOSInventoryCheck checks inventory availability for POS
-	PerformPOSInventoryCheck(ctx context.Context, locationID string, items []map[string]interface{}) (interface{}, error)
-	
-	// ReserveForPOSTransaction reserves inventory for POS transactions
-	ReserveForPOSTransaction(ctx context.Context, locationID string, orderID string, items []map[string]interface{}) (interface{}, error)
-	
-	// CompletePickup marks a pickup as complete
-	CompletePickup(ctx context.Context, reservationID string, staffID string, notes string) (interface{}, error)
-	
-	// DeductForDirectPOSTransaction directly deducts inventory for POS sales
-	DeductForDirectPOSTransaction(ctx context.Context, locationID string, staffID string, items []map[string]interface{}, reason string) (interface{}, error)
+	// Note: POS inventory operations are now handled through standard inventory methods:
+	// - Inventory check: via GetInventoryItemBySKU with availability parameters
+	// - Reservations: via standard reservation methods with source parameter
+	// - Deductions: via RemoveStock with source parameter
 	
 	// GetInventoryReservations gets inventory reservations with optional filters
 	GetInventoryReservations(ctx context.Context, orderId, productId, status string, limit, offset int) (interface{}, error)
-	
+	// CreateInventoryReservation creates a new inventory reservation (supports POS source tracking)
+	CreateInventoryReservation(ctx context.Context, productID string, quantity int32, orderID string) (interface{}, error)
 	// GetLowStockItems gets inventory items that are low in stock with threshold and location filtering
 	GetLowStockItems(ctx context.Context, location string, threshold, limit, offset int) (interface{}, error)
 }
@@ -107,7 +99,7 @@ type StoreService interface {
 	// GetStore retrieves a store by ID
 	GetStore(ctx context.Context, id string) (interface{}, error)
 	// CreateStore creates a new store
-	CreateStore(ctx context.Context, name, address string) (interface{}, error)
+	CreateStore(ctx context.Context, name, description, street, city, state, country, postalCode, phone, email string) (interface{}, error)
 }
 
 // OrderService defines the interface for order operations
@@ -118,8 +110,8 @@ type OrderService interface {
 	// Get a specific order for a user
 	GetUserOrder(ctx context.Context, orderID, userID string) (interface{}, error)
 	
-	// Create a new order
-	CreateOrder(ctx context.Context, userID string, items []map[string]interface{}, addressID, paymentType string, paymentData map[string]string, shippingType, notes string) (interface{}, error)
+	// Create a new order (supports both online and POS orders via source parameter)
+	CreateOrder(ctx context.Context, userID string, items []map[string]interface{}, addressID, paymentType string, paymentData map[string]string, shippingType, notes, source, storeID string, customerInfo map[string]string) (interface{}, error)
 	
 	// List all orders (admin/staff)
 	ListOrders(ctx context.Context, status, userID, startDate, endDate string, limit, offset int) (interface{}, error)
@@ -131,14 +123,6 @@ type OrderService interface {
 	UpdateOrderStatus(ctx context.Context, orderID, status, description string) error
 	
 	// Add payment to an order (admin/staff)
-	
-	// POS-related order operations
-	
-	// CreatePOSOrder creates an order from a POS terminal
-	CreatePOSOrder(ctx context.Context, userID string, items []map[string]interface{}, locationID, staffID, paymentType string, paymentData map[string]string, notes string) (interface{}, error)
-	
-	// ProcessQuickPOSTransaction creates and processes a POS order in one step
-	ProcessQuickPOSTransaction(ctx context.Context, locationID, staffID string, items []map[string]interface{}, paymentInfo map[string]interface{}) (interface{}, error)
 	AddOrderPayment(ctx context.Context, orderID string, amount float64, paymentType, reference, status string, date time.Time, description string, metadata map[string]string) error
 	
 	// Add tracking info to an order (admin/staff)
@@ -183,28 +167,28 @@ type UserService interface {
 // SupplierService defines the interface for supplier operations
 type SupplierService interface {
 	// Create a new supplier
-	CreateSupplier(ctx context.Context, req *supplierv1.CreateSupplierRequest) (*supplierv1.Supplier, error)
+	CreateSupplier(ctx context.Context, name, contactPerson, email, phone, address, city, state, country, postalCode, taxID, website, currency, paymentTerms string, leadTimeDays int32, metadata map[string]string) (interface{}, error)
 	// Get a supplier by ID
-	GetSupplier(ctx context.Context, id string) (*supplierv1.Supplier, error)
+	GetSupplier(ctx context.Context, id string) (interface{}, error)
 	// Update an existing supplier
-	UpdateSupplier(ctx context.Context, req *supplierv1.UpdateSupplierRequest) (*supplierv1.Supplier, error)
+	UpdateSupplier(ctx context.Context, id, name, contactPerson, email, phone, address, city, state, country, postalCode, taxID, website, currency, paymentTerms string, leadTimeDays int32, metadata map[string]string) (interface{}, error)
 	// Delete a supplier
 	DeleteSupplier(ctx context.Context, id string) error
 	// List suppliers with pagination and search
-	ListSuppliers(ctx context.Context, page, pageSize int32, search string) ([]*supplierv1.Supplier, int32, error)
+	ListSuppliers(ctx context.Context, page, pageSize int32, search string) (interface{}, error)
 	// Close closes the connection to the supplier service
 	Close() error
 	
 	// ListAdapters returns all available supplier adapters
-	ListAdapters(ctx context.Context) ([]*supplierv1.SupplierAdapter, error)
+	ListAdapters(ctx context.Context) (interface{}, error)
 	// GetAdapterCapabilities returns the capabilities of a specific adapter
-	GetAdapterCapabilities(ctx context.Context, adapterName string) (*supplierv1.AdapterCapabilities, error)
+	GetAdapterCapabilities(ctx context.Context, adapterName string) (interface{}, error)
 	// TestAdapterConnection tests the connection to a supplier's system using the specified adapter
 	TestAdapterConnection(ctx context.Context, adapterName string, config map[string]string) error
 	// SyncProducts synchronizes products from a supplier using their configured adapter
-	SyncProducts(ctx context.Context, supplierID string, options *supplierv1.SyncOptions) (string, error)
+	SyncProducts(ctx context.Context, supplierID string, fullSync, dryRun bool, batchSize int32) (string, error)
 	// SyncInventory synchronizes inventory from a supplier using their configured adapter
-	SyncInventory(ctx context.Context, supplierID string, options *supplierv1.SyncOptions) (string, error)
+	SyncInventory(ctx context.Context, supplierID string, fullSync, dryRun bool, batchSize int32) (string, error)
 }
 
 // POSService defines the interface for point-of-sale operations

@@ -202,20 +202,54 @@ func (c *Client) CancelOrder(ctx context.Context, id, reason string) error {
 	return nil
 }
 
+// AddPayment adds payment information to an order
+func (c *Client) AddPayment(ctx context.Context, orderID, method, transactionID string, amount float64) error {
+	req := &orderv1.AddPaymentRequest{
+		OrderId:       orderID,
+		Method:        method,
+		TransactionId: transactionID,
+		Amount:        amount,
+	}
+
+	_, err := c.client.AddPayment(ctx, req)
+	if err != nil {
+		return fmt.Errorf("failed to add payment to order: %w", err)
+	}
+
+	return nil
+}
+
+// AddTrackingCode adds a tracking code to an order
+func (c *Client) AddTrackingCode(ctx context.Context, orderID, trackingCode string) error {
+	req := &orderv1.AddTrackingCodeRequest{
+		OrderId:      orderID,
+		TrackingCode: trackingCode,
+	}
+
+	_, err := c.client.AddTrackingCode(ctx, req)
+	if err != nil {
+		return fmt.Errorf("failed to add tracking code to order: %w", err)
+	}
+
+	return nil
+}
+
 // Helper function to convert string status to protobuf enum
 func convertStringToOrderStatus(status string) orderv1.OrderStatus {
 	switch status {
-	case "pending":
+	case "CREATED":
+		return orderv1.OrderStatus_ORDER_STATUS_CREATED
+	case "PENDING":
 		return orderv1.OrderStatus_ORDER_STATUS_PENDING
-	case "paid", "confirmed":
+	case "PAID":
 		return orderv1.OrderStatus_ORDER_STATUS_PAID
-	case "shipped":
+	case "SHIPPED":
 		return orderv1.OrderStatus_ORDER_STATUS_SHIPPED
-	case "delivered":
+	case "DELIVERED":
 		return orderv1.OrderStatus_ORDER_STATUS_DELIVERED
-	case "cancelled":
+	case "CANCELLED":
 		return orderv1.OrderStatus_ORDER_STATUS_CANCELLED
 	default:
-		return orderv1.OrderStatus_ORDER_STATUS_PENDING
+		return orderv1.OrderStatus_ORDER_STATUS_UNSPECIFIED
 	}
 }

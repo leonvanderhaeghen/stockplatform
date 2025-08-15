@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"fmt"
 	"time"
 	"math/rand"
 
@@ -94,39 +95,56 @@ func (s *POSTransactionService) ProcessTransaction(
 	}
 	defer inventoryClient.Close()
 
-	// Create gRPC request items
-	grpcItems := make([]*inventorypb.InventoryAdjustmentItem, 0, len(adjustmentItems))
+	// Process each adjustment item using proper client abstraction with primitive parameters
+	allSuccess := true
+	adjustmentResults := make([]*ProcessedItem, 0, len(adjustmentItems))
+	
 	for _, item := range adjustmentItems {
-		grpcItems = append(grpcItems, &inventorypb.InventoryAdjustmentItem{
-			ProductId:       item.ProductID,
-			Sku:             item.SKU,
-			Quantity:        item.Quantity,
-			Reason:          item.Reason,
-			InventoryItemId: item.InventoryItemID,
+		// Use appropriate client method based on adjustment type
+		var success bool
+		var err error
+		
+		if item.Quantity > 0 {
+			// Adding stock
+			success, err = inventoryClient.AddStock(ctx, item.InventoryItemID, item.Quantity, item.Reason, staffID)
+		} else {
+			// Removing stock (quantity will be negative, so negate it)
+			success, err = inventoryClient.RemoveStock(ctx, item.InventoryItemID, -item.Quantity, item.Reason, staffID)
+		}
+		
+		if err != nil || !success {
+			allSuccess = false
+			adjustmentResults = append(adjustmentResults, &ProcessedItem{
+				ProductID:    item.ProductID,
+				SKU:          item.SKU,
+				Quantity:     item.Quantity,
+				Success:      false,
+				Description:  "Inventory adjustment failed",
+				ErrorMessage: "Failed to adjust inventory",
+			})
+			continue
+		}
+		
+		adjustmentResults = append(adjustmentResults, &ProcessedItem{
+			ProductID:   item.ProductID,
+			SKU:         item.SKU,
+			Quantity:    item.Quantity,
+			Success:     true,
+			Description: "Inventory adjusted successfully",
 		})
 	}
-
-	// Call inventory service to adjust stock
-	adjustReq := &inventorypb.AdjustInventoryForOrderRequest{
-		OrderId:        transactionID,
-		LocationId:     locationID,
-		AdjustmentType: transactionType,
-		ReferenceId:    referenceOrderID,
-		Items:          grpcItems,
-		StaffId:        staffID,
+	
+	if !allSuccess {
+		return nil, fmt.Errorf("some inventory adjustments failed")
 	}
 
-	adjustResp, err := inventoryClient.AdjustInventoryForOrder(ctx, adjustReq)
-	if err != nil {
-		return nil, err
-	}
-
-	// Process transaction results based on inventory adjustment
+	// Process transaction results using the adjustment results we created
 	processedItems := make([]*ProcessedItem, 0, len(items))
 	for i, item := range items {
-		var adjustResult *inventorypb.InventoryAdjustmentResult
-		if i < len(adjustResp.Items) {
-			adjustResult = adjustResp.Items[i]
+		// Find corresponding adjustment result
+		var adjustResult *ProcessedItem
+		if i < len(adjustmentResults) {
+			adjustResult = adjustmentResults[i]
 		}
 
 		result := &ProcessedItem{
@@ -151,7 +169,7 @@ func (s *POSTransactionService) ProcessTransaction(
 	// Create response
 	result := &TransactionResult{
 		TransactionID:  transactionID,
-		Success:        adjustResp.Success,
+		Success:        allSuccess,
 		ProcessedItems: processedItems,
 		CompletedAt:    time.Now(),
 		ReceiptURL:     s.generateReceiptURL(transactionID),

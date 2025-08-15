@@ -7,6 +7,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
+	"github.com/leonvanderhaeghen/stockplatform/pkg/models"
 	storev1 "github.com/leonvanderhaeghen/stockplatform/services/storeSvc/api/gen/go/api/proto/store/v1"
 )
 
@@ -36,17 +37,52 @@ func (c *Client) Close() error {
 	return c.conn.Close()
 }
 
-// Store Management Methods
-func (c *Client) CreateStore(ctx context.Context, req *storev1.CreateStoreRequest) (*storev1.CreateStoreResponse, error) {
-	return c.client.CreateStore(ctx, req)
+// Store Management Methods - Using primitive parameters and domain models
+func (c *Client) CreateStore(ctx context.Context, name, description, street, city, state, country, postalCode, phone, email string) (*models.Store, error) {
+	req := &storev1.CreateStoreRequest{
+		Name:        name,
+		Description: description,
+		Address: &storev1.Address{
+			Street:     street,
+			City:       city,
+			State:      state,
+			Country:    country,
+			PostalCode: postalCode,
+		},
+		Phone: phone,
+		Email: email,
+	}
+	resp, err := c.client.CreateStore(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return convertStoreFromProto(resp.GetStore()), nil
 }
 
-func (c *Client) GetStore(ctx context.Context, req *storev1.GetStoreRequest) (*storev1.GetStoreResponse, error) {
-	return c.client.GetStore(ctx, req)
+func (c *Client) GetStore(ctx context.Context, id string) (*models.Store, error) {
+	req := &storev1.GetStoreRequest{Id: id}
+	resp, err := c.client.GetStore(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return convertStoreFromProto(resp.GetStore()), nil
 }
 
-func (c *Client) ListStores(ctx context.Context, req *storev1.ListStoresRequest) (*storev1.ListStoresResponse, error) {
-	return c.client.ListStores(ctx, req)
+func (c *Client) ListStores(ctx context.Context, limit, offset int32) ([]*models.Store, error) {
+	req := &storev1.ListStoresRequest{
+		Limit:  limit,
+		Offset: offset,
+	}
+	resp, err := c.client.ListStores(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	
+	stores := make([]*models.Store, len(resp.GetStores()))
+	for i, store := range resp.GetStores() {
+		stores[i] = convertStoreFromProto(store)
+	}
+	return stores, nil
 }
 
 func (c *Client) UpdateStore(ctx context.Context, req *storev1.UpdateStoreRequest) (*storev1.UpdateStoreResponse, error) {

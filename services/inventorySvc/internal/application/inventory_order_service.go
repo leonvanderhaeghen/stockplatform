@@ -57,13 +57,11 @@ func (s *InventoryOrderService) ProcessOrderUpdate(
 	orderID string,
 	newStatus string,
 ) error {
-	// Get the order details
-	orderResp, err := s.orderClient.GetOrder(ctx, &orderpb.GetOrderRequest{Id: orderID})
+	// Get the order details using client abstraction
+	order, err := s.orderClient.GetOrder(ctx, orderID)
 	if err != nil {
 		return fmt.Errorf("failed to get order: %w", err)
 	}
-
-	order := orderResp.GetOrder()
 	
 	// Get fulfillment location from order metadata or shipping address - fallback to local location if not specified
 	fulfillmentLocationID := s.localLocationID
@@ -74,58 +72,58 @@ func (s *InventoryOrderService) ProcessOrderUpdate(
 	switch newStatus {
 	case "processing":
 		// Reserve inventory when order is being processed
-		for _, item := range order.GetItems() {
+		for _, item := range order.Items {
 			// Get inventory item for this product at the fulfillment location
 			inventory, err := s.inventoryService.GetInventoryItemByProductAndLocation(ctx, 
-				item.GetProductId(), fulfillmentLocationID)
+				item.ProductID, fulfillmentLocationID)
 			if err != nil {
 				return fmt.Errorf("failed to get inventory for product %s at location %s: %w",
-					item.GetProductId(), fulfillmentLocationID, err)
+					item.ProductID, fulfillmentLocationID, err)
 			}
 			
 			// Reserve stock
-			err = s.inventoryService.ReserveStock(ctx, inventory.ID, int32(item.GetQuantity()))
+			err = s.inventoryService.ReserveStock(ctx, inventory.ID, int32(item.Quantity))
 			if err != nil {
 				return fmt.Errorf("failed to reserve stock for product %s: %w", 
-					item.GetProductId(), err)
+					item.ProductID, err)
 			}
 		}
 
 	case "shipped":
 		// Fulfill reservation when order is shipped
-		for _, item := range order.GetItems() {
+		for _, item := range order.Items {
 			// Get inventory item for this product at the fulfillment location
 			inventory, err := s.inventoryService.GetInventoryItemByProductAndLocation(ctx, 
-				item.GetProductId(), fulfillmentLocationID)
+				item.ProductID, fulfillmentLocationID)
 			if err != nil {
 				return fmt.Errorf("failed to get inventory for product %s at location %s: %w",
-					item.GetProductId(), fulfillmentLocationID, err)
+					item.ProductID, fulfillmentLocationID, err)
 			}
 			
 			// Fulfill reservation
-			err = s.inventoryService.FulfillReservation(ctx, inventory.ID, int32(item.GetQuantity()))
+			err = s.inventoryService.FulfillReservation(ctx, inventory.ID, int32(item.Quantity))
 			if err != nil {
 				return fmt.Errorf("failed to fulfill reservation for product %s: %w", 
-					item.GetProductId(), err)
+					item.ProductID, err)
 			}
 		}
 
 	case "cancelled":
 		// Release reservation when order is cancelled
-		for _, item := range order.GetItems() {
+		for _, item := range order.Items {
 			// Get inventory item for this product at the fulfillment location
 			inventory, err := s.inventoryService.GetInventoryItemByProductAndLocation(ctx, 
-				item.GetProductId(), fulfillmentLocationID)
+				item.ProductID, fulfillmentLocationID)
 			if err != nil {
 				return fmt.Errorf("failed to get inventory for product %s at location %s: %w",
-					item.GetProductId(), fulfillmentLocationID, err)
+					item.ProductID, fulfillmentLocationID, err)
 			}
 			
 			// Release reservation
-			err = s.inventoryService.ReleaseReservation(ctx, inventory.ID, int32(item.GetQuantity()))
+			err = s.inventoryService.ReleaseReservation(ctx, inventory.ID, int32(item.Quantity))
 			if err != nil {
 				return fmt.Errorf("failed to release reservation for product %s: %w", 
-					item.GetProductId(), err)
+					item.ProductID, err)
 			}
 		}
 	}
@@ -138,13 +136,11 @@ func (s *InventoryOrderService) CheckInventoryForOrder(
 	ctx context.Context,
 	orderID string,
 ) (bool, error) {
-	// Get the order details
-	orderResp, err := s.orderClient.GetOrder(ctx, &orderpb.GetOrderRequest{Id: orderID})
+	// Get the order details using client abstraction
+	order, err := s.orderClient.GetOrder(ctx, orderID)
 	if err != nil {
 		return false, fmt.Errorf("failed to get order: %w", err)
 	}
-
-	order := orderResp.GetOrder()
 	
 	// Get fulfillment location from order metadata or shipping address - fallback to local location if not specified
 	fulfillmentLocationID := s.localLocationID
@@ -152,25 +148,25 @@ func (s *InventoryOrderService) CheckInventoryForOrder(
 	// For now we'll use the default location but this can be extended when the order service is updated
 	
 	// Check inventory for each item at the specified fulfillment location
-	for _, item := range order.GetItems() {
+	for _, item := range order.Items {
 		// Get inventory for product at this specific location
 		inventory, err := s.inventoryService.GetInventoryItemByProductAndLocation(ctx, 
-			item.GetProductId(), fulfillmentLocationID)
+			item.ProductID, fulfillmentLocationID)
 		if err != nil {
 			// If not found at the specified location, we could check other locations or just report not available
 			s.logger.Warn("Product not available at requested fulfillment location", 
-				zap.String("product_id", item.GetProductId()),
+				zap.String("product_id", item.ProductID),
 				zap.String("location_id", fulfillmentLocationID))
 			return false, nil
 		}
 
 		// Check if there's enough available stock
-		if !inventory.IsAvailable(int32(item.GetQuantity())) {
+		if !inventory.IsAvailable(int32(item.Quantity)) {
 			s.logger.Warn("Insufficient stock",
-				zap.String("product_id", item.GetProductId()),
+				zap.String("product_id", item.ProductID),
 				zap.String("location_id", fulfillmentLocationID),
 				zap.Int32("available", inventory.Quantity - inventory.Reserved),
-				zap.Int32("requested", int32(item.GetQuantity())))
+				zap.Int32("requested", int32(item.Quantity)))
 			return false, nil
 		}
 	}
@@ -184,13 +180,11 @@ func (s *InventoryOrderService) FindBestFulfillmentLocation(
 	ctx context.Context,
 	orderID string,
 ) (string, error) {
-	// Get the order details
-	orderResp, err := s.orderClient.GetOrder(ctx, &orderpb.GetOrderRequest{Id: orderID})
+	// Get the order details using client abstraction
+	order, err := s.orderClient.GetOrder(ctx, orderID)
 	if err != nil {
 		return "", fmt.Errorf("failed to get order: %w", err)
 	}
-	
-	order := orderResp.GetOrder()
 
 	// Get all active locations
 	locations, err := s.locationService.ListLocations(ctx, 100, 0, false)
@@ -213,12 +207,12 @@ func (s *InventoryOrderService) FindBestFulfillmentLocation(
 		hasAllItems := true
 		
 		// Check if this location has enough inventory for all items
-		for _, item := range order.GetItems() {
+		for _, item := range order.Items {
 			// Get inventory for this product at this location
 			inventory, err := s.inventoryService.GetInventoryItemByProductAndLocation(
-				ctx, item.GetProductId(), location.ID)
+				ctx, item.ProductID, location.ID)
 			
-			if err != nil || inventory == nil || !inventory.IsAvailable(int32(item.GetQuantity())) {
+			if err != nil || inventory == nil || !inventory.IsAvailable(int32(item.Quantity)) {
 				hasAllItems = false
 				break
 			}
@@ -241,11 +235,11 @@ func (s *InventoryOrderService) FindBestFulfillmentLocation(
 		hasAllItems := true
 		
 		// Check if this location has enough inventory for all items
-		for _, item := range order.GetItems() {
+		for _, item := range order.Items {
 			inventory, err := s.inventoryService.GetInventoryItemByProductAndLocation(
-				ctx, item.GetProductId(), location.ID)
+				ctx, item.ProductID, location.ID)
 				
-			if err != nil || inventory == nil || !inventory.IsAvailable(int32(item.GetQuantity())) {
+			if err != nil || inventory == nil || !inventory.IsAvailable(item.Quantity) {
 				hasAllItems = false
 				break
 			}

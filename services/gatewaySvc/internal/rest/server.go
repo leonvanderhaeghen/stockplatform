@@ -149,6 +149,7 @@ func (s *Server) SetupRoutes() {
 	{
 		inventory.GET("", s.listInventory)
 		inventory.GET("/reservations", s.getInventoryReservations)
+		inventory.POST("/reservations", s.createInventoryReservation)
 		inventory.GET("/low-stock", s.getLowStockItems)
 		inventory.GET("/:id", s.getInventoryItem)
 		inventory.GET("/product/:productId", s.getInventoryItemByProduct)
@@ -215,22 +216,12 @@ func (s *Server) SetupRoutes() {
         stores.GET("/:id", s.getStore)
 	}
 	
-	// POS (Point of Sale) routes (admin/staff only)
-	pos := v1.Group("/pos")
-	pos.Use(s.authMiddleware(), s.staffMiddleware())
-	{
-		// Order creation and processing
-		pos.POST("/orders", s.createPOSOrder)
-		pos.POST("/transactions/quick", s.processQuickPOSTransaction)
-		
-		// Inventory operations
-		pos.POST("/inventory/check", s.checkPOSInventory)
-		pos.POST("/inventory/reserve", s.reserveForPOSTransaction)
-		pos.POST("/inventory/deduct", s.deductForDirectPOSSale)
-		
-		// In-store pickup
-		pos.POST("/pickup/complete", s.completePickup)
-	}
+	// Note: All POS operations are now consolidated into standard endpoints:
+	// - POS order creation: POST /orders (with source="POS" parameter)
+	// - POS inventory check: GET /inventory (with availability query params)
+	// - POS inventory reserve: POST /inventory/reservations (with source parameter)
+	// - POS inventory deduct: POST /inventory/:id/stock/remove (with source parameter)
+	// - Pickup completion: PUT /orders/{id}/status (status="PICKUP_COMPLETED")
 }
 
 // Start starts the server

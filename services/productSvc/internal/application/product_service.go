@@ -120,7 +120,8 @@ func (s *ProductService) CreateProduct(ctx context.Context, input *domain.Produc
 		return nil, domain.ErrSupplierRequired
 	}
 
-	_, err := s.supplierClient.GetSupplier(ctx, &supplierv1.GetSupplierRequest{Id: input.SupplierID})
+	// Use client abstraction instead of direct protobuf
+	_, err := s.supplierClient.GetSupplier(ctx, input.SupplierID)
 	if err != nil {
 		s.logger.Error("Invalid supplier ID", 
 			zap.String("supplierID", input.SupplierID), 
@@ -192,15 +193,8 @@ func (s *ProductService) CreateProduct(ctx context.Context, input *domain.Produc
 		return nil, fmt.Errorf("failed to create product: %w", err)
 	}
 
-	// Create inventory item for the product
-	inventoryReq := &inventoryv1.CreateInventoryRequest{
-		ProductId:  product.ID.Hex(),
-		Sku:        product.SKU,
-		Quantity:   0,
-		LocationId: "default",
-	}
-
-	_, err = s.inventoryClient.CreateInventory(ctx, inventoryReq)
+	// Create inventory item for the product using client abstraction
+	_, err = s.inventoryClient.CreateInventory(ctx, product.ID.Hex(), product.SKU, "default", 0)
 	if err != nil {
 		s.logger.Error("Failed to create inventory item", 
 			zap.String("product_id", product.ID.Hex()),
@@ -250,7 +244,8 @@ func (s *ProductService) UpdateProduct(ctx context.Context, input *domain.Produc
 
 	// If supplier ID is being updated, validate the new supplier exists
 	if input.SupplierID != "" && input.SupplierID != existing.SupplierID {
-		_, err := s.supplierClient.GetSupplier(ctx, &supplierv1.GetSupplierRequest{Id: input.SupplierID})
+		// Use client abstraction instead of direct protobuf
+		_, err := s.supplierClient.GetSupplier(ctx, input.SupplierID)
 		if err != nil {
 			s.logger.Error("Invalid supplier ID", 
 				zap.String("supplierID", input.SupplierID), 
@@ -726,8 +721,8 @@ func (s *ProductService) BulkUpdateProductVisibility(ctx context.Context, suppli
 		return fmt.Errorf("no product IDs provided")
 	}
 
-	// Check if supplier exists
-	_, err := s.supplierClient.GetSupplier(ctx, &supplierv1.GetSupplierRequest{Id: supplierID})
+	// Check if supplier exists using client abstraction
+	_, err := s.supplierClient.GetSupplier(ctx, supplierID)
 	if err != nil {
 		s.logger.Error("Invalid supplier ID",
 			zap.String("supplierID", supplierID),
@@ -821,8 +816,8 @@ func (s *ProductService) GetProductsBySupplier(
 		return nil, 0, domain.ErrSupplierRequired
 	}
 
-	// Check if supplier exists
-	_, err := s.supplierClient.GetSupplier(ctx, &supplierv1.GetSupplierRequest{Id: supplierID})
+	// Check if supplier exists using client abstraction
+	_, err := s.supplierClient.GetSupplier(ctx, supplierID)
 	if err != nil {
 		s.logger.Error("Invalid supplier ID",
 			zap.String("supplierID", supplierID),

@@ -117,7 +117,7 @@ func (c *Client) ListProducts(ctx context.Context, categoryID, supplierID string
 }
 
 // ListCategories lists all product categories
-func (c *Client) ListCategories(ctx context.Context, parentID string, limit, offset int32) (*productv1.ListCategoriesResponse, error) {
+func (c *Client) ListCategories(ctx context.Context, parentID string, limit, offset int32) ([]*models.Category, error) {
 	c.logger.Debug("Listing categories")
 	
 	req := &productv1.ListCategoriesRequest{
@@ -131,12 +131,11 @@ func (c *Client) ListCategories(ctx context.Context, parentID string, limit, off
 		return nil, fmt.Errorf("failed to list categories: %w", err)
 	}
 	
-	// Note: Returning protobuf response for now as category domain models not defined
-	return resp, nil
+	return convertToCategories(resp.Categories), nil
 }
 
 // CreateCategory creates a new product category
-func (c *Client) CreateCategory(ctx context.Context, name, description, parentID string) (*productv1.CreateCategoryResponse, error) {
+func (c *Client) CreateCategory(ctx context.Context, name, description, parentID string) (*models.Category, error) {
 	c.logger.Debug("Creating category", zap.String("name", name))
 	
 	req := &productv1.CreateCategoryRequest{
@@ -152,6 +151,6 @@ func (c *Client) CreateCategory(ctx context.Context, name, description, parentID
 	}
 	
 	c.logger.Debug("Category created successfully", zap.String("id", resp.Category.Id))
-	// Note: Returning protobuf response for now as category domain models not defined
-	return resp, nil
+	category := convertProtoCategory(resp.Category)
+	return &category, nil
 }

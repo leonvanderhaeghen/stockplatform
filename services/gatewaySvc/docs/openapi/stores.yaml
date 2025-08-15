@@ -1,0 +1,769 @@
+openapi: 3.0.3
+info:
+  title: StockPlatform Store Management API
+  description: Store location management for the StockPlatform microservices
+  version: 1.0.0
+  contact:
+    name: StockPlatform API Support
+    email: support@stockplatform.com
+
+servers:
+  - url: http://localhost:8080
+    description: Development server
+  - url: https://api.stockplatform.com
+    description: Production server
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Store:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique store identifier
+        name:
+          type: string
+          description: Store name
+        address:
+          $ref: '#/components/schemas/Address'
+        phone:
+          type: string
+          description: Store phone number
+        email:
+          type: string
+          format: email
+          description: Store email address
+        manager_id:
+          type: string
+          description: Store manager user ID
+        operating_hours:
+          type: object
+          properties:
+            monday:
+              $ref: '#/components/schemas/DayHours'
+            tuesday:
+              $ref: '#/components/schemas/DayHours'
+            wednesday:
+              $ref: '#/components/schemas/DayHours'
+            thursday:
+              $ref: '#/components/schemas/DayHours'
+            friday:
+              $ref: '#/components/schemas/DayHours'
+            saturday:
+              $ref: '#/components/schemas/DayHours'
+            sunday:
+              $ref: '#/components/schemas/DayHours'
+          description: Store operating hours by day
+        coordinates:
+          type: object
+          properties:
+            latitude:
+              type: number
+              format: float
+              description: Store latitude
+            longitude:
+              type: number
+              format: float
+              description: Store longitude
+          description: Store geographical coordinates
+        is_active:
+          type: boolean
+          description: Whether store is active
+        supports_pickup:
+          type: boolean
+          description: Whether store supports pickup orders
+        supports_pos:
+          type: boolean
+          description: Whether store has POS capabilities
+        timezone:
+          type: string
+          description: Store timezone
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+
+    Address:
+      type: object
+      properties:
+        street:
+          type: string
+          description: Street address
+        city:
+          type: string
+          description: City
+        state:
+          type: string
+          description: State or province
+        postal_code:
+          type: string
+          description: Postal code
+        country:
+          type: string
+          description: Country
+
+    DayHours:
+      type: object
+      properties:
+        open:
+          type: string
+          pattern: '^([01]?[0-9]|2[0-3]):[0-5][0-9]$'
+          description: Opening time (HH:MM format)
+        close:
+          type: string
+          pattern: '^([01]?[0-9]|2[0-3]):[0-5][0-9]$'
+          description: Closing time (HH:MM format)
+        is_closed:
+          type: boolean
+          default: false
+          description: Whether store is closed on this day
+
+    CreateStoreRequest:
+      type: object
+      required:
+        - name
+        - address
+      properties:
+        name:
+          type: string
+          description: Store name
+        address:
+          type: string
+          description: Store address (simplified for basic implementation)
+        phone:
+          type: string
+          description: Store phone number
+        email:
+          type: string
+          format: email
+          description: Store email address
+        manager_id:
+          type: string
+          description: Store manager user ID
+        operating_hours:
+          type: object
+          properties:
+            monday:
+              $ref: '#/components/schemas/DayHours'
+            tuesday:
+              $ref: '#/components/schemas/DayHours'
+            wednesday:
+              $ref: '#/components/schemas/DayHours'
+            thursday:
+              $ref: '#/components/schemas/DayHours'
+            friday:
+              $ref: '#/components/schemas/DayHours'
+            saturday:
+              $ref: '#/components/schemas/DayHours'
+            sunday:
+              $ref: '#/components/schemas/DayHours'
+          description: Store operating hours by day
+        coordinates:
+          type: object
+          properties:
+            latitude:
+              type: number
+              format: float
+              description: Store latitude
+            longitude:
+              type: number
+              format: float
+              description: Store longitude
+          description: Store geographical coordinates
+        supports_pickup:
+          type: boolean
+          default: true
+          description: Whether store supports pickup orders
+        supports_pos:
+          type: boolean
+          default: true
+          description: Whether store has POS capabilities
+        timezone:
+          type: string
+          default: "UTC"
+          description: Store timezone
+
+    UpdateStoreRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Store name
+        address:
+          type: string
+          description: Store address (simplified for basic implementation)
+        phone:
+          type: string
+          description: Store phone number
+        email:
+          type: string
+          format: email
+          description: Store email address
+        manager_id:
+          type: string
+          description: Store manager user ID
+        operating_hours:
+          type: object
+          properties:
+            monday:
+              $ref: '#/components/schemas/DayHours'
+            tuesday:
+              $ref: '#/components/schemas/DayHours'
+            wednesday:
+              $ref: '#/components/schemas/DayHours'
+            thursday:
+              $ref: '#/components/schemas/DayHours'
+            friday:
+              $ref: '#/components/schemas/DayHours'
+            saturday:
+              $ref: '#/components/schemas/DayHours'
+            sunday:
+              $ref: '#/components/schemas/DayHours'
+          description: Store operating hours by day
+        coordinates:
+          type: object
+          properties:
+            latitude:
+              type: number
+              format: float
+              description: Store latitude
+            longitude:
+              type: number
+              format: float
+              description: Store longitude
+          description: Store geographical coordinates
+        is_active:
+          type: boolean
+          description: Whether store is active
+        supports_pickup:
+          type: boolean
+          description: Whether store supports pickup orders
+        supports_pos:
+          type: boolean
+          description: Whether store has POS capabilities
+        timezone:
+          type: string
+          description: Store timezone
+
+    ListStoresResponse:
+      type: object
+      properties:
+        stores:
+          type: array
+          items:
+            $ref: '#/components/schemas/Store'
+        total:
+          type: integer
+          description: Total number of stores
+        limit:
+          type: integer
+          description: Number of items per page
+        offset:
+          type: integer
+          description: Starting offset
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+
+    SuccessMessage:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Success message
+
+security:
+  - BearerAuth: []
+
+paths:
+  /api/v1/stores:
+    get:
+      summary: List stores
+      description: List all stores with pagination
+      tags:
+        - Store Management
+      parameters:
+        - name: limit
+          in: query
+          description: Number of items per page (default: 10)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: offset
+          in: query
+          description: Starting offset (default: 0)
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: active
+          in: query
+          description: Filter by active status
+          schema:
+            type: boolean
+        - name: supports_pickup
+          in: query
+          description: Filter by pickup support
+          schema:
+            type: boolean
+        - name: supports_pos
+          in: query
+          description: Filter by POS support
+          schema:
+            type: boolean
+        - name: city
+          in: query
+          description: Filter by city
+          schema:
+            type: string
+        - name: state
+          in: query
+          description: Filter by state
+          schema:
+            type: string
+        - name: country
+          in: query
+          description: Filter by country
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListStoresResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      summary: Create a new store
+      description: Create a new store location
+      tags:
+        - Store Management
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateStoreRequest'
+      responses:
+        '201':
+          description: Store created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Store'
+        '400':
+          description: Bad request - Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/stores/{id}:
+    get:
+      summary: Get store by ID
+      description: Get a store by its ID
+      tags:
+        - Store Management
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Store ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Store'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Store not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      summary: Update store
+      description: Update an existing store
+      tags:
+        - Store Management
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Store ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateStoreRequest'
+      responses:
+        '200':
+          description: Store updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Store'
+        '400':
+          description: Bad request - Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Store not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Delete store
+      description: Delete a store by its ID
+      tags:
+        - Store Management
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Store ID
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Store deleted successfully
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Store not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/stores/nearby:
+    get:
+      summary: Find nearby stores
+      description: Find stores near a specific location
+      tags:
+        - Store Location
+      parameters:
+        - name: lat
+          in: query
+          required: true
+          description: Latitude
+          schema:
+            type: number
+            format: float
+        - name: lng
+          in: query
+          required: true
+          description: Longitude
+          schema:
+            type: number
+            format: float
+        - name: radius
+          in: query
+          description: Search radius in kilometers (default: 10)
+          schema:
+            type: number
+            format: float
+            minimum: 0.1
+            maximum: 100
+            default: 10
+        - name: supports_pickup
+          in: query
+          description: Filter by pickup support
+          schema:
+            type: boolean
+        - name: supports_pos
+          in: query
+          description: Filter by POS support
+          schema:
+            type: boolean
+        - name: limit
+          in: query
+          description: Maximum number of stores to return (default: 10)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  allOf:
+                    - $ref: '#/components/schemas/Store'
+                    - type: object
+                      properties:
+                        distance:
+                          type: number
+                          format: float
+                          description: Distance from search location in kilometers
+        '400':
+          description: Bad request - Invalid coordinates or parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/stores/{id}/hours:
+    get:
+      summary: Get store operating hours
+      description: Get operating hours for a specific store
+      tags:
+        - Store Operations
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Store ID
+          schema:
+            type: string
+        - name: date
+          in: query
+          description: Check hours for specific date (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  store_id:
+                    type: string
+                  date:
+                    type: string
+                    format: date
+                  day_of_week:
+                    type: string
+                    enum: [monday, tuesday, wednesday, thursday, friday, saturday, sunday]
+                  hours:
+                    $ref: '#/components/schemas/DayHours'
+                  is_open:
+                    type: boolean
+                    description: Whether store is open on the requested date
+                  special_hours:
+                    type: string
+                    description: Any special hours or holiday information
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Store not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      summary: Update store operating hours
+      description: Update operating hours for a specific store
+      tags:
+        - Store Operations
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Store ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                operating_hours:
+                  type: object
+                  properties:
+                    monday:
+                      $ref: '#/components/schemas/DayHours'
+                    tuesday:
+                      $ref: '#/components/schemas/DayHours'
+                    wednesday:
+                      $ref: '#/components/schemas/DayHours'
+                    thursday:
+                      $ref: '#/components/schemas/DayHours'
+                    friday:
+                      $ref: '#/components/schemas/DayHours'
+                    saturday:
+                      $ref: '#/components/schemas/DayHours'
+                    sunday:
+                      $ref: '#/components/schemas/DayHours'
+                  description: Store operating hours by day
+      responses:
+        '200':
+          description: Operating hours updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '400':
+          description: Bad request - Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - Admin/Manager access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Store not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+tags:
+  - name: Store Management
+    description: Store management operations
+  - name: Store Location
+    description: Store location and discovery operations
+  - name: Store Operations
+    description: Store operational information and settings

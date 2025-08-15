@@ -1,191 +1,431 @@
-import api from './api';
+import axios from 'axios';
 
-// Base path for supplier endpoints (relative to the API base URL which already includes /v1)
-const SUPPLIERS_BASE = '/suppliers';
+const API_BASE_URL = '/api/v1';
+
+// Create axios instance with default configuration
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Add request interceptor to include token
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Add response interceptor to handle errors
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
 
 const supplierService = {
-  /**
-   * Get all suppliers with optional filters
-   * @param {Object} params - Query parameters for filtering and pagination
-   * @param {number} params.page - Page number for pagination
-   * @param {number} params.limit - Number of items per page
-   * @param {string} params.name - Filter by supplier name
-   * @param {string} params.email - Filter by supplier email
-   * @param {boolean} params.active - Filter by active status
-   * @returns {Promise<Object>} Paginated list of suppliers
-   */
+  // Supplier Management
+  // List all suppliers
+  listSuppliers: async (params = {}) => {
+    const response = await api.get('/suppliers', { params });
+    // Handle new standardized API response: { data: { suppliers: [], total_count: number }, success: boolean }
+    if (response.data && typeof response.data === 'object' && response.data.data) {
+      return {
+        suppliers: Array.isArray(response.data.data.suppliers) ? response.data.data.suppliers : [],
+        total: response.data.data.total_count || response.data.data.total || 0,
+        success: response.data.success || true
+      };
+    }
+    // Legacy fallback: handle old supplier API response format
+    if (response.data && typeof response.data === 'object' && response.data.suppliers) {
+      return {
+        suppliers: Array.isArray(response.data.suppliers) ? response.data.suppliers : [],
+        total: response.data.total_count || response.data.total || 0,
+        success: true
+      };
+    }
+    // Final fallback: wrap any other response in expected structure
+    const suppliers = Array.isArray(response.data) ? response.data : [];
+    return {
+      suppliers: suppliers,
+      total: suppliers.length,
+      success: true
+    };
+  },
+
+  // Backward-compatible alias used by pages (returns object with suppliers property)
   getSuppliers: async (params = {}) => {
-    try {
-      const response = await api.get(SUPPLIERS_BASE, { params });
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching suppliers:', error);
-      throw error;
-    }
+    return supplierService.listSuppliers(params);
   },
 
-  /**
-   * Get a single supplier by ID
-   * @param {string} id - Supplier ID
-   * @returns {Promise<Object>} Supplier details
-   */
-  getSupplier: async (id) => {
-    try {
-      const response = await api.get(`${SUPPLIERS_BASE}/${id}`);
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching supplier:', error);
-      throw error;
-    }
+  // New method for autocomplete components that need just the array
+  getSuppliersArray: async (params = {}) => {
+    const result = await supplierService.listSuppliers(params);
+    return result.suppliers || [];
   },
 
-  /**
-   * Create a new supplier
-   * @param {Object} supplierData - Supplier data
-   * @param {string} supplierData.name - Supplier name
-   * @param {string} supplierData.contactPerson - Contact person name
-   * @param {string} supplierData.email - Supplier email
-   * @param {string} supplierData.phone - Supplier phone
-   * @param {string} supplierData.address - Supplier address
-   * @param {string} supplierData.city - Supplier city
-   * @param {string} supplierData.country - Supplier country
-   * @param {string} supplierData.postalCode - Supplier postal code
-   * @param {boolean} supplierData.isActive - Whether the supplier is active
-   * @param {Object} supplierData.metadata - Additional metadata
-   * @returns {Promise<Object>} Created supplier details
-   */
+  // Get supplier by ID
+  getSupplier: async (supplierId) => {
+    const response = await api.get(`/suppliers/${supplierId}`);
+    return response.data;
+  },
+
+  // Create new supplier
   createSupplier: async (supplierData) => {
-    try {
-      const response = await api.post(SUPPLIERS_BASE, supplierData);
-      return response.data;
-    } catch (error) {
-      console.error('Error creating supplier:', error);
-      throw error;
-    }
+    const response = await api.post('/suppliers', supplierData);
+    return response.data;
   },
 
-  /**
-   * Update an existing supplier
-   * @param {string} id - Supplier ID
-   * @param {Object} supplierData - Updated supplier data
-   * @returns {Promise<Object>} Updated supplier details
-   */
-  updateSupplier: async (id, supplierData) => {
-    try {
-      const response = await api.put(`${SUPPLIERS_BASE}/${id}`, supplierData);
-      return response.data;
-    } catch (error) {
-      console.error('Error updating supplier:', error);
-      throw error;
-    }
+  // Update supplier
+  updateSupplier: async (supplierId, supplierData) => {
+    const response = await api.put(`/suppliers/${supplierId}`, supplierData);
+    return response.data;
   },
 
-  /**
-   * Delete a supplier
-   * @param {string} id - Supplier ID
-   * @returns {Promise<Object>} Deletion confirmation
-   */
-  deleteSupplier: async (id) => {
-    try {
-      const response = await api.delete(`${SUPPLIERS_BASE}/${id}`);
-      return response.data;
-    } catch (error) {
-      console.error('Error deleting supplier:', error);
-      throw error;
-    }
+  // Delete supplier
+  deleteSupplier: async (supplierId) => {
+    const response = await api.delete(`/suppliers/${supplierId}`);
+    return response.data;
   },
 
-  /**
-   * Sync supplier data (generic method - deprecated, use specific sync methods)
-   * @param {string} id - Supplier ID
-   * @returns {Promise<Object>} Sync result
-   */
-  syncSupplier: async (id) => {
-    try {
-      const response = await api.post(`${SUPPLIERS_BASE}/${id}/sync`);
-      return response.data.data || response.data;
-    } catch (error) {
-      console.error('Error syncing supplier:', error);
-      throw error;
-    }
+  // Activate supplier
+  activateSupplier: async (supplierId) => {
+    const response = await api.put(`/suppliers/${supplierId}/activate`);
+    return response.data;
   },
 
-  /**
-   * Sync supplier products
-   * @param {string} id - Supplier ID
-   * @param {Object} options - Sync options
-   * @returns {Promise<Object>} Sync result
-   */
-  syncSupplierProducts: async (id, options = {}) => {
-    try {
-      const response = await api.post(`${SUPPLIERS_BASE}/${id}/sync/products`, options);
-      return response.data;
-    } catch (error) {
-      console.error('Error syncing supplier products:', error);
-      throw error;
-    }
+  // Deactivate supplier
+  deactivateSupplier: async (supplierId) => {
+    const response = await api.put(`/suppliers/${supplierId}/deactivate`);
+    return response.data;
   },
 
-  /**
-   * Sync supplier inventory
-   * @param {string} id - Supplier ID
-   * @param {Object} options - Sync options
-   * @returns {Promise<Object>} Sync result
-   */
-  syncSupplierInventory: async (id, options = {}) => {
-    try {
-      const response = await api.post(`${SUPPLIERS_BASE}/${id}/sync/inventory`, options);
-      return response.data;
-    } catch (error) {
-      console.error('Error syncing supplier inventory:', error);
-      throw error;
-    }
+  // Search suppliers
+  searchSuppliers: async (query, params = {}) => {
+    const response = await api.get('/suppliers/search', {
+      params: { q: query, ...params }
+    });
+    return response.data;
   },
 
-  // Supplier Adapter Operations
-  /**
-   * Get all available supplier adapters
-   * @returns {Promise<Array>} List of supplier adapters
-   */
-  getSupplierAdapters: async () => {
-    try {
-      const response = await api.get(`${SUPPLIERS_BASE}/adapters`);
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching supplier adapters:', error);
-      throw error;
-    }
+  // Supplier Adapters
+  // List all available adapters
+  listAdapters: async () => {
+    const response = await api.get('/suppliers/adapters');
+    return response.data;
   },
 
-  /**
-   * Get capabilities of a specific supplier adapter
-   * @param {string} adapterName - Name of the adapter
-   * @returns {Promise<Object>} Adapter capabilities
-   */
-  getAdapterCapabilities: async (adapterName) => {
-    try {
-      const response = await api.get(`${SUPPLIERS_BASE}/adapters/${adapterName}`);
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching adapter capabilities:', error);
-      throw error;
-    }
+  // Backward-compatible alias used by pages
+  getAdapters: async () => {
+    return supplierService.listAdapters();
   },
 
-  /**
-   * Test connection to a supplier adapter
-   * @param {string} adapterName - Name of the adapter
-   * @param {Object} connectionConfig - Connection configuration
-   * @returns {Promise<Object>} Connection test result
-   */
-  testAdapterConnection: async (adapterName, connectionConfig = {}) => {
-    try {
-      const response = await api.post(`${SUPPLIERS_BASE}/adapters/${adapterName}/test-connection`, connectionConfig);
-      return response.data;
-    } catch (error) {
-      console.error('Error testing adapter connection:', error);
-      throw error;
-    }
+  // Get adapter capabilities
+  getAdapterCapabilities: async (adapterType) => {
+    const response = await api.get(`/suppliers/adapters/${adapterType}/capabilities`);
+    return response.data;
+  },
+
+  // Test adapter connection
+  testAdapterConnection: async (supplierId, connectionData) => {
+    const response = await api.post(`/suppliers/${supplierId}/test-connection`, connectionData);
+    return response.data;
+  },
+
+  // Configure supplier adapter
+  configureAdapter: async (supplierId, adapterConfig) => {
+    const response = await api.put(`/suppliers/${supplierId}/adapter`, adapterConfig);
+    return response.data;
+  },
+
+  // Get supplier adapter configuration
+  getAdapterConfiguration: async (supplierId) => {
+    const response = await api.get(`/suppliers/${supplierId}/adapter`);
+    return response.data;
+  },
+
+  // Product Synchronization
+  // Sync products from supplier
+  syncProducts: async (supplierId, syncOptions = {}) => {
+    const response = await api.post(`/suppliers/${supplierId}/sync/products`, syncOptions);
+    return response.data;
+  },
+
+  // Sync inventory from supplier
+  syncInventory: async (supplierId, syncOptions = {}) => {
+    const response = await api.post(`/suppliers/${supplierId}/sync/inventory`, syncOptions);
+    return response.data;
+  },
+
+  // Get sync history
+  getSyncHistory: async (supplierId, params = {}) => {
+    const response = await api.get(`/suppliers/${supplierId}/sync/history`, { params });
+    return response.data;
+  },
+
+  // Get sync status
+  getSyncStatus: async (supplierId, syncId) => {
+    const response = await api.get(`/suppliers/${supplierId}/sync/${syncId}/status`);
+    return response.data;
+  },
+
+  // Cancel sync operation
+  cancelSync: async (supplierId, syncId) => {
+    const response = await api.delete(`/suppliers/${supplierId}/sync/${syncId}`);
+    return response.data;
+  },
+
+  // Schedule automatic sync
+  scheduleSync: async (supplierId, scheduleData) => {
+    const response = await api.post(`/suppliers/${supplierId}/sync/schedule`, scheduleData);
+    return response.data;
+  },
+
+  // Get sync schedule
+  getSyncSchedule: async (supplierId) => {
+    const response = await api.get(`/suppliers/${supplierId}/sync/schedule`);
+    return response.data;
+  },
+
+  // Update sync schedule
+  updateSyncSchedule: async (supplierId, scheduleData) => {
+    const response = await api.put(`/suppliers/${supplierId}/sync/schedule`, scheduleData);
+    return response.data;
+  },
+
+  // Delete sync schedule
+  deleteSyncSchedule: async (supplierId) => {
+    const response = await api.delete(`/suppliers/${supplierId}/sync/schedule`);
+    return response.data;
+  },
+
+  // Supplier Products
+  // Get products from supplier
+  getSupplierProducts: async (supplierId, params = {}) => {
+    const response = await api.get(`/suppliers/${supplierId}/products`, { params });
+    return response.data;
+  },
+
+  // Map supplier product to internal product
+  mapSupplierProduct: async (supplierId, supplierProductId, internalProductId) => {
+    const response = await api.post(`/suppliers/${supplierId}/products/${supplierProductId}/map`, {
+      internalProductId
+    });
+    return response.data;
+  },
+
+  // Unmap supplier product
+  unmapSupplierProduct: async (supplierId, supplierProductId) => {
+    const response = await api.delete(`/suppliers/${supplierId}/products/${supplierProductId}/map`);
+    return response.data;
+  },
+
+  // Get product mapping
+  getProductMapping: async (supplierId, supplierProductId) => {
+    const response = await api.get(`/suppliers/${supplierId}/products/${supplierProductId}/map`);
+    return response.data;
+  },
+
+  // Bulk map products
+  bulkMapProducts: async (supplierId, mappings) => {
+    const response = await api.post(`/suppliers/${supplierId}/products/bulk-map`, {
+      mappings
+    });
+    return response.data;
+  },
+
+  // Purchase Orders
+  // Create purchase order
+  createPurchaseOrder: async (supplierId, orderData) => {
+    const response = await api.post(`/suppliers/${supplierId}/purchase-orders`, orderData);
+    return response.data;
+  },
+
+  // Get purchase orders
+  getPurchaseOrders: async (supplierId, params = {}) => {
+    const response = await api.get(`/suppliers/${supplierId}/purchase-orders`, { params });
+    return response.data;
+  },
+
+  // Get purchase order by ID
+  getPurchaseOrder: async (supplierId, orderId) => {
+    const response = await api.get(`/suppliers/${supplierId}/purchase-orders/${orderId}`);
+    return response.data;
+  },
+
+  // Update purchase order
+  updatePurchaseOrder: async (supplierId, orderId, orderData) => {
+    const response = await api.put(`/suppliers/${supplierId}/purchase-orders/${orderId}`, orderData);
+    return response.data;
+  },
+
+  // Cancel purchase order
+  cancelPurchaseOrder: async (supplierId, orderId, reason) => {
+    const response = await api.put(`/suppliers/${supplierId}/purchase-orders/${orderId}/cancel`, {
+      reason
+    });
+    return response.data;
+  },
+
+  // Submit purchase order to supplier
+  submitPurchaseOrder: async (supplierId, orderId) => {
+    const response = await api.post(`/suppliers/${supplierId}/purchase-orders/${orderId}/submit`);
+    return response.data;
+  },
+
+  // Receive purchase order
+  receivePurchaseOrder: async (supplierId, orderId, receiptData) => {
+    const response = await api.post(`/suppliers/${supplierId}/purchase-orders/${orderId}/receive`, receiptData);
+    return response.data;
+  },
+
+  // Supplier Analytics
+  // Get supplier performance analytics
+  getSupplierAnalytics: async (supplierId, params = {}) => {
+    const response = await api.get(`/suppliers/${supplierId}/analytics`, { params });
+    return response.data;
+  },
+
+  // Get supplier delivery performance
+  getDeliveryPerformance: async (supplierId, params = {}) => {
+    const response = await api.get(`/suppliers/${supplierId}/analytics/delivery`, { params });
+    return response.data;
+  },
+
+  // Get supplier quality metrics
+  getQualityMetrics: async (supplierId, params = {}) => {
+    const response = await api.get(`/suppliers/${supplierId}/analytics/quality`, { params });
+    return response.data;
+  },
+
+  // Get supplier cost analysis
+  getCostAnalysis: async (supplierId, params = {}) => {
+    const response = await api.get(`/suppliers/${supplierId}/analytics/cost`, { params });
+    return response.data;
+  },
+
+  // Supplier Contacts
+  // Get supplier contacts
+  getSupplierContacts: async (supplierId) => {
+    const response = await api.get(`/suppliers/${supplierId}/contacts`);
+    return response.data;
+  },
+
+  // Add supplier contact
+  addSupplierContact: async (supplierId, contactData) => {
+    const response = await api.post(`/suppliers/${supplierId}/contacts`, contactData);
+    return response.data;
+  },
+
+  // Update supplier contact
+  updateSupplierContact: async (supplierId, contactId, contactData) => {
+    const response = await api.put(`/suppliers/${supplierId}/contacts/${contactId}`, contactData);
+    return response.data;
+  },
+
+  // Delete supplier contact
+  deleteSupplierContact: async (supplierId, contactId) => {
+    const response = await api.delete(`/suppliers/${supplierId}/contacts/${contactId}`);
+    return response.data;
+  },
+
+  // Set primary contact
+  setPrimaryContact: async (supplierId, contactId) => {
+    const response = await api.put(`/suppliers/${supplierId}/contacts/${contactId}/primary`);
+    return response.data;
+  },
+
+  // Supplier Documents
+  // Upload supplier document
+  uploadDocument: async (supplierId, file, documentType, description) => {
+    const formData = new FormData();
+    formData.append('document', file);
+    formData.append('type', documentType);
+    formData.append('description', description);
+    
+    const response = await api.post(`/suppliers/${supplierId}/documents`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  // Get supplier documents
+  getSupplierDocuments: async (supplierId, params = {}) => {
+    const response = await api.get(`/suppliers/${supplierId}/documents`, { params });
+    return response.data;
+  },
+
+  // Download supplier document
+  downloadDocument: async (supplierId, documentId) => {
+    const response = await api.get(`/suppliers/${supplierId}/documents/${documentId}/download`, {
+      responseType: 'blob'
+    });
+    return response.data;
+  },
+
+  // Delete supplier document
+  deleteDocument: async (supplierId, documentId) => {
+    const response = await api.delete(`/suppliers/${supplierId}/documents/${documentId}`);
+    return response.data;
+  },
+
+  // Bulk Operations
+  // Bulk update suppliers
+  bulkUpdateSuppliers: async (updates) => {
+    const response = await api.put('/suppliers/bulk', { suppliers: updates });
+    return response.data;
+  },
+
+  // Bulk delete suppliers
+  bulkDeleteSuppliers: async (supplierIds) => {
+    const response = await api.delete('/suppliers/bulk', { data: { supplierIds } });
+    return response.data;
+  },
+
+  // Export suppliers
+  exportSuppliers: async (format = 'csv', params = {}) => {
+    const response = await api.get('/suppliers/export', {
+      params: { format, ...params },
+      responseType: 'blob'
+    });
+    return response.data;
+  },
+
+  // Import suppliers
+  importSuppliers: async (file, options = {}) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    Object.keys(options).forEach(key => {
+      formData.append(key, options[key]);
+    });
+    
+    const response = await api.post('/suppliers/import', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  // Get import status
+  getImportStatus: async (importId) => {
+    const response = await api.get(`/suppliers/import/${importId}/status`);
+    return response.data;
   },
 };
 

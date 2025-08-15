@@ -39,6 +39,15 @@ func (s *EventService) PublishOrderCreated(ctx context.Context, order *domain.Or
 		},
 	)
 
+	// Check if publisher is available (prevent nil pointer panic)
+	if s.publisher == nil {
+		s.logger.Warn("No event publisher configured, skipping order created event",
+			zap.String("order_id", order.ID),
+			zap.String("user_id", order.UserID),
+		)
+		return nil // Don't fail the operation
+	}
+
 	err := s.publisher.PublishOrderEvent(event)
 	if err != nil {
 		s.logger.Error("Failed to publish order created event",
@@ -90,6 +99,16 @@ func (s *EventService) PublishOrderStatusChanged(ctx context.Context, order *dom
 		},
 	)
 
+	// Check if publisher is available (prevent nil pointer panic)
+	if s.publisher == nil {
+		s.logger.Warn("No event publisher configured, skipping order status changed event",
+			zap.String("order_id", order.ID),
+			zap.String("previous_status", string(previousStatus)),
+			zap.String("new_status", string(order.Status)),
+		)
+		return nil // Don't fail the operation
+	}
+
 	err := s.publisher.PublishOrderEvent(event)
 	if err != nil {
 		s.logger.Error("Failed to publish order status changed event",
@@ -126,6 +145,15 @@ func (s *EventService) PublishPaymentProcessed(ctx context.Context, order *domai
 			"payment_timestamp":   order.Payment.Timestamp,
 		},
 	)
+
+	// Check if publisher is available (prevent nil pointer panic)
+	if s.publisher == nil {
+		s.logger.Warn("No event publisher configured, skipping payment processed event",
+			zap.String("order_id", order.ID),
+			zap.String("transaction_id", order.Payment.TransactionID),
+		)
+		return nil // Don't fail the operation
+	}
 
 	err := s.publisher.PublishPaymentEvent(event)
 	if err != nil {
@@ -169,6 +197,15 @@ func (s *EventService) PublishInventoryReserved(ctx context.Context, order *doma
 		},
 	)
 
+	// Check if publisher is available (prevent nil pointer panic)
+	if s.publisher == nil {
+		s.logger.Warn("No event publisher configured, skipping inventory reserved event",
+			zap.String("order_id", order.ID),
+			zap.Int("items_count", len(order.Items)),
+		)
+		return nil // Don't fail the operation
+	}
+
 	err := s.publisher.PublishInventoryEvent(event)
 	if err != nil {
 		s.logger.Error("Failed to publish inventory reserved event",
@@ -209,6 +246,15 @@ func (s *EventService) PublishInventoryReleased(ctx context.Context, order *doma
 		},
 	)
 
+	// Check if publisher is available (prevent nil pointer panic)
+	if s.publisher == nil {
+		s.logger.Warn("No event publisher configured, skipping inventory released event",
+			zap.String("order_id", order.ID),
+			zap.Int("items_count", len(order.Items)),
+		)
+		return nil // Don't fail the operation
+	}
+
 	err := s.publisher.PublishInventoryEvent(event)
 	if err != nil {
 		s.logger.Error("Failed to publish inventory released event",
@@ -239,6 +285,16 @@ func (s *EventService) publishGenericStatusChange(ctx context.Context, order *do
 			"new_status":      string(order.Status),
 		},
 	)
+
+	// Check if publisher is available (prevent nil pointer panic)
+	if s.publisher == nil {
+		s.logger.Warn("No event publisher configured, skipping generic status change event",
+			zap.String("order_id", order.ID),
+			zap.String("previous_status", string(previousStatus)),
+			zap.String("new_status", string(order.Status)),
+		)
+		return nil // Don't fail the operation
+	}
 
 	return s.publisher.PublishOrderEvent(event)
 }

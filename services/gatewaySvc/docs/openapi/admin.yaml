@@ -1,0 +1,863 @@
+openapi: 3.0.3
+info:
+  title: StockPlatform Admin API
+  description: Administrative operations for the StockPlatform microservices
+  version: 1.0.0
+  contact:
+    name: StockPlatform API Support
+    email: support@stockplatform.com
+
+servers:
+  - url: http://localhost:8080
+    description: Development server
+  - url: https://api.stockplatform.com
+    description: Production server
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    AdminUser:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique user identifier
+        email:
+          type: string
+          format: email
+          description: User email address
+        first_name:
+          type: string
+          description: User first name
+        last_name:
+          type: string
+          description: User last name
+        role:
+          type: string
+          enum: [CUSTOMER, ADMIN, STAFF]
+          description: User role
+        phone:
+          type: string
+          description: User phone number
+        active:
+          type: boolean
+          description: Whether user account is active
+        last_login:
+          type: string
+          format: date-time
+          description: Last login timestamp
+        created_at:
+          type: string
+          format: date-time
+          description: Account creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+        total_orders:
+          type: integer
+          description: Total number of orders placed
+        total_spent:
+          type: number
+          format: float
+          description: Total amount spent
+
+    SystemHealth:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+          description: Overall system status
+        timestamp:
+          type: string
+          format: date-time
+          description: Health check timestamp
+        services:
+          type: object
+          properties:
+            gateway:
+              $ref: '#/components/schemas/ServiceHealth'
+            user_service:
+              $ref: '#/components/schemas/ServiceHealth'
+            product_service:
+              $ref: '#/components/schemas/ServiceHealth'
+            order_service:
+              $ref: '#/components/schemas/ServiceHealth'
+            inventory_service:
+              $ref: '#/components/schemas/ServiceHealth'
+            supplier_service:
+              $ref: '#/components/schemas/ServiceHealth'
+            store_service:
+              $ref: '#/components/schemas/ServiceHealth'
+        database:
+          $ref: '#/components/schemas/ServiceHealth'
+        message_queue:
+          $ref: '#/components/schemas/ServiceHealth'
+
+    ServiceHealth:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+          description: Service status
+        response_time_ms:
+          type: integer
+          description: Response time in milliseconds
+        error_rate:
+          type: number
+          format: float
+          description: Error rate percentage
+        last_check:
+          type: string
+          format: date-time
+          description: Last health check timestamp
+        message:
+          type: string
+          description: Status message or error details
+
+    SystemMetrics:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: Metrics timestamp
+        users:
+          type: object
+          properties:
+            total:
+              type: integer
+              description: Total number of users
+            active:
+              type: integer
+              description: Number of active users
+            new_today:
+              type: integer
+              description: New users today
+            new_this_month:
+              type: integer
+              description: New users this month
+        orders:
+          type: object
+          properties:
+            total:
+              type: integer
+              description: Total number of orders
+            pending:
+              type: integer
+              description: Number of pending orders
+            completed:
+              type: integer
+              description: Number of completed orders
+            revenue_today:
+              type: number
+              format: float
+              description: Revenue today
+            revenue_this_month:
+              type: number
+              format: float
+              description: Revenue this month
+        products:
+          type: object
+          properties:
+            total:
+              type: integer
+              description: Total number of products
+            active:
+              type: integer
+              description: Number of active products
+            low_stock:
+              type: integer
+              description: Number of low stock products
+            out_of_stock:
+              type: integer
+              description: Number of out of stock products
+        inventory:
+          type: object
+          properties:
+            total_items:
+              type: integer
+              description: Total inventory items
+            total_value:
+              type: number
+              format: float
+              description: Total inventory value
+            locations:
+              type: integer
+              description: Number of inventory locations
+
+    AdminOrderSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Order ID
+        user_id:
+          type: string
+          description: Customer user ID
+        user_name:
+          type: string
+          description: Customer name
+        user_email:
+          type: string
+          description: Customer email
+        status:
+          type: string
+          description: Order status
+        total_amount:
+          type: number
+          format: float
+          description: Order total
+        item_count:
+          type: integer
+          description: Number of items
+        created_at:
+          type: string
+          format: date-time
+          description: Order creation timestamp
+        payment_status:
+          type: string
+          description: Payment status
+        shipping_address:
+          type: string
+          description: Shipping address
+
+    ListUsersResponse:
+      type: object
+      properties:
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminUser'
+        total:
+          type: integer
+          description: Total number of users
+        limit:
+          type: integer
+          description: Number of items per page
+        offset:
+          type: integer
+          description: Starting offset
+        filters:
+          type: object
+          properties:
+            role:
+              type: string
+            active:
+              type: boolean
+          description: Applied filters
+
+    ListOrdersResponse:
+      type: object
+      properties:
+        orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminOrderSummary'
+        total:
+          type: integer
+          description: Total number of orders
+        limit:
+          type: integer
+          description: Number of items per page
+        offset:
+          type: integer
+          description: Starting offset
+        filters:
+          type: object
+          properties:
+            status:
+              type: string
+            user_id:
+              type: string
+            start_date:
+              type: string
+            end_date:
+              type: string
+          description: Applied filters
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+
+    SuccessMessage:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Success message
+
+security:
+  - BearerAuth: []
+
+paths:
+  /api/v1/admin/users:
+    get:
+      summary: List all users (admin only)
+      description: List all users with filtering options (admin only)
+      tags:
+        - Admin - User Management
+      parameters:
+        - name: role
+          in: query
+          description: Filter by user role
+          schema:
+            type: string
+            enum: [CUSTOMER, ADMIN, STAFF]
+        - name: active
+          in: query
+          description: Filter by active status
+          schema:
+            type: boolean
+        - name: search
+          in: query
+          description: Search by name or email
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Number of items per page (default: 10)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: offset
+          in: query
+          description: Starting offset (default: 0)
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListUsersResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/admin/users/{id}:
+    get:
+      summary: Get user by ID (admin only)
+      description: Get a specific user by ID (admin only)
+      tags:
+        - Admin - User Management
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: User ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUser'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/admin/users/{id}/activate:
+    put:
+      summary: Activate user (admin only)
+      description: Activate a user account (admin only)
+      tags:
+        - Admin - User Management
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: User ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User activated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/admin/users/{id}/deactivate:
+    put:
+      summary: Deactivate user (admin only)
+      description: Deactivate a user account (admin only)
+      tags:
+        - Admin - User Management
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: User ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User deactivated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/admin/orders:
+    get:
+      summary: List all orders (admin only)
+      description: List all orders with filtering options (admin only)
+      tags:
+        - Admin - Order Management
+      parameters:
+        - name: status
+          in: query
+          description: Filter by order status
+          schema:
+            type: string
+            enum: [CREATED, PENDING, PAID, PROCESSING, SHIPPED, DELIVERED, CANCELLED, FAILED]
+        - name: userID
+          in: query
+          description: Filter by user ID
+          schema:
+            type: string
+        - name: startDate
+          in: query
+          description: Filter by start date (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - name: endDate
+          in: query
+          description: Filter by end date (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - name: minAmount
+          in: query
+          description: Filter by minimum order amount
+          schema:
+            type: number
+            format: float
+        - name: maxAmount
+          in: query
+          description: Filter by maximum order amount
+          schema:
+            type: number
+            format: float
+        - name: limit
+          in: query
+          description: Number of items per page (default: 10)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: offset
+          in: query
+          description: Starting offset (default: 0)
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListOrdersResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/admin/system/health:
+    get:
+      summary: Get system health status
+      description: Get overall system health and service status (admin only)
+      tags:
+        - Admin - System Monitoring
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemHealth'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/admin/system/metrics:
+    get:
+      summary: Get system metrics
+      description: Get system-wide metrics and statistics (admin only)
+      tags:
+        - Admin - System Monitoring
+      parameters:
+        - name: period
+          in: query
+          description: Time period for metrics
+          schema:
+            type: string
+            enum: [today, week, month, year]
+            default: today
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemMetrics'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/admin/analytics/sales:
+    get:
+      summary: Get sales analytics
+      description: Get sales performance analytics (admin only)
+      tags:
+        - Admin - Analytics
+      parameters:
+        - name: period
+          in: query
+          description: Time period for analytics
+          schema:
+            type: string
+            enum: [today, week, month, quarter, year]
+            default: month
+        - name: groupBy
+          in: query
+          description: Group results by
+          schema:
+            type: string
+            enum: [day, week, month, product, category, location]
+            default: day
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  period:
+                    type: string
+                  total_revenue:
+                    type: number
+                    format: float
+                  total_orders:
+                    type: integer
+                  average_order_value:
+                    type: number
+                    format: float
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        date:
+                          type: string
+                          format: date
+                        revenue:
+                          type: number
+                          format: float
+                        orders:
+                          type: integer
+                        customers:
+                          type: integer
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/admin/analytics/inventory:
+    get:
+      summary: Get inventory analytics
+      description: Get inventory performance analytics (admin only)
+      tags:
+        - Admin - Analytics
+      parameters:
+        - name: location
+          in: query
+          description: Filter by location
+          schema:
+            type: string
+        - name: category
+          in: query
+          description: Filter by product category
+          schema:
+            type: string
+        - name: lowStockOnly
+          in: query
+          description: Show only low stock items
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_products:
+                    type: integer
+                  total_value:
+                    type: number
+                    format: float
+                  low_stock_items:
+                    type: integer
+                  out_of_stock_items:
+                    type: integer
+                  turnover_rate:
+                    type: number
+                    format: float
+                  top_products:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        product_id:
+                          type: string
+                        name:
+                          type: string
+                        quantity_sold:
+                          type: integer
+                        revenue:
+                          type: number
+                          format: float
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+tags:
+  - name: Admin - User Management
+    description: Administrative user management operations
+  - name: Admin - Order Management
+    description: Administrative order management operations
+  - name: Admin - System Monitoring
+    description: System health and monitoring operations
+  - name: Admin - Analytics
+    description: Business analytics and reporting operations

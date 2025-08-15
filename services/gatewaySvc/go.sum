@@ -97,8 +97,8 @@ github.com/leonvanderhaeghen/stockplatform/services/storeSvc v0.0.0-202506172355
 github.com/leonvanderhaeghen/stockplatform/services/storeSvc v0.0.0-20250617235535-5a86d542f1f1/go.mod h1:QxZU8aCRrA7UPtY30+biqVmhUz9ec3O+mviFrYR/ULc=
 github.com/leonvanderhaeghen/stockplatform/services/supplierSvc v0.0.0-20250617235535-5a86d542f1f1 h1:/4nqbPP/GfL22RNKgcqRGy49ED9QhgkqifBOHPAdhYA=
 github.com/leonvanderhaeghen/stockplatform/services/supplierSvc v0.0.0-20250617235535-5a86d542f1f1/go.mod h1:5aEo8T15R9SVL37r4Cz0XPqmskQ5WBC0wLm7GVUQSeQ=
-github.com/leonvanderhaeghen/stockplatform/services/userSvc v0.0.0-20250617235535-5a86d542f1f1 h1:VjluWL+grjMqU+3SlRsxfEubSAiojAHwTdL7NG0oJzU=
-github.com/leonvanderhaeghen/stockplatform/services/userSvc v0.0.0-20250617235535-5a86d542f1f1/go.mod h1:EBUmVTKN9NRzAE+1xatg6I4BIHnSheXGjIwFbv3A/F0=
+github.com/leonvanderhaeghen/stockplatform/services/userSvc v0.0.0-20250725221150-85760dd23cf6 h1:eCtcd6F/2V6eqabqpSylhYCbamHnbKisWfjxEDmcotE=
+github.com/leonvanderhaeghen/stockplatform/services/userSvc v0.0.0-20250725221150-85760dd23cf6/go.mod h1:BdbLZ/+apna7p/wie/vWdlfTSN2Baj1Wi0UE/YEIO9E=
 github.com/mailru/easyjson v0.0.0-20190614124828-94de47d64c63/go.mod h1:C1wdFJiN94OJF2b5HbByQZoLdCWB1Yqtg26g4irojpc=
 github.com/mailru/easyjson v0.0.0-20190626092158-b2ccc519800e/go.mod h1:C1wdFJiN94OJF2b5HbByQZoLdCWB1Yqtg26g4irojpc=
 github.com/mailru/easyjson v0.7.6/go.mod h1:xzfreul335JAWq5oZzymOObrkdz5UnU4kGfJJLY9Nlc=

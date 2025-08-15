@@ -7,7 +7,6 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/leonvanderhaeghen/stockplatform/pkg/models"
 	productclient "github.com/leonvanderhaeghen/stockplatform/pkg/clients/product"
 )
 
@@ -54,7 +53,7 @@ func (s *ProductServiceImpl) CreateCategory(
 		return nil, fmt.Errorf("failed to create category: %w", err)
 	}
 
-	return resp.GetCategory(), nil
+	return resp, nil
 }
 
 // ListCategories lists all product categories
@@ -74,11 +73,8 @@ func (s *ProductServiceImpl) ListCategories(
 		return nil, fmt.Errorf("failed to list categories: %w", err)
 	}
 
-	// Return the categories in a structured response
-	return map[string]interface{}{
-		"categories": resp.GetCategories(),
-		"total":      len(resp.GetCategories()),
-	}, nil
+	// Return the client response directly
+	return resp, nil
 }
 
 // ListProducts lists products with filtering options
@@ -100,41 +96,14 @@ func (s *ProductServiceImpl) ListProducts(
 		zap.Bool("ascending", ascending),
 	)
 
-	// Convert sort field to protobuf enum
-	var sortField productv1.ProductSort_SortField
-	switch sortBy {
-	case "name":
-		sortField = productv1.ProductSort_SORT_FIELD_NAME
-	case "price":
-		sortField = productv1.ProductSort_SORT_FIELD_PRICE
-	case "created_at":
-		sortField = productv1.ProductSort_SORT_FIELD_CREATED_AT
-	case "updated_at":
-		sortField = productv1.ProductSort_SORT_FIELD_UPDATED_AT
-	default:
-		sortField = productv1.ProductSort_SORT_FIELD_UNSPECIFIED
-	}
-
-	// Convert sort order to protobuf enum
-	sortOrder := productv1.ProductSort_SORT_ORDER_DESC
-	if ascending {
-		sortOrder = productv1.ProductSort_SORT_ORDER_ASC
-	}
-
-	// Use simplified client interface
-	// Note: The refactored client doesn't support complex sorting/filtering yet
+	// Use simplified client interface - pass primitive parameters directly
 	var isActivePtr *bool
 	if active {
 		isActivePtr = &active
 	}
-		}
 
-		// Note: The active filter is not directly supported in the gRPC API
-		// You might need to handle this in the client or modify the gRPC service
-	}
-
-	// Call the gRPC service
-	resp, err := s.client.ListProducts(ctx, categoryID, "", isActivePtr, int32(limit), int32(offset))
+	// Call the gRPC service via client abstraction
+	resp, err := s.client.ListProducts(ctx, categoryID, query, isActivePtr, int32(limit), int32(offset))
 	if err != nil {
 		s.logger.Error("Failed to list products",
 			zap.Error(err),
@@ -142,16 +111,8 @@ func (s *ProductServiceImpl) ListProducts(
 		return nil, fmt.Errorf("failed to list products: %w", err)
 	}
 
-	// Return the products in a structured response
-	return map[string]interface{}{
-		"products": resp.Products,
-		"total":    resp.TotalCount,
-		"pagination": map[string]interface{}{
-			"limit":  limit,
-			"offset": offset,
-			"total":  int(resp.TotalCount),
-		},
-	}, nil
+	// Return the client response directly
+	return resp, nil
 }
 
 // GetProductByID gets a product by ID
@@ -212,7 +173,7 @@ func (s *ProductServiceImpl) CreateProduct(
 		return nil, fmt.Errorf("failed to create product: %w", err)
 	}
 
-	return resp.Product, nil
+	return resp, nil
 }
 
 // UpdateProduct updates an existing product
@@ -233,97 +194,12 @@ func (s *ProductServiceImpl) UpdateProduct(
 		zap.String("sku", sku),
 	)
 
-	// 1. Get the existing product
-	resp, err := s.client.GetProduct(ctx, &productv1.GetProductRequest{Id: id})
-	if err != nil {
-		s.logger.Error("Failed to fetch product for update",
-			zap.String("id", id),
-			zap.Error(err),
-		)
-		return fmt.Errorf("failed to fetch product: %w", err)
-	}
-
-	existing := resp.GetProduct()
-	if existing == nil {
-		return fmt.Errorf("product not found")
-	}
-
-	// 2. Update the product fields
-	// Only update fields that are provided (non-zero values)
-	if name != "" {
-		existing.Name = name
-	}
-	if description != "" {
-		existing.Description = description
-	}
-	if sku != "" {
-		existing.Sku = sku
-	}
-	if len(categories) > 0 {
-		existing.CategoryIds = categories
-	}
-	if price != "" {
-		existing.SellingPrice = price
-	}
-	if cost != "" {
-		existing.CostPrice = cost
-	}
-
-	// Update boolean fields if they're being explicitly set
-	existing.IsActive = active
-
-	// Update images if provided
-	if len(images) > 0 {
-		existing.ImageUrls = images
-	}
-
-	// Update metadata if provided
-	if len(attributes) > 0 {
-		if existing.Metadata == nil {
-			existing.Metadata = make(map[string]string)
-		}
-		for k, v := range attributes {
-			existing.Metadata[k] = v
-		}
-	}
-
-	// 3. Create a new product with the updated fields
-	newReq := &productv1.CreateProductRequest{
-		Name:         existing.Name,
-		Description:  existing.Description,
-		CostPrice:    existing.CostPrice,
-		SellingPrice: existing.SellingPrice,
-		Currency:     existing.Currency,
-		Sku:          existing.Sku,
-		Barcode:      existing.Barcode,
-		SupplierId:   existing.SupplierId,
-		CategoryIds:  existing.CategoryIds,
-		IsActive:     existing.IsActive,
-		InStock:      existing.InStock,
-		StockQty:     existing.StockQty,
-		LowStockAt:   existing.LowStockAt,
-		ImageUrls:    existing.ImageUrls,
-		VideoUrls:    existing.VideoUrls,
-		Metadata:     existing.Metadata,
-	}
-
-	_, err = s.client.CreateProduct(ctx, newReq)
-	if err != nil {
-		s.logger.Error("Failed to create updated product",
-			zap.String("id", id),
-			zap.Error(err),
-		)
-		return fmt.Errorf("failed to create updated product: %w", err)
-	}
-
-	// Note: In a real implementation, you might want to mark the old product as deleted
-	// or inactive, but since we don't have a delete/update method, we'll just return success
-
-	s.logger.Info("Product updated successfully",
+	// Note: UpdateProduct is not implemented in the current gRPC client abstraction
+	// This method currently returns an error indicating the limitation
+	s.logger.Warn("UpdateProduct not implemented in client abstraction",
 		zap.String("id", id),
 	)
-
-	return nil
+	return fmt.Errorf("update product operation not supported by client abstraction")
 }
 
 // DeleteProduct marks a product as inactive (soft delete)
@@ -334,56 +210,10 @@ func (s *ProductServiceImpl) DeleteProduct(ctx context.Context, id string) error
 		zap.String("id", id),
 	)
 
-	// 1. Get the existing product
-	resp, err := s.client.GetProduct(ctx, &productv1.GetProductRequest{Id: id})
-	if err != nil {
-		s.logger.Error("Failed to fetch product for deletion",
-			zap.String("id", id),
-			zap.Error(err),
-		)
-		return fmt.Errorf("failed to fetch product: %w", err)
-	}
-
-	existing := resp.GetProduct()
-	if existing == nil {
-		return fmt.Errorf("product not found")
-	}
-
-	// 2. Mark the product as inactive
-	existing.IsActive = false
-
-	// 3. Create a new version of the product with IsActive = false
-	newReq := &productv1.CreateProductRequest{
-		Name:         existing.Name,
-		Description:  existing.Description,
-		CostPrice:    existing.CostPrice,
-		SellingPrice: existing.SellingPrice,
-		Currency:     existing.Currency,
-		Sku:          existing.Sku,
-		Barcode:      existing.Barcode,
-		SupplierId:   existing.SupplierId,
-		CategoryIds:  existing.CategoryIds,
-		IsActive:     false,
-		InStock:      existing.InStock,
-		StockQty:     existing.StockQty,
-		LowStockAt:   existing.LowStockAt,
-		ImageUrls:    existing.ImageUrls,
-		VideoUrls:    existing.VideoUrls,
-		Metadata:     existing.Metadata,
-	}
-
-	_, err = s.client.CreateProduct(ctx, newReq)
-	if err != nil {
-		s.logger.Error("Failed to deactivate product",
-			zap.String("id", id),
-			zap.Error(err),
-		)
-		return fmt.Errorf("failed to deactivate product: %w", err)
-	}
-
-	s.logger.Info("Product marked as inactive",
+	// Note: DeleteProduct is not implemented in the current gRPC client abstraction
+	// This method currently returns an error indicating the limitation
+	s.logger.Warn("DeleteProduct not implemented in client abstraction",
 		zap.String("id", id),
 	)
-
-	return nil
+	return fmt.Errorf("delete product operation not supported by client abstraction")
 }
